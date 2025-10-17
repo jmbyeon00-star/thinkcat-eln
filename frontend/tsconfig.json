@@ -1,0 +1,41 @@
+{
+    "compilerOptions": {
+      "baseUrl": ".",
+      "paths": {
+        "@/*": ["./*"],
+        "@lib/*": ["lib/*"],
+        "@components/*": ["components/*"]
+      },
+      "target": "ES2022",
+      "lib": ["ES2022", "DOM", "DOM.Iterable"],
+      "allowJs": false,
+      "skipLibCheck": true,
+      "strict": true,
+      "noEmit": true,
+      "module": "ESNext",
+      "moduleResolution": "Bundler",
+      "resolveJsonModule": true,
+      "isolatedModules": true,
+  
+      "jsx": "preserve",
+      /* preserve 쓸 땐 jsxImportSource 불필요. 제거 */
+      // "jsxImportSource": "react",
+  
+      /* ← 여기만 중요: 중복을 제거하고 React 타입을 포함 */
+      "types": ["node", "react", "react-dom"],
+  
+      "incremental": true,
+      "esModuleInterop": true,
+  
+      "plugins": [{ "name": "next" }]
+    },
+    "include": [
+      "next-env.d.ts",
+      "**/*.ts",
+      "**/*.tsx",
+      ".next/types/**/*.ts",
+      "pages/about/index.tsx"
+    ],
+    "exclude": ["node_modules"]
+}
+  

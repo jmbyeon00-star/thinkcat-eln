@@ -1,0 +1,15 @@
+/* File: frontend/styles/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 선택: 시스템 폰트 기반 살짝 정리 */
+html, body {
+  height: 100%;
+}
+
+.reset-scope :where(a, button) {
+    background: initial;
+    border: initial;
+    box-shadow: initial;
+}

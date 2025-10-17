@@ -1,0 +1,63 @@
+# Node.js / Next.js
+node_modules/
+.next/
+out/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+pnpm-lock.yaml
+
+# Python / FastAPI
+__pycache__/
+models/
+users/
+legacy/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+.env
+.env.local
+*.db
+
+gpu_backend/models/
+gpu_backend/users/
+gpu_backend/app/services/model/
+gpu_backend/app/services/data/
+gpu_backend/app/services/stdSc/
+backend/app/services/model/
+backend/app/services/data/
+backend/app/services/stdSc/
+
+
+# 강화
+*.bin
+*.pt
+*.ckpt
+*tokenizer.json
+*tokenizer_config.json
+vocab.txt
+gpu_backend/**/users/
+gpu_backend/gpu_backend/users/
+gpu_backend/ipforce_next/gpu_backend/users/
+gpu_backend/**/models/
+EOF
+
+
+# Docker / Infra
+docker-compose.override.yml
+*.pid
+*.log
+*.sock
+*.tmp
+*.swp
+
+# System
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+temp/
