@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 
 from app.core.db import SessionLocal
@@ -76,24 +76,9 @@ def signup(data: Signup, db: Session = Depends(get_db)):
         print("[/auth/signup] email send failed")
     return new_user
 
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
-# def login(request: Request, data: Signin, db: Session = Depends(get_db)):
-
-    # print(">>> RAW HEADERS:", request.headers)
-    # try:
-    #     body = request.body()
-    #     print(">>> RAW BODY:", body.decode())
-    # except Exception as e:
-    #     print(">>> BODY READ ERROR:", e)
 @router.post("/login")
-def login(data: Signin, db: Session = Depends(get_db)):
+def signin(data: Signin, db: Session = Depends(get_db)):
     user = crud_user.get_user_by_email(db, data.email)
-    # ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "kkk")
-    # print(ALLOWED_ORIGINS)
-
     if not user or not verify_password(data.password, user.password):
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다.")
     
@@ -101,35 +86,26 @@ def login(data: Signin, db: Session = Depends(get_db)):
 
     # 쿠키 설정 값들
     # cookie_max_age = 60 * 60  # 초 (예: 1시간)
-    # secure = os.getenv("ENV") == "production"  # 운영환경이면 True 권장
-    # samesite = "lax"  # 필요시 "strict" 또는 "none"
+    cookie_max_age = 60 * 24 * 7 # 7일
+    secure = os.getenv("ENV") == "production"  # 운영환경이면 True 권장
+    samesite = "lax"  # 필요시 "strict" 또는 "none"
 
-    # response = JSONResponse({
-    #     "ok": True,
-    #     "user": {"id": user.id, "name": user.name, "email": user.email}
-    # })
-    # response.set_cookie(
-    #     key="access_token",
-    #     value=access_token,
-    #     httponly=True,
-    #     max_age=cookie_max_age,
-    #     expires=cookie_max_age,
-    #     path="/",
-    #     secure=secure, # 운영환경이면 True 권장
-    #     samesite=samesite,
-    # )
-    # print(">>> signin response headers:", dict(response.headers)) # 확인용
-    # return response
-
-    return {
+    response = JSONResponse({
         "ok": True,
-        "access_token": access_token,
-        "user": {
-            "id": user.id,
-            "name": user.name,
-            "email": user.email
-        }
-    }
+        "user": {"id": user.id, "name": user.name, "email": user.email}
+    })
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        max_age=cookie_max_age,
+        expires=cookie_max_age,
+        path="/",
+        secure=secure, # 운영환경이면 True 권장
+        samesite=samesite,
+    )
+    # print(">>> signin response headers:", dict(response.headers)) # 확인용
+    return response
 
 class VerifyPayload(BaseModel):
     email: EmailStr

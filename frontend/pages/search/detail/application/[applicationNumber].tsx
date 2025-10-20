@@ -1,4 +1,5 @@
 "use client";
+
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -17,7 +18,8 @@ export default function SearchDetailPage() {
 
     // ✅ 안전하게 null 방어
     const appNum = params?.applicationNumber as string | undefined;
-    const keyword = searchParams.get("keyword") || "#";
+    // const keyword = searchParams.get("keyword") || "#";
+    const keyword = searchParams?.get("keyword") ?? "#";
 
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);

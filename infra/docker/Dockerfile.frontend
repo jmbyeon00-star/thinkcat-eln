@@ -11,8 +11,8 @@ COPY ./frontend/package*.json ./
 COPY ../.env ./.env
 
 # 4. 의존성 설치 (npm ci: lock 기반 설치로 더 안전함)
-# RUN npm install
-RUN npm ci
+# RUN npm ci
+RUN npm install
 
 # 5. 전체 소스 복사
 COPY ./frontend .

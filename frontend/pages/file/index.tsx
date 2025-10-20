@@ -1,3 +1,5 @@
+"use client"; 
+
 /* File: pages/file/index.tsx */
 import Head from "next/head";
 import Link from "next/link";

@@ -1,3 +1,5 @@
+"use client"; 
+
 import { useEffect, useState } from "react";
 import { Folder, Database, FileText, Search, LayoutGrid, Table, ChevronLeft, ChevronRight } from "lucide-react";
 

@@ -1,4 +1,6 @@
 // pages/ai/[id].tsx
+"use client"; 
+
 import { useRouter } from "next/router";
 import { useEffect, useState, useMemo } from "react";
 import {

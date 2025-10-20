@@ -3,7 +3,7 @@ uvicorn[standard]==0.30.6
 email-validator>=2.1.0.post1
 FlagEmbedding>=1.2.10
 elasticsearch==7.17.9
-milvus
+pymilvus==2.5.4
 pydantic[email]
 pydantic-settings
 sqlalchemy

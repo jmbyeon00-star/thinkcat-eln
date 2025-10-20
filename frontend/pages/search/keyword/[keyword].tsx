@@ -1,5 +1,6 @@
 // frontend/pages/search/detail/keyword/[keyword].tsx
 "use client";
+
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { searchKeyword } from "@lib/api";
@@ -11,7 +12,8 @@ export default function KeywordDetail() {
     const params = useParams();
     const searchParams = useSearchParams();
     const keyword = params?.keyword ? decodeURIComponent(params.keyword as string) : "";
-    const category = searchParams.get("category") || "a";
+    // const category = searchParams.get("category") || "a";
+    const category = searchParams?.get("category") || "a";
 
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(false);

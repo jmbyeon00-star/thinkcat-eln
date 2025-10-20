@@ -24,7 +24,6 @@ def get_models(
     # import os
     # ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "kkk")
     # print(ES_INDEX_PREFIX)
-
     try:
         user_id = get_current_user_from_request(request)
     except Exception as e:

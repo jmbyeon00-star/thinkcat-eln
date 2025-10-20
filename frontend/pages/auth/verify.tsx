@@ -36,7 +36,7 @@ export default function VerifyPage() {
     setMessage('인증 처리 중입니다...');
     console.log("API_BASE:", API_BASE)
     try {
-      const res = await fetch(`${API_BASE}/auth/verify`, {
+      const res = await fetch(`${API_BASE}/api/auth/verify`, {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ email: e, code: c })

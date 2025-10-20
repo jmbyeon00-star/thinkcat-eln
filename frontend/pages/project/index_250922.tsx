@@ -1,4 +1,6 @@
 /* File: /home/yckim/development/ipforce_next/frontend/pages/project/index.tsx */
+"use client"; 
+
 import Head from "next/head";
 import Link from "next/link";
 import { useEffect, useState } from "react";

@@ -349,8 +349,8 @@ export default function ProjectSearchPage() {
 
                                 <button
                                     onClick={() => {
-                                    if (!inputValue.trim()) return alert("콜렉션 이름을 입력하세요.");
-                                    alert(`현재 검색 결과에 "${inputValue}" 콜렉션이 적용되었습니다.`);
+                                        if (!inputValue.trim()) return alert("콜렉션 이름을 입력하세요.");
+                                        alert(`현재 검색 결과에 "${inputValue}" 콜렉션이 적용되었습니다.`);
                                     }}
                                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-all"
                                 >

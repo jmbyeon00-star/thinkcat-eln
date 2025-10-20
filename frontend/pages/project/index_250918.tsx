@@ -1,4 +1,7 @@
 // File: pages/project/index.tsx
+
+"use client"; 
+
 import Head from "next/head";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";

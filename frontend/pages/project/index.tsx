@@ -1,3 +1,5 @@
+"use client"; 
+
 import { useEffect, useState } from "react";
 import { Database, UploadCloud, Search, ChevronLeft, ChevronRight } from "lucide-react";
 

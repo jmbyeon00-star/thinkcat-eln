@@ -30,11 +30,13 @@
       "plugins": [{ "name": "next" }]
     },
     "include": [
-      "next-env.d.ts",
-      "**/*.ts",
-      "**/*.tsx",
-      ".next/types/**/*.ts",
-      "pages/about/index.tsx"
+        "next-env.d.ts",
+        "**/*.ts",
+        "**/*.tsx",
+        ".next/types/**/*.ts",
+        "pages/about/index.tsx", 
+        // "pages/page.tsx", "pages/layout.tsx"
+        "pages/index.tsx", "pages/_app.tsx", 
     ],
     "exclude": ["node_modules"]
 }
