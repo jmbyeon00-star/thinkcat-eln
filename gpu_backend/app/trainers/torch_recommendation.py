@@ -211,7 +211,6 @@ class TorchRecommendationTrainer(BaseTrainer):
         pred_labels = np.argmax(scores, axis=1)
         pred_probs = np.max(scores, axis=1)
 
-        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", pred_probs)
         data["pred_label"] = [label_names[i] for i in pred_labels]
         data["confidence"] = pred_probs
 

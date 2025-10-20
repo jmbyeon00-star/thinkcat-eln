@@ -126,11 +126,11 @@ def _build_query(
 
 def search_patents(session: Session, section: str, keyword: str, page: int, size: int) -> Tuple[int, List[Dict], List[Dict]]:
     """
-    섹션(카테고리)별 동적 인덱스 검색.
-    - 인덱스: f"{ES_INDEX_PREFIX}{section}"
-    - 매핑을 읽어 실제 존재하는 필드만 쿼리에 사용
-    - (옵션) ES_USE_VECTOR=true + embedding 모듈 있을 때 vector 검색 병행
-    - 결과 형태는 기존과 동일하게 (total, hits, data) 반환
+        섹션(카테고리)별 동적 인덱스 검색.
+        - 인덱스: f"{ES_INDEX_PREFIX}{section}"
+        - 매핑을 읽어 실제 존재하는 필드만 쿼리에 사용
+        - (옵션) ES_USE_VECTOR=true + embedding 모듈 있을 때 vector 검색 병행
+        - 결과 형태는 기존과 동일하게 (total, hits, data) 반환
     """
     try:
         es = get_es()
@@ -184,7 +184,7 @@ def search_patents(session: Session, section: str, keyword: str, page: int, size
                 "fields": highlight_fields
             }
         }
-
+        
         # 검색
         res = es.search(index=index, body=body)  # ES 7.x 스타일(7.x는 body= 사용)
         total = res["hits"]["total"]["value"] if isinstance(res["hits"]["total"], dict) else res["hits"]["total"]
@@ -206,7 +206,15 @@ def search_patents(session: Session, section: str, keyword: str, page: int, size
                 "title_es": src.get("title") or src.get("quote"),
                 "abstract_es": src.get("abstract") or src.get("quote"),
             }
-
+        
+        words = keyword.strip().split()
+        if len(words) == 1:
+            words = words[0]
+        elif len(words) == 2:
+            words =  words[0]
+        elif len(words) >= 3:
+            words = " ".join(words[:2])
+        
         # 2차: RDB에서 상세 붙이기
         results: List[Dict] = []
         if order_keys:
@@ -222,7 +230,8 @@ def search_patents(session: Session, section: str, keyword: str, page: int, size
                     "grant_date": r.get("grant_date"),
                     "vector": es_info.get("vector"),
                     "score": es_info.get("score"),
-                    "collection_name": r.get("cpc_code")
+                    "cpc_code": r.get("cpc_code"),
+                    "collection_name": words
                 })
         return int(total), es_map, results
     

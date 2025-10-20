@@ -25,6 +25,20 @@ def get_collections(
         raise
     return collection_service.get_collections(session, user_id, page=page, limit=limit, q=q)
 
+
+@router.get("/project/{project_id}")
+def get_project_collections(
+    project_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+):
+    try:
+        user_id = get_current_user_from_request(request)
+    except Exception as e:
+        print("get_current_user_from_request raised:", repr(e))
+        raise
+    return collection_service.get_collections_by_project_id(session, user_id, project_id)
+
 # 🔹 단일 컬렉션 상세 조회 (페이지네이션 지원)
 @router.get("/{collection_id}")
 def get_collection_detail(

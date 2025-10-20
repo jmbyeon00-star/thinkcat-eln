@@ -35,8 +35,6 @@ async def update_progress_sse(session: Session, target_type: str, target_id: str
     # status = body.get("status", None) if progress < 100 else "COMPLETED"
     status = body.get("status", None)
 
-    print(">>>>>", progress)
-    
     # ------------------------
     # TRAIN 진행률 업데이트
     # ------------------------

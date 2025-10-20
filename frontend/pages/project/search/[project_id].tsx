@@ -14,12 +14,22 @@ type Project = {
     created_datetime?: string;
 };
 
+type Collections = {
+    collection_ids: number[];
+    collection_codes: string[];
+    collection_names: string[];
+}
+
 export default function ProjectSearchPage() {
     const router = useRouter();
     const { project_id } = router.query;
     const API_BASE = "http://192.168.1.20:8000";
 
     const [project, setProject] = useState<Project | null>(null);
+    const [collections, setCollections] = useState<Collections | null>(null);
+    const [inputValue, setInputValue] = useState("");       // 입력창의 현재 값
+    const [inputLocked, setInputLocked] = useState(false);  // 입력창 잠금 여부
+    
     const [loading, setLoading] = useState(true);
     const [section, setSection] = useState("");
     const [keywords, setKeywords] = useState("");
@@ -59,9 +69,15 @@ export default function ProjectSearchPage() {
         if (!project_id) return;
         async function loadProject() {
             try {
-                const res = await fetch(`${API_BASE}/api/project/${project_id}`);
-                const data = await res.json();
-                setProject(data);
+                const resProject = await fetch(`${API_BASE}/api/project/${project_id}`);
+                const dataProject = await resProject.json();
+                setProject(dataProject);
+
+                const resColections = await fetch(`${API_BASE}/api/collection/project/${project_id}`, { credentials: "include" });
+                const dataCollections = await resColections.json();
+                console.log(dataCollections)
+                setCollections(dataCollections)
+
             } catch (e) {
                 alert("프로젝트 정보를 불러오지 못했습니다.");
             } finally {
@@ -191,7 +207,7 @@ export default function ProjectSearchPage() {
             </div>
         );
     }
-
+    
     return (
         <ProjectLayout step={2}>
             <Head>
@@ -269,6 +285,79 @@ export default function ProjectSearchPage() {
                                 </button>
                             </div>
 
+                            <div className="flex items-center gap-3 border border-zinc-200 p-4 rounded-xl bg-zinc-50">
+                                <label className="text-sm font-medium text-zinc-700">콜렉션 명:</label>
+
+                                {/* 🔹 기본값은 "__new__" (직접입력) */}
+                                <select
+                                    value={section || "__new__"}
+                                    onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSection(val);
+
+                                    if (val !== "__new__") {
+                                        const selectedName =
+                                        collections?.collection_names[
+                                            collections?.collection_codes.indexOf(val)
+                                        ] || "";
+                                        // 기존 콜렉션 선택 시 전체 적용
+                                        setResults((prev) =>
+                                            prev.map((r) => ({
+                                                ...r,
+                                                collection_name: selectedName,
+                                            }))
+                                        );
+                                        setInputValue(selectedName); // 입력창에도 표시
+                                        setInputLocked(true); // 입력창 잠금
+                                    } else {
+                                        // 직접 입력으로 돌아갈 때
+                                        setInputValue("");
+                                        setInputLocked(false);
+                                        setResults((prev) =>
+                                        prev.map((r) => ({
+                                            ...r,
+                                            collection_name: "",
+                                        }))
+                                        );
+                                    }
+                                    }}
+                                    className="px-3 py-2 border border-zinc-300 rounded-lg text-sm"
+                                >
+                                    <option value="__new__">+ 직접 입력</option>
+                                        {collections?.collection_names?.map((name, idx) => (
+                                    <option key={idx} value={collections.collection_codes[idx]}>
+                                        {name} {/* ({collections.collection_codes[idx]}) */}
+                                    </option>
+                                    ))}
+                                </select>
+
+                                {/* 🔹 입력창 — 기본값 활성, 기존 선택 시 잠김 */}
+                                <input
+                                    type="text"
+                                    value={inputValue}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setInputValue(val);
+                                        setResults((prev) => prev.map((r) => ({ ...r, collection_name: val })));
+                                    }}
+                                    placeholder="새 콜렉션 이름 입력"
+                                    disabled={inputLocked}
+                                    className={`px-3 py-2 border border-zinc-300 rounded-lg text-sm flex-1 ${
+                                        inputLocked ? "bg-zinc-100 text-zinc-500" : "bg-white"
+                                    }`}
+                                />
+
+                                <button
+                                    onClick={() => {
+                                    if (!inputValue.trim()) return alert("콜렉션 이름을 입력하세요.");
+                                    alert(`현재 검색 결과에 "${inputValue}" 콜렉션이 적용되었습니다.`);
+                                    }}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-all"
+                                >
+                                    적용
+                                </button>
+                                </div>
+
                             {/* Action Buttons */}
                             <div className="flex justify-between items-center">
                                 <div className="flex gap-2 flex-wrap">
@@ -288,6 +377,8 @@ export default function ProjectSearchPage() {
                                     담기 ({selected.length})
                                 </button>
                             </div>
+
+                            
 
                             {/* Results Table */}
                             <div className="overflow-hidden rounded-xl border-2 border-zinc-200">
@@ -366,7 +457,7 @@ export default function ProjectSearchPage() {
                                                 <div className="flex-1 grid grid-cols-3 gap-4 text-sm">
                                                     <span className="font-mono truncate">{r.application_number}</span>
                                                     <span className="truncate">{r.title}</span>
-                                                    <span className="truncate text-blue-600 font-medium">{r.collection_name}</span>
+                                                    <span className="truncate text-blue-600 font-medium">{r.collection_name}({r.cpc_code})</span>
                                                 </div>
                                                 <button onClick={() => removeFromCart(r.application_number)} className="ml-4 text-red-500 hover:text-red-700 transition-colors"><Trash2 size={18} /></button>
                                             </div>

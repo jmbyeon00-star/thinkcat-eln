@@ -45,7 +45,6 @@ def search_app(
     code: str = Query(..., description="컬렉션 코드"),
     db: Session = Depends(get_session)
 ):
-    print(">>>>")
     """특허 네비게이션 API 엔드포인트"""
     data, error = patent_navigation_service.search_app_service(db, application_number=appNumber, index_code=code[0])
 

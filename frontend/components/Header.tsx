@@ -47,7 +47,7 @@ export default function Header() {
                                 <img 
                                     src="/logo3.svg" 
                                     alt="IPFORCE Logo" 
-                                    className="h-9"
+                                    className="h-5"
                                 />
                             </Link>
                         </div>

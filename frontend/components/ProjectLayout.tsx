@@ -10,7 +10,7 @@ export default function ProjectLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mt-10 mx-auto w-full max-w-3xl">
+    <div className="mt-10 mx-auto w-full max-w-6xl">
       {/* 제목 + 설명 */}
       <header>
         {/* <h1 className="text-2xl font-semibold text-zinc-900"> */}

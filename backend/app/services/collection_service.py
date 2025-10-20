@@ -133,3 +133,27 @@ def to_dict_data(d):
         "application_number": getattr(d, "application_number", None),
         "application_date": getattr(d, "application_date", None),
     }
+
+
+def get_collections_by_project_id(session, user_id, project_id):
+    collection_info = session.query(CollectionInfo).filter(
+        CollectionInfo.project_id == project_id, 
+        CollectionInfo.user_id == user_id
+    ).all()
+
+    collection_ids = []
+    collection_codes = []
+    collection_names = []
+    for item in collection_info:
+        collection_ids.append(item.id)
+        collection_codes.append(item.collection_code)
+        collection_names.append(item.collection_name)
+
+    if not collection_info:
+        return {"error": "Collection not found"}
+
+    return {
+        "collection_ids": collection_ids,
+        "collection_codes": collection_codes,
+        "collection_names": collection_names
+    }
