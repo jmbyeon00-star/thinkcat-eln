@@ -40,7 +40,7 @@ def generate_code(length: int = 6) -> str:
 # -------------------------
 # JWT Config
 # -------------------------
-SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key")
+SECRET_KEY = os.getenv("SECRET_KEY", "ipforce_secret")
 ALGORITHM = "HS256"
 # ACCESS_TOKEN_EXPIRE_MINUTES = 30 # 30분
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7일 (일주일)
@@ -105,6 +105,7 @@ def _get_token_from_request(request: Request) -> Optional[str]:
 
 def get_current_user_from_request(request: Request):
     token = _get_token_from_request(request)
+    
     if token is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Not authenticated",

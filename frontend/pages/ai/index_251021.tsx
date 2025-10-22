@@ -5,7 +5,6 @@ import { CircleDashed, CircleCheckBig, AlertCircle, Search, LayoutGrid, Table, C
 import { useSession } from "next-auth/react";
 import type { Session, getServerSession } from "next-auth";
 import { useRouter } from "next/router";
-import ModelProgressSSE from "@/components/ModelProgressSSE";
 
 type Model = {
     id: number;
@@ -110,7 +109,7 @@ export default function AIModelListPage() {
                 const res = await fetch(
                     `${API_BASE}/api/ai?page=${page}&limit=${limit}&q=${encodeURIComponent(query)}`, {
                     headers: {
-                        Authorization: `Bearer ${token}`
+                        Authorization: `Bearer ${token}`,
                     },
                     credentials: "include"
                 });
@@ -289,9 +288,7 @@ export default function AIModelListPage() {
                                 return (
                                     <a
                                         key={m.id}
-                                        href={m.progress_status === "RUNNING"
-                                            ? `/ai/training/${m.id}`
-                                            : `/ai/${m.id}`}
+                                        href={m.progress_status === "RUNNING" ? `/ai/training/${m.id}` : `/ai/${m.id}`}
                                         className="block group"
                                     >
                                         <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6 hover:shadow-xl hover:border-blue-200 transition-all duration-300">
@@ -337,11 +334,7 @@ export default function AIModelListPage() {
 
                                             {/* Progress Bar */}
                                             {m.progress_status === "RUNNING" && (
-                                                <>
-                                                    {/* <ProgressBar progress={m.progress} status={m.progress_status} /> */}
-                                                    {/* <ModelProgressSSE targetId={m.id} initialProgress={m.progress} /> */}
-                                                    <ModelProgressSSE targetId={m.id} initialProgress={m.progress} />
-                                                </>
+                                                <ProgressBar progress={m.progress} status={m.progress_status} />
                                             )}
                                         </div>
                                     </a>

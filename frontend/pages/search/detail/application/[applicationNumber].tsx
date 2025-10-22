@@ -10,7 +10,7 @@ import PatNavigation from "@/components/patent/PatNavigation";
 import PatLitigation from "@/components/patent/PatLitigation";
 import { CornerDownLeft } from "lucide-react";
 
-import SearchLayout from "@/components/SearchLayout";
+import SearchLayout from "@/components/layouts/SearchLayout";
 
 export default function SearchDetailPage() {
     const params = useParams();
@@ -29,12 +29,12 @@ export default function SearchDetailPage() {
         // const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.1.20:8000";
         const base = "http://192.168.1.20:8000";
         fetch(`${base}/api/search/detail/${appNum}`)
-        .then((res) => res.json())
-        .then(setData)
-        .finally(() => setLoading(false));
+            .then((res) => res.json())
+            .then(setData)
+            .finally(() => setLoading(false));
     }, [appNum, keyword]);
 
-      if (!appNum)
+    if (!appNum)
         return <p className="text-center text-zinc-500 mt-10">경로를 불러오는 중...</p>;
     //   if (loading)
     //     return <p className="text-center text-zinc-500 mt-10">불러오는 중...</p>;
@@ -54,4 +54,4 @@ export default function SearchDetailPage() {
             </div>
         </SearchLayout>
     );
-    }
+}

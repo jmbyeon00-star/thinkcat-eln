@@ -1,5 +1,5 @@
 // pages/ai/[id].tsx
-"use client"; 
+"use client";
 
 import { useRouter } from "next/router";
 import { useEffect, useState, useMemo } from "react";
@@ -16,10 +16,15 @@ import {
   YAxis,
   Legend,
 } from "recharts";
-import { ArrowLeft, FileBarChart2, Play, Upload } from "lucide-react";
+import { ArrowLeft, FileBarChart2, Play, Upload, Loader2 } from "lucide-react";
 import Link from "next/link";
-import ModelLayout from "@/components/ModelLayout";
+import ModelLayout from "@/components/layouts/ModelLayout";
 import FilePreviewEditor from "@/components/FilePreviewEditor";
+import { useSession } from "next-auth/react";
+import { Session } from "next-auth";
+import { isCompositeComponent } from "react-dom/test-utils";
+
+import { useUserTaskStore } from '@/lib/store/useUserTaskStore';
 
 type ModelDetail = {
   id: number;
@@ -43,11 +48,19 @@ type ModelDetail = {
 
 export default function ModelDetailPage() {
   const router = useRouter();
+  const { setState } = useUserTaskStore()
+
   const { id } = router.query;
   const API_BASE = "http://192.168.1.20:8000";
 
   const [model, setModel] = useState<ModelDetail | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const { data: session, status } = useSession() as {
+    data: (Session & { access_token?: string }) | null;
+    status: "loading" | "authenticated" | "unauthenticated";
+  };
+  const token = session?.access_token;
 
   // ✅ 한글 깨짐 방지용 디코더
   const safeDecode = (text: any) => {
@@ -64,12 +77,13 @@ export default function ModelDetailPage() {
 
   // ✅ 백엔드에서 모델 정보 가져오기
   useEffect(() => {
-    if (!id) return;
-    console.log("KLKJLKJK", id)
+    if (!id && !token) return;
+
     setLoading(true);
     (async () => {
       try {
         const res = await fetch(`${API_BASE}/api/ai/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
           credentials: "include",
         });
 
@@ -90,7 +104,7 @@ export default function ModelDetailPage() {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, token]);
 
   const lineData = useMemo(() => {
     if (!model?.metrics?.train_acc) return [];
@@ -147,6 +161,7 @@ export default function ModelDetailPage() {
         alert(`첫 번째 컬럼명이 올바르지 않습니다. 현재: ${firstCol}`);
         return;
       }
+
     } else if (columns.length === 2) {
       const [firstCol, secondCol] = columns;
       const validFirst = ["문제", "question", "source"].includes(firstCol);
@@ -155,6 +170,7 @@ export default function ModelDetailPage() {
         alert(`컬럼명이 올바르지 않습니다. 현재: ${columns.join(", ")}`);
         return;
       }
+
     } else {
       alert(
         `컬럼이 너무 많습니다. 최대 2개만 허용됩니다.\n현재: ${columns.join(
@@ -168,11 +184,13 @@ export default function ModelDetailPage() {
     setInferResult(null);
 
     try {
+      setState({ isBusy: true, status: 'RUNNING', progress: 0 })
+
       const res = await fetch(
         `${API_BASE}/api/ai/infer/classification/${model?.data_scope}/${id}`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           credentials: "include",
           body: JSON.stringify({
             data: parsedData,
@@ -188,8 +206,11 @@ export default function ModelDetailPage() {
       const text = new TextDecoder("utf-8").decode(buffer);
       const json = JSON.parse(text);
       setInferResult(json);
+
     } catch (err) {
       setInferResult({ error: "추론 요청 중 오류가 발생했습니다." });
+      setState({ isBusy: false, status: 'IDLE' })
+
     } finally {
       setInferLoading(false);
       router.push(`/file`);
@@ -225,19 +246,18 @@ export default function ModelDetailPage() {
             <ArrowLeft className="h-4 w-4" /> 목록으로
           </Link>
           <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              model.progress_status === "COMPLETED"
-                ? "bg-green-100 text-green-700"
-                : model.progress_status === "FAILED"
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${model.progress_status === "COMPLETED"
+              ? "bg-green-100 text-green-700"
+              : model.progress_status === "FAILED"
                 ? "bg-red-100 text-red-700"
                 : "bg-blue-100 text-blue-700"
-            }`}
+              }`}
           >
             {model.progress_status === "COMPLETED"
               ? "학습 완료"
               : model.progress_status === "FAILED"
-              ? "학습 실패"
-              : "학습 중"}
+                ? "학습 실패"
+                : "학습 중"}
           </span>
         </div>
 
@@ -350,10 +370,17 @@ export default function ModelDetailPage() {
 
         <button
           onClick={handleInferFile}
-          disabled={parsedData.length === 0 || inferLoading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-md disabled:opacity-50"
+          disabled={parsedData.length === 0 || inferLoading || !model?.data_scope}
+          className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-md disabled:opacity-50"
         >
-          {inferLoading ? "분류 중..." : "분류하기"}
+          {inferLoading ? "분류 중..."
+            : parsedData.length === 0 ? "데이터를 추가하세요"
+              : !model?.data_scope ? (
+                <>
+                  모델 준비중...
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                </>
+              ) : "분류하기"}
         </button>
       </div>
     </ModelLayout>

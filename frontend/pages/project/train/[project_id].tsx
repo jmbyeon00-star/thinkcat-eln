@@ -1,7 +1,11 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import ProjectLayout from "@/components/ProjectLayout";
+import ProjectLayout from "@/components/layouts/ProjectLayout";
 import { Settings, Play, ArrowLeft, Loader2, Info, Zap } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Session } from "next-auth";
+
+import { useUserTaskStore } from '@/lib/store/useUserTaskStore';
 
 type ProjectInfo = {
     collection_num: number;
@@ -11,6 +15,8 @@ type ProjectInfo = {
 
 export default function ProjectTrainPage() {
     const router = useRouter();
+    const { setState } = useUserTaskStore()
+
     const [status, setStatus] = useState(false);
     const { project_id, collection_num, task_type, source_type } = router.query;
     const [projectInfo, setProjectInfo] = useState<ProjectInfo | null>(null);
@@ -24,6 +30,12 @@ export default function ProjectTrainPage() {
     const [learningRate, setLearningRate] = useState(1e-5);
     const [maxLength, setMaxLength] = useState(128);
     const [shuffle, setShuffle] = useState(true);
+
+    const { data: session } = useSession() as {
+        data: (Session & { access_token?: string }) | null;
+        status: "loading" | "authenticated" | "unauthenticated";
+    };
+    const token = session?.access_token;
 
     useEffect(() => {
         if (!project_id) return;
@@ -53,10 +65,13 @@ export default function ProjectTrainPage() {
             alert("모델명을 입력해주세요.");
             return;
         }
+
+        setState({ isBusy: true, status: 'RUNNING', progress: 0 })
         setLoading(true);
+
         fetch(`${API_BASE}/api/ai/train/classification/project/${project_id}`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             credentials: "include",
             body: JSON.stringify({
                 epoch,
@@ -81,6 +96,7 @@ export default function ProjectTrainPage() {
             })
             .catch((err) => {
                 console.error("학습 요청 실패:", err);
+                setState({ isBusy: false, status: 'IDLE' })
                 setLoading(false);
                 alert("학습 시작 실패");
             });
@@ -123,7 +139,7 @@ export default function ProjectTrainPage() {
                                     <div>
                                         <p className="text-sm font-semibold text-blue-900 mb-1">학습 안내</p>
                                         <p className="text-xs text-blue-800 leading-relaxed">
-                                            학습 시작 후 모델 관리 페이지에서 진행 상황을 확인할 수 있습니다. 
+                                            학습 시작 후 모델 관리 페이지에서 진행 상황을 확인할 수 있습니다.
                                             적절한 하이퍼파라미터 설정은 모델 성능에 큰 영향을 미칩니다.
                                         </p>
                                     </div>

@@ -6,6 +6,7 @@ from app.models.file_model import FileInfo
 from app.core.db import get_session
 
 import os
+import json
 import asyncio
 import httpx
 from dotenv import load_dotenv
@@ -29,6 +30,9 @@ async def _event_generator(target_id: str):
         if key in _subscribers:
             _subscribers[key].remove(q)
 
+# ------------------------
+# 진행률 업데이트
+# ------------------------
 async def update_progress_sse(session: Session, target_type: str, target_id: str, body: dict):
     progress = body.get("progress", None)
     remaining_time = body.get("remaining_time", None)
@@ -36,7 +40,7 @@ async def update_progress_sse(session: Session, target_type: str, target_id: str
     status = body.get("status", None)
 
     # ------------------------
-    # TRAIN 진행률 업데이트
+    # TRAIN (학습)
     # ------------------------
     if target_type == "train":
         model = session.query(ModelInfo).filter(ModelInfo.id == int(target_id)).first()
@@ -50,7 +54,7 @@ async def update_progress_sse(session: Session, target_type: str, target_id: str
             session.commit()
 
     # ------------------------
-    # INFER 진행률 업데이트
+    # INFER (추론)
     # ------------------------
     elif target_type == "infer":
         file = session.query(FileInfo).filter(FileInfo.id == target_id).first()
@@ -70,8 +74,17 @@ async def update_progress_sse(session: Session, target_type: str, target_id: str
                 )
                 session.commit()
 
+    # ------------------------
+    # SSE broadcast
+    # ------------------------
     key = str(target_id)
     for q in _subscribers.get(key, []):
-        await q.put(progress)
+        # await q.put(progress)
+        payload = {
+            "progress": progress,
+            "remaining_time": remaining_time,
+            "status": status,
+        }
+        await q.put(json.dumps(payload))
 
     return {"status": True, "progress": progress, "remaining_time": remaining_time}

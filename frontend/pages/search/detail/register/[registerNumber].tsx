@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import SearchLayout from "@/components/SearchLayout";
+import SearchLayout from "@/components/layouts/SearchLayout";
 import PatentEvaluationResult from "@/components/patent/PatentEvaluationResult";
 import ZipPredict from "@/components/patent/ZipPredict";
 import PatNavigation from "@/components/patent/PatNavigation";

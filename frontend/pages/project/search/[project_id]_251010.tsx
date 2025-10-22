@@ -2,8 +2,8 @@
 import { useRouter } from "next/router";
 import Head from "next/head";
 import React, { use, useEffect, useState } from "react";
-import Stepper from "@/components/ProjectStepper";
-import ProjectLayout from "@/components/ProjectLayout";
+import Stepper from "@/components/layouts/ProjectStepper";
+import ProjectLayout from "@/components/layouts/ProjectLayout";
 import { ChevronsLeftRightEllipsis } from "lucide-react";
 
 type Project = {
@@ -29,12 +29,12 @@ export default function ProjectSearchPage() {
     const [section, setSection] = useState("");
     const [keywords, setKeywords] = useState("");
     const [searching, setSearching] = useState(false);
-    
+
     const [results, setResults] = useState<any[]>([]);
     const [selected, setSelected] = useState<any[]>([]);
     const [notSelected, setNotSelected] = useState<any[]>([]);
     const [cart, setCart] = useState<any[]>([]);
-    
+
     const [total, setTotal] = useState(0);
     const [limit, setLimit] = useState(500);
     const [page, setPage] = useState(1);
@@ -64,14 +64,14 @@ export default function ProjectSearchPage() {
     async function doSearch() {
         setPage(1);
         setSelected([]);
-        
+
         if (!keywords.trim()) {
-        alert("검색 키워드를 입력하세요.");
-        return;
+            alert("검색 키워드를 입력하세요.");
+            return;
         }
         if (!section.trim()) {
-        alert("카테고리를 선택하세요.");
-        return;
+            alert("카테고리를 선택하세요.");
+            return;
         }
 
         setSearching(true);
@@ -90,7 +90,7 @@ export default function ProjectSearchPage() {
             const newResults = data.items || [];
             setResults(
                 newResults.filter(
-                  (r: any) => !cart.some((c) => c.application_number === r.application_number)
+                    (r: any) => !cart.some((c) => c.application_number === r.application_number)
                 )
             );
             setTotal(data.total || 0);
@@ -101,31 +101,31 @@ export default function ProjectSearchPage() {
             setSearching(false);
         }
     }
-    
+
     // const totalPages = Math.ceil(total / perPage);
     const totalPages = Math.ceil(results.length / perPage);
     const getPageNumbers = () => {
         const delta = 2; // 현재 페이지 기준 앞뒤 몇 개 보여줄지
         const pages: (number | string)[] = [];
-      
+
         if (totalPages <= 7) {
-          // 전체 페이지가 적으면 전부 표시
-          return Array.from({ length: totalPages }, (_, i) => i + 1);
+            // 전체 페이지가 적으면 전부 표시
+            return Array.from({ length: totalPages }, (_, i) => i + 1);
         }
-        
+
         const left = Math.max(2, page - delta);
         const right = Math.min(totalPages - 1, page + delta);
-        
+
         pages.push(1);
         if (left > 2) pages.push("...");
-        
+
         for (let i = left; i <= right; i++) {
-          pages.push(i);
+            pages.push(i);
         }
-        
+
         if (right < totalPages - 1) pages.push("...");
         pages.push(totalPages);
-        
+
         return pages;
     };
 
@@ -139,7 +139,7 @@ export default function ProjectSearchPage() {
 
     function toggleSelectPage(checked: boolean) {
         if (checked) {
-          // 현재 페이지 결과 전부 선택
+            // 현재 페이지 결과 전부 선택
             setSelected((prev) => {
                 const pageAppNums = pagedResults.map((r) => r.application_number);
                 const newSet = new Set([...prev, ...pageAppNums]);
@@ -168,7 +168,7 @@ export default function ProjectSearchPage() {
             const existing = new Set(prev.map((x) => x.application_number));
             return [...prev, ...newItems.filter((r) => !existing.has(r.application_number))];
         });
-        
+
         const remaining = results.filter((r) => !selected.includes(r.application_number));
         setResults(remaining);
         setNotSelected((prev) => {
@@ -192,7 +192,7 @@ export default function ProjectSearchPage() {
             setCart((prev) =>
                 prev.filter((r) => r.application_number !== appNum)
             );
-            
+
             // results 로 복구
             // setResults((prev) => [item, ...prev]);
             setResults((prev) => {
@@ -215,11 +215,11 @@ export default function ProjectSearchPage() {
 
     function clearCart() {
         setResults((prev) => {
-          // 중복 제거: cart 안에 있는 application_number 기준
-          const cartAppNums = new Set(cart.map((r) => r.application_number));
-          const withoutDup = prev.filter((r) => !cartAppNums.has(r.application_number));
-          // cart에 있던 항목 전부 results로 복구 (맨 앞에 추가)
-          return [...cart, ...withoutDup];
+            // 중복 제거: cart 안에 있는 application_number 기준
+            const cartAppNums = new Set(cart.map((r) => r.application_number));
+            const withoutDup = prev.filter((r) => !cartAppNums.has(r.application_number));
+            // cart에 있던 항목 전부 results로 복구 (맨 앞에 추가)
+            return [...cart, ...withoutDup];
         });
         setCart([]);
     }
@@ -238,13 +238,13 @@ export default function ProjectSearchPage() {
                     project_code: project?.project_code,
                     project_name: project?.project_name,
                     project_desc: project?.project_description,
-                    
+
                     application_numbers: cart.map((r) => r.application_number),
                     title: cart.map((r) => r.title),
                     abstract: cart.map((r) => r.abstract),
                     collection_name: cart.map((r) => r.collection_name),
                     vector: cart.map((r) => r.vector),
-                    
+
                     n_application_number: notSelected.map((r) => r.application_number),
                     n_title: notSelected.map((r) => r.title),
                     n_abstract: notSelected.map((r) => r.abstract),
@@ -260,14 +260,14 @@ export default function ProjectSearchPage() {
             alert(e.message || "등록 중 오류 발생");
         }
     }
-    
+
     // if (loading) return <p className="p-6">불러오는 중...</p>;
     if (loading) {
         return (
-        <div className="flex min-h-[200px] items-center justify-center">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-blue-600"></div>
-            <span className="ml-2 text-sm text-zinc-500">불러오는 중...</span>
-        </div>
+            <div className="flex min-h-[200px] items-center justify-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-blue-600"></div>
+                <span className="ml-2 text-sm text-zinc-500">불러오는 중...</span>
+            </div>
         );
     }
 
@@ -305,8 +305,8 @@ export default function ProjectSearchPage() {
                                 <div className="mt-2 text-xs text-zinc-500">
                                     {taskMapper[project.task_type]} · {" "}
                                     {project.created_datetime
-                                    ? new Date(project.created_datetime).toLocaleString()
-                                    : "-"}
+                                        ? new Date(project.created_datetime).toLocaleString()
+                                        : "-"}
                                 </div>
                             </div>
                         )}
@@ -382,89 +382,89 @@ export default function ProjectSearchPage() {
                             <div className="mt-5 overflow-hidden rounded-2xl border border-zinc-200">
                                 <table className="w-full border-collapse text-sm">
                                     <thead className="bg-zinc-50 text-zinc-600">
-                                    <tr>
-                                        <th className="px-3 py-2 text-left font-medium">
-                                            <input
-                                                type="checkbox"
-                                                checked={
-                                                pagedResults.length > 0 &&
-                                                pagedResults.every((r) => selected.includes(r.application_number))
-                                                }
-                                                onChange={(e) => toggleSelectAll(e.target.checked)}
-                                            />
-                                        </th>
-                                        <th className="px-3 py-2 text-left font-medium">#</th>
-                                        <th className="px-3 py-2 text-left font-medium">출원번호</th>
-                                        <th className="px-3 py-2 text-left font-medium">특허명</th>
-                                        <th className="px-3 py-2 text-left font-medium">라벨</th>
-                                        <th className="px-3 py-2 text-left font-medium"></th>
-                                    </tr>
+                                        <tr>
+                                            <th className="px-3 py-2 text-left font-medium">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={
+                                                        pagedResults.length > 0 &&
+                                                        pagedResults.every((r) => selected.includes(r.application_number))
+                                                    }
+                                                    onChange={(e) => toggleSelectAll(e.target.checked)}
+                                                />
+                                            </th>
+                                            <th className="px-3 py-2 text-left font-medium">#</th>
+                                            <th className="px-3 py-2 text-left font-medium">출원번호</th>
+                                            <th className="px-3 py-2 text-left font-medium">특허명</th>
+                                            <th className="px-3 py-2 text-left font-medium">라벨</th>
+                                            <th className="px-3 py-2 text-left font-medium"></th>
+                                        </tr>
                                     </thead>
                                     <tbody>
-                                    {searching ? (
-                                        <tr>
-                                            <td colSpan={4} className="px-3 py-8 text-center text-zinc-500">
-                                                검색 중...
-                                            </td>
-                                        </tr>
-                                    ) : results.length === 0 ? (
-                                        <tr>
-                                        <td
-                                            colSpan={4}
-                                            className="px-3 py-8 text-center text-zinc-500"
-                                        >
-                                            검색 결과가 없습니다.
-                                        </td>
-                                        </tr>
-                                    ) : (
-                                        pagedResults.map((r, i) => (
-                                            <React.Fragment key={r.id || i}>
-                                                <tr className="border-t border-zinc-200 hover:bg-zinc-50">
-                                                    <td className="w-[5%] px-3 py-2">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selected.includes(r.application_number)}
-                                                            onChange={() => toggleSelect(r.application_number)}
-                                                        />
+                                        {searching ? (
+                                            <tr>
+                                                <td colSpan={4} className="px-3 py-8 text-center text-zinc-500">
+                                                    검색 중...
+                                                </td>
+                                            </tr>
+                                        ) : results.length === 0 ? (
+                                            <tr>
+                                                <td
+                                                    colSpan={4}
+                                                    className="px-3 py-8 text-center text-zinc-500"
+                                                >
+                                                    검색 결과가 없습니다.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            pagedResults.map((r, i) => (
+                                                <React.Fragment key={r.id || i}>
+                                                    <tr className="border-t border-zinc-200 hover:bg-zinc-50">
+                                                        <td className="w-[5%] px-3 py-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selected.includes(r.application_number)}
+                                                                onChange={() => toggleSelect(r.application_number)}
+                                                            />
                                                         </td>
-                                                    <td className="w-[5%] px-3 py-2">{(page - 1) * perPage + i + 1}</td>
-                                                    <td className="w-[20%] px-3 py-2 font-mono text-[13px]">
-                                                        {r.application_number_norm || r.application_number}
-                                                    </td>
-                                                    <td className="w-[45%] px-3 py-2">{r.title}</td>
-                                                    <td className="w-[15%] px-3 py-2">
-                                                        {/* {r.collection_name || "-"} */}
-                                                        <input
-                                                            type="text"
-                                                            value={r.collection_name || ""}
-                                                            onChange={(e) => {
-                                                            const newCollectionName = e.target.value;
-                                                            setResults((prev) =>
-                                                                prev.map((item) =>
-                                                                item.application_number === r.application_number
-                                                                    ? { ...item, collection_name: newCollectionName }
-                                                                    : item
-                                                                )
-                                                            );
-                                                            }}
-                                                            className="w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
-                                                            placeholder="라벨 입력"
-                                                        />
-                                                    </td>
-                                                    <td className="w-[10%] px-3 py-2" onClick={() => setOpenRow(openRow === i ? null : i)}>
-                                                        <button>{openRow === i ? '닫기' : '보기'}</button>
-                                                    </td>
-                                                </tr>
-                                                {openRow === i && (
-                                                    <tr className="bg-zinc-50">
-                                                        <td colSpan={6} className="px-3 py-3 text-sm text-zinc-600">
-                                                            {r.abstract || "요약이 없습니다."}
+                                                        <td className="w-[5%] px-3 py-2">{(page - 1) * perPage + i + 1}</td>
+                                                        <td className="w-[20%] px-3 py-2 font-mono text-[13px]">
+                                                            {r.application_number_norm || r.application_number}
+                                                        </td>
+                                                        <td className="w-[45%] px-3 py-2">{r.title}</td>
+                                                        <td className="w-[15%] px-3 py-2">
+                                                            {/* {r.collection_name || "-"} */}
+                                                            <input
+                                                                type="text"
+                                                                value={r.collection_name || ""}
+                                                                onChange={(e) => {
+                                                                    const newCollectionName = e.target.value;
+                                                                    setResults((prev) =>
+                                                                        prev.map((item) =>
+                                                                            item.application_number === r.application_number
+                                                                                ? { ...item, collection_name: newCollectionName }
+                                                                                : item
+                                                                        )
+                                                                    );
+                                                                }}
+                                                                className="w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
+                                                                placeholder="라벨 입력"
+                                                            />
+                                                        </td>
+                                                        <td className="w-[10%] px-3 py-2" onClick={() => setOpenRow(openRow === i ? null : i)}>
+                                                            <button>{openRow === i ? '닫기' : '보기'}</button>
                                                         </td>
                                                     </tr>
-                                                )}
-                                            </React.Fragment>
-                                        ))
-                                    )}
+                                                    {openRow === i && (
+                                                        <tr className="bg-zinc-50">
+                                                            <td colSpan={6} className="px-3 py-3 text-sm text-zinc-600">
+                                                                {r.abstract || "요약이 없습니다."}
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </React.Fragment>
+                                            ))
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
@@ -480,7 +480,7 @@ export default function ProjectSearchPage() {
                                     >
                                         «
                                     </button>
-                                    
+
                                     {/* 이전 */}
                                     {/* <button
                                         onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -523,17 +523,16 @@ export default function ProjectSearchPage() {
                                             <button
                                                 key={`page-${num}-${idx}`}
                                                 onClick={() => setPage(num)}
-                                                className={`px-3 py-1 rounded border text-sm ${
-                                                    num === page
-                                                    ? "bg-blue-600 text-white border-blue-600"
-                                                    : "bg-white text-zinc-700"
-                                                }`}
+                                                className={`px-3 py-1 rounded border text-sm ${num === page
+                                                        ? "bg-blue-600 text-white border-blue-600"
+                                                        : "bg-white text-zinc-700"
+                                                    }`}
                                             >
                                                 {num}
                                             </button>
                                         )
                                     )}
-                                    
+
                                     {/* 다음 */}
                                     {/* <button
                                         onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
@@ -549,7 +548,7 @@ export default function ProjectSearchPage() {
                                     >
                                         다음
                                     </button>
-                                    
+
                                     {/* 맨뒤 이동 */}
                                     <button
                                         onClick={() => setPage(totalPages)}
@@ -596,7 +595,7 @@ export default function ProjectSearchPage() {
                                         <button
                                             onClick={clearCart}
                                             className="rounded-lg bg-gray-200 text-gray-800 px-3 py-1 text-sm hover:bg-gray-300"
-                                            >
+                                        >
                                             전체 삭제 (복구)
                                         </button>
                                         <button

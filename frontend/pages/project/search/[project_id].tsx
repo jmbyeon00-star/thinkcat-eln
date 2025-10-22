@@ -1,8 +1,10 @@
 import { useRouter } from "next/router";
 import Head from "next/head";
 import React, { useEffect, useMemo, useState } from "react";
-import ProjectLayout from "@/components/ProjectLayout";
+import ProjectLayout from "@/components/layouts/ProjectLayout";
 import { Search, ShoppingCart, Trash2, Save, Loader2, ChevronDown, ChevronUp, Package } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Session } from "next-auth";
 
 type Project = {
     id: number;
@@ -29,7 +31,7 @@ export default function ProjectSearchPage() {
     const [collections, setCollections] = useState<Collections | null>(null);
     const [inputValue, setInputValue] = useState("");       // 입력창의 현재 값
     const [inputLocked, setInputLocked] = useState(false);  // 입력창 잠금 여부
-    
+
     const [loading, setLoading] = useState(true);
     const [section, setSection] = useState("");
     const [keywords, setKeywords] = useState("");
@@ -45,7 +47,7 @@ export default function ProjectSearchPage() {
     const [openRow, setOpenRow] = useState<number | null>(null);
 
     const pagedResults = results.slice((page - 1) * perPage, page * perPage);
-    
+
     const groupCounts = useMemo(() => {
         const acc: Record<string, number> = {};
         for (const r of results) {
@@ -64,6 +66,12 @@ export default function ProjectSearchPage() {
         "regression": "회귀",
         "etc": "기타"
     };
+
+    const { data: session, status } = useSession() as {
+        data: (Session & { access_token?: string }) | null;
+        status: "loading" | "authenticated" | "unauthenticated";
+    };
+    const token = session?.access_token;
 
     useEffect(() => {
         if (!project_id) return;
@@ -86,6 +94,48 @@ export default function ProjectSearchPage() {
         }
         loadProject();
     }, [project_id]);
+
+
+    // ------------------------------------------------------------------------------------------
+    // ✅ CPC 그룹화 (검색 결과를 기준으로)
+    const cpcGroups = useMemo(() => {
+        const map: Record<string, any[]> = {};
+        results.forEach((r) => {
+            const key = r.cpc_code || "기타";
+            if (!map[key]) map[key] = [];
+            map[key].push(r);
+        });
+        return map;
+    }, [results]);
+
+    // ✅ 그룹별 선택 상태 관리
+    const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+
+    // ✅ 그룹 선택/해제 함수
+    function toggleGroupSelect(code: string) {
+        const isSelected = selectedGroups.includes(code);
+        const newSelectedGroups = isSelected
+            ? selectedGroups.filter((c) => c !== code)
+            : [...selectedGroups, code];
+        setSelectedGroups(newSelectedGroups);
+
+        // 그룹 내 모든 출원번호 가져오기
+        const groupAppNums = (cpcGroups[code] || []).map((r) => r.application_number);
+
+        // 전체 selected 업데이트
+        setSelected((prev) => {
+            const current = new Set(prev);
+            if (isSelected) {
+                // 해제
+                groupAppNums.forEach((num) => current.delete(num));
+            } else {
+                // 선택
+                groupAppNums.forEach((num) => current.add(num));
+            }
+            return Array.from(current);
+        });
+    }
+    // ------------------------------------------------------------------------------------------
 
     async function doSearch() {
         setPage(1);
@@ -167,7 +217,7 @@ export default function ProjectSearchPage() {
             if (!confirm("선택한 항목을 등록하시겠습니까?")) return;
             const res = await fetch(`${API_BASE}/api/project/${project_id}/save`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                 credentials: "include",
                 body: JSON.stringify({
                     source_type: project?.source_type,
@@ -207,7 +257,7 @@ export default function ProjectSearchPage() {
             </div>
         );
     }
-    
+
     return (
         <ProjectLayout step={2}>
             <Head>
@@ -292,42 +342,42 @@ export default function ProjectSearchPage() {
                                 <select
                                     value={section || "__new__"}
                                     onChange={(e) => {
-                                    const val = e.target.value;
-                                    setSection(val);
+                                        const val = e.target.value;
+                                        setSection(val);
 
-                                    if (val !== "__new__") {
-                                        const selectedName =
-                                        collections?.collection_names[
-                                            collections?.collection_codes.indexOf(val)
-                                        ] || "";
-                                        // 기존 콜렉션 선택 시 전체 적용
-                                        setResults((prev) =>
-                                            prev.map((r) => ({
-                                                ...r,
-                                                collection_name: selectedName,
-                                            }))
-                                        );
-                                        setInputValue(selectedName); // 입력창에도 표시
-                                        setInputLocked(true); // 입력창 잠금
-                                    } else {
-                                        // 직접 입력으로 돌아갈 때
-                                        setInputValue("");
-                                        setInputLocked(false);
-                                        setResults((prev) =>
-                                        prev.map((r) => ({
-                                            ...r,
-                                            collection_name: "",
-                                        }))
-                                        );
-                                    }
+                                        if (val !== "__new__") {
+                                            const selectedName =
+                                                collections?.collection_names[
+                                                collections?.collection_codes.indexOf(val)
+                                                ] || "";
+                                            // 기존 콜렉션 선택 시 전체 적용
+                                            setResults((prev) =>
+                                                prev.map((r) => ({
+                                                    ...r,
+                                                    collection_name: selectedName,
+                                                }))
+                                            );
+                                            setInputValue(selectedName); // 입력창에도 표시
+                                            setInputLocked(true); // 입력창 잠금
+                                        } else {
+                                            // 직접 입력으로 돌아갈 때
+                                            setInputValue("");
+                                            setInputLocked(false);
+                                            setResults((prev) =>
+                                                prev.map((r) => ({
+                                                    ...r,
+                                                    collection_name: "",
+                                                }))
+                                            );
+                                        }
                                     }}
                                     className="px-3 py-2 border border-zinc-300 rounded-lg text-sm"
                                 >
                                     <option value="__new__">+ 직접 입력</option>
-                                        {collections?.collection_names?.map((name, idx) => (
-                                    <option key={idx} value={collections.collection_codes[idx]}>
-                                        {name} {/* ({collections.collection_codes[idx]}) */}
-                                    </option>
+                                    {collections?.collection_names?.map((name, idx) => (
+                                        <option key={idx} value={collections.collection_codes[idx]}>
+                                            {name} {/* ({collections.collection_codes[idx]}) */}
+                                        </option>
                                     ))}
                                 </select>
 
@@ -342,9 +392,8 @@ export default function ProjectSearchPage() {
                                     }}
                                     placeholder="새 콜렉션 이름 입력"
                                     disabled={inputLocked}
-                                    className={`px-3 py-2 border border-zinc-300 rounded-lg text-sm flex-1 ${
-                                        inputLocked ? "bg-zinc-100 text-zinc-500" : "bg-white"
-                                    }`}
+                                    className={`px-3 py-2 border border-zinc-300 rounded-lg text-sm flex-1 ${inputLocked ? "bg-zinc-100 text-zinc-500" : "bg-white"
+                                        }`}
                                 />
 
                                 <button
@@ -356,7 +405,40 @@ export default function ProjectSearchPage() {
                                 >
                                     적용
                                 </button>
+                            </div>
+
+                            {/* ✅ CPC 그룹별 선택 섹션 */}
+                            {results.length > 0 && (
+                                <div className="border border-blue-100 bg-blue-50 rounded-xl p-4 space-y-3">
+                                    <h3 className="text-sm font-semibold text-blue-900">
+                                        CPC 코드별 그룹 선택
+                                    </h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                                        {Object.entries(cpcGroups).map(([code, items]) => {
+                                            const isSelected = selectedGroups.includes(code);
+                                            return (
+                                                <button
+                                                    key={code}
+                                                    onClick={() => toggleGroupSelect(code)}
+                                                    className={`px-3 py-2 text-sm rounded-lg border transition-all font-medium ${isSelected
+                                                        ? "bg-blue-600 text-white border-blue-600"
+                                                        : "bg-white text-blue-700 border-blue-200 hover:bg-blue-100"
+                                                        }`}
+                                                >
+                                                    {code} <span className="text-xs opacity-80">({items.length})</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {selectedGroups.length > 0 && (
+                                        <div className="text-xs text-blue-800 mt-2">
+                                            선택된 그룹: {selectedGroups.join(", ")} (
+                                            {selected.length.toLocaleString()}건 선택됨)
+                                        </div>
+                                    )}
                                 </div>
+                            )}
 
                             {/* Action Buttons */}
                             <div className="flex justify-between items-center">
@@ -378,7 +460,7 @@ export default function ProjectSearchPage() {
                                 </button>
                             </div>
 
-                            
+
 
                             {/* Results Table */}
                             <div className="overflow-hidden rounded-xl border-2 border-zinc-200">

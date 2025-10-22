@@ -6,7 +6,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { searchKeyword } from "@lib/api";
 import { SearchResults } from "@/components/search/SearchResults";
 import { SearchResp } from "@lib/types";
-import SearchLayout from "@components/SearchLayout";
+import SearchLayout from "@/components/layouts/SearchLayout";
 
 export default function KeywordDetail() {
     const params = useParams();
@@ -24,10 +24,10 @@ export default function KeywordDetail() {
         if (!keyword) return;
         setLoading(true);
         searchKeyword({ keyword, category, page, size })
-        .then((r) => setResp(r as SearchResp))
-        .finally(() => setLoading(false));
+            .then((r) => setResp(r as SearchResp))
+            .finally(() => setLoading(false));
     }, [keyword, category, page]);
-    
+
     return (
         <SearchLayout step={2} >
             <section className="mt-7">

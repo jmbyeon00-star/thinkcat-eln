@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { useEffect, useState } from "react";
-import ProjectLayout from "@/components/ProjectLayout";
+import ProjectLayout from "@/components/layouts/ProjectLayout";
 import { FileText, Save, ArrowLeft, ArrowRight, Loader2, Edit3 } from "lucide-react";
 
 type PreviewItem = {
@@ -141,7 +141,7 @@ export default function ProjectPreviewPage() {
                                             <div>
                                                 <p className="text-sm font-semibold text-blue-900 mb-1">편집 안내</p>
                                                 <p className="text-xs text-blue-800 leading-relaxed">
-                                                    특허명과 라벨을 클릭하면 직접 수정할 수 있습니다. 
+                                                    특허명과 라벨을 클릭하면 직접 수정할 수 있습니다.
                                                     수정 후 하단의 "저장하기" 버튼을 눌러 변경사항을 저장하세요.
                                                 </p>
                                             </div>
@@ -164,8 +164,8 @@ export default function ProjectPreviewPage() {
                                                     const globalIndex = (page - 1) * perPage + i;
                                                     const isModified = modified[r.application_number];
                                                     return (
-                                                        <tr 
-                                                            key={r.application_number} 
+                                                        <tr
+                                                            key={r.application_number}
                                                             className={`border-t border-zinc-200 hover:bg-blue-50 transition-colors ${isModified ? 'bg-yellow-50' : ''}`}
                                                         >
                                                             <td className="px-4 py-3 text-sm text-zinc-600">
@@ -174,7 +174,7 @@ export default function ProjectPreviewPage() {
                                                             <td className="px-4 py-3 text-sm font-mono text-zinc-900">
                                                                 {r.application_number}
                                                             </td>
-                                                            <td 
+                                                            <td
                                                                 className="px-4 py-3 text-sm cursor-pointer group relative"
                                                                 onClick={() => setEditingCell({ row: globalIndex, key: "title" })}
                                                             >
@@ -193,7 +193,7 @@ export default function ProjectPreviewPage() {
                                                                     </div>
                                                                 )}
                                                             </td>
-                                                            <td 
+                                                            <td
                                                                 className="px-4 py-3 text-sm cursor-pointer group relative"
                                                                 onClick={() => setEditingCell({ row: globalIndex, key: "collection_name" })}
                                                             >
@@ -264,7 +264,7 @@ export default function ProjectPreviewPage() {
                             <ArrowLeft size={18} />
                             이전 단계
                         </button>
-                        
+
                         <div className="flex gap-3">
                             <button
                                 onClick={handleSave}

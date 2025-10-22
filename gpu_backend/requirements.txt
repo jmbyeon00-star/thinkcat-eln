@@ -29,7 +29,7 @@ torchaudio==2.3.0+cu121
 --extra-index-url https://download.pytorch.org/whl/cu121
 
 # NLP/모델 관련 (선택: HuggingFace)
-transformers==4.42.4
+transformers==4.49.0
 datasets==2.21.0
 safetensors
 

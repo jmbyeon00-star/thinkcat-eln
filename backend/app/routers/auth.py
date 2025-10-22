@@ -90,6 +90,7 @@ class LoginRequest(BaseModel):
     #     print(">>> BODY READ ERROR:", e)
 @router.post("/login")
 def login(data: Signin, db: Session = Depends(get_db)):
+    print(">>>>>>>>>>")
     user = crud_user.get_user_by_email(db, data.email)
     # ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "kkk")
     # print(ALLOWED_ORIGINS)

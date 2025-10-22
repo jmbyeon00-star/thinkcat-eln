@@ -53,7 +53,7 @@ def get_model_detail(model_id: int, request: Request, session: Session = Depends
     return ai_service.get_model(session, user_id, model_id)
 
 # ------------------------------------------
-#  추천 시스템 
+#  추천 시스템
 # ------------------------------------------
 
 # ---- 프로젝트 데이터 학습 ----
@@ -64,8 +64,11 @@ async def train_project_data(
     body: dict,
     session: Session = Depends(get_session)
 ):
+
     try:
         user_id = get_current_user_from_request(request)
+        if ai_service.check_user_busy(session, user_id):
+            raise HTTPException(status_code=400, detail="이미 학습/추론 작업이 진행 중입니다.")
     except Exception as e:
         print("get_current_user_from_request raised:", repr(e))
         raise
@@ -79,8 +82,11 @@ async def train_colletion_data(
     body: dict,
     session: Session = Depends(get_session)
 ):
+
     try:
         user_id = get_current_user_from_request(request)
+        if ai_service.check_user_busy(session, user_id):
+            raise HTTPException(status_code=400, detail="이미 학습/추론 작업이 진행 중입니다.")
     except Exception as e:
         print("get_current_user_from_request raised:", repr(e))
         raise
@@ -93,13 +99,15 @@ async def infer_project_data(
     session: Session = Depends(get_session),
     user_id: int = Depends(get_current_user_from_request)
 ):
+    if ai_service.check_user_busy(session, user_id):
+        raise HTTPException(status_code=400, detail="이미 학습/추론 작업이 진행 중입니다.")
+
     """모델 추론 실행"""
     body = await request.json()
     try:
         return ai_service.run_inference_classification(session, user_id, model_id, body)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.get("/history/{file_id}")
 async def get_history(file_id: int, db: Session = Depends(get_session)):
@@ -130,7 +138,11 @@ async def train_recommendation_project(
     body: dict,
     session: Session = Depends(get_session)
 ):
+
     user_id = get_current_user_from_request(request)
+    if ai_service.check_user_busy(session, user_id):
+        raise HTTPException(status_code=400, detail="이미 학습/추론 작업이 진행 중입니다.")
+
     return await ai_service.run_training(
         session, user_id, collection_id, body
     )
@@ -144,9 +156,13 @@ async def infer_recommendation(
     """
     추천 시스템 추론 요청 (FastAPI → GPU 백엔드)
     """
+
     try:
         body = await request.json()
         user_id = get_current_user_from_request(request)
+        if ai_service.check_user_busy(session, user_id):
+            raise HTTPException(status_code=400, detail="이미 학습/추론 작업이 진행 중입니다.")
+
         result = await ai_service.run_inference_recommendation(session, user_id, body)
         return result
 

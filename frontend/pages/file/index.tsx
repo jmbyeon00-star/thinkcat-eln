@@ -1,10 +1,11 @@
-"use client"; 
+"use client";
 
 /* File: pages/file/index.tsx */
 import Head from "next/head";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FileText, Loader2, CheckCircle2, XCircle, Search, LayoutGrid, Table as TableIcon } from "lucide-react";
+import ModelProgressSSE from "@/components/ModelProgressSSE";
 
 type FileItem = {
   id: number;
@@ -17,10 +18,14 @@ type FileItem = {
 };
 
 export default function FileListPage() {
-//   const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
+  //   const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
   const API_BASE = "http://192.168.1.20:8000"
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [status, setStatus] = useState("");
+
+  console.log("files:", files)
 
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -159,12 +164,12 @@ export default function FileListPage() {
                   {files.map((f) => (
                     <Link
                       key={f.id}
-                      href={f.progress_status === "COMPLETED" ? `/file/${f.id}` : "#"}
-                      className={`block rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition ${
-                        f.progress_status === "COMPLETED"
-                          ? "hover:shadow-md"
-                          : "opacity-75 cursor-not-allowed"
-                      }`}
+                      href={status === "COMPLETED" || f.progress_status === "COMPLETED" ? `/file/${f.id}` : "#"}
+                      // className={`block rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition ${f.progress_status === "COMPLETED"
+                      className={`block rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition ${(status || f.progress_status) === "COMPLETED"
+                        ? "hover:shadow-md"
+                        : "opacity-75 cursor-not-allowed"
+                        }`}
                     >
                       <div className="flex items-center gap-3">
                         <div className="rounded-xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
@@ -183,14 +188,17 @@ export default function FileListPage() {
                               ? new Date(f.created_datetime).toLocaleDateString()
                               : "-"}
                           </p>
-                          <div className="mt-3">{getStatusBadge(f.progress_status, f.progress)}</div>
+                          <div className="mt-3">{getStatusBadge(status || f.progress_status, progress)}</div>
                           {f.progress_status === "RUNNING" && (
-                            <div className="mt-2 w-full bg-zinc-200 rounded-full h-2">
-                              <div
-                                className="bg-blue-500 h-2 rounded-full transition-all duration-500"
-                                style={{ width: `${f.progress}%` }}
-                              />
-                            </div>
+                            <>
+                              {/* <div className="mt-2 w-full bg-zinc-200 rounded-full h-2">
+                                <div
+                                  className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                                  style={{ width: `${f.progress}%` }}
+                                />
+                              </div> */}
+                              <ModelProgressSSE targetId={f.id} initialProgress={f.progress} setValue={setProgress} setStatus={setStatus} />
+                            </>
                           )}
                         </div>
                       </div>
@@ -218,7 +226,7 @@ export default function FileListPage() {
                           <td className="px-6 py-3 text-zinc-700">{f.id}</td>
                           <td className="px-6 py-3 font-medium text-zinc-900">{f.file_name}</td>
                           <td className="px-6 py-3 text-zinc-600">{f.model_code || "-"}</td>
-                          <td className="px-6 py-3">{getStatusBadge(f.progress_status, f.progress)}</td>
+                          <td className="px-6 py-3">{getStatusBadge(status || f.progress_status, f.progress)}</td>
                           <td className="px-6 py-3 text-zinc-600">{f.progress}%</td>
                           <td className="px-6 py-3 text-zinc-500">
                             {f.created_datetime
@@ -226,7 +234,7 @@ export default function FileListPage() {
                               : "-"}
                           </td>
                           <td className="px-6 py-3 text-center">
-                            {f.progress_status === "COMPLETED" ? (
+                            {status === "COMPLETED" || f.progress_status === "COMPLETED" ? (
                               <Link
                                 href={`/file/${f.id}`}
                                 className="inline-block rounded-lg border border-blue-600 px-3 py-1 text-sm font-medium text-blue-600 hover:bg-blue-600 hover:text-white transition"
@@ -257,11 +265,10 @@ export default function FileListPage() {
                   <button
                     key={num}
                     onClick={() => setPage(num)}
-                    className={`px-3 py-1 rounded border text-sm ${
-                      num === page
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white text-zinc-700"
-                    }`}
+                    className={`px-3 py-1 rounded border text-sm ${num === page
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-zinc-700"
+                      }`}
                   >
                     {num}
                   </button>

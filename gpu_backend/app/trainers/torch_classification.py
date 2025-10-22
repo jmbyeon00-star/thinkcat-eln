@@ -83,6 +83,7 @@ class TorchTextClassifierTrainer(BaseTrainer):
         """FastAPI 백엔드로 진행률 전송"""
         try:
             target_id = self.model_id if self.run_type == "train" else self.file_id
+            target_id = self.user_id
             httpx.post(
                 f"{self.backend_url}/api/progress/{self.run_type}/{target_id}",
                 json=json,

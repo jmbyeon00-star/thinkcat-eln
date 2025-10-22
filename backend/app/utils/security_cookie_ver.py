@@ -40,7 +40,7 @@ def generate_code(length: int = 6) -> str:
 # -------------------------
 # JWT Config
 # -------------------------
-SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key")
+SECRET_KEY = os.getenv("SECRET_KEY", "ipforce_secret")
 ALGORITHM = "HS256"
 # ACCESS_TOKEN_EXPIRE_MINUTES = 30 # 30분
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7일 (일주일)

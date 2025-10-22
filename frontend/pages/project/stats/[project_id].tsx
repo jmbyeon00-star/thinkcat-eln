@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, PieLabelRenderProps, Legend } from "recharts";
-import ProjectLayout from "@/components/ProjectLayout";
+import ProjectLayout from "@/components/layouts/ProjectLayout";
 import { BarChart3, AlertTriangle, FileText, CheckCircle, XCircle, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 
 type ProjectInfo = {
@@ -96,8 +96,7 @@ export default function ProjectStatsPage() {
         .map((g) => `- ${g.collection_name || "(미분류)"}: ${g.collection_data_num}개 (필요: ${MIN_PER_GROUP}+)`)
         .join("\n");
       alert(
-        `아래 그룹은 문서 수가 ${MIN_PER_GROUP}개 미만이라 학습을 시작할 수 없습니다.\n\n${lines}${
-          invalidGroups.length > 8 ? `\n… 외 ${invalidGroups.length - 8}개 그룹` : ""
+        `아래 그룹은 문서 수가 ${MIN_PER_GROUP}개 미만이라 학습을 시작할 수 없습니다.\n\n${lines}${invalidGroups.length > 8 ? `\n… 외 ${invalidGroups.length - 8}개 그룹` : ""
         }\n\n라벨 분포를 보강한 뒤 다시 시도해주세요.`
       );
       return;
@@ -236,7 +235,7 @@ export default function ProjectStatsPage() {
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                    <Pie
+                      <Pie
                         data={pieData}
                         dataKey="value"
                         nameKey="name"
@@ -250,21 +249,21 @@ export default function ProjectStatsPage() {
                           // 만약 props.percent가 undefined라면, payload에서 ratio를 가져와 percent를 계산할 수 있습니다.
                           // 하지만 간단한 해결을 위해 props에 percent가 있다고 가정하고 안전하게 사용합니다.
                           // Recharts는 내부적으로 percent 값을 전달하는 경우가 많습니다.
-                          
+
                           // 안전하게 percent가 있는지 확인 후 사용
                           if (percent) {
-                              return `${name} (${(percent * 100).toFixed(1)}%)`;
+                            return `${name} (${(percent * 100).toFixed(1)}%)`;
                           }
-                          
+
                           // percent가 없을 경우, 이름만 반환하거나 다른 로직을 적용
                           return name;
                         }}
                         labelLine={{ stroke: '#64748b', strokeWidth: 1 }}
-                        >
-                            {pieData.map((_, idx) => (
-                                <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
-                            ))}
-                        </Pie>
+                      >
+                        {pieData.map((_, idx) => (
+                          <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
+                        ))}
+                      </Pie>
                       <Tooltip content={<CustomTooltip />} />
                     </PieChart>
                   </ResponsiveContainer>
@@ -296,9 +295,8 @@ export default function ProjectStatsPage() {
                       return (
                         <tr
                           key={c.id}
-                          className={`border-t border-zinc-200 transition-colors ${
-                            isInsufficient ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-blue-50'
-                          }`}
+                          className={`border-t border-zinc-200 transition-colors ${isInsufficient ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-blue-50'
+                            }`}
                         >
                           <td className="px-4 py-3 text-sm">
                             <div className="flex items-center gap-2">
@@ -350,11 +348,10 @@ export default function ProjectStatsPage() {
             <button
               onClick={goNext}
               disabled={!canProceed}
-              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2 ${
-                canProceed
+              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2 ${canProceed
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700'
                   : 'bg-zinc-300 text-zinc-500 cursor-not-allowed'
-              }`}
+                }`}
               title={
                 canProceed
                   ? '학습 페이지로 이동'

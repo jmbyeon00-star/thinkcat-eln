@@ -1,15 +1,36 @@
 // pages/_app.tsx
 import type { AppProps } from 'next/app';
 import { SessionProvider } from "next-auth/react";
-import Layout from '../components/Layout';
+import Layout from '../components/layouts/Layout';
 import '../styles/globals.css';
 
-export default function MyApp({ Component, pageProps: { session, ...pageProps } }: AppProps) {
+import useProgressListener from '@/lib/hooks/useProgressListener'
+import { getUserId } from '@/utils/auth'
+
+function GlobalProgressListener({ userId }: { userId: number | null }) {
+  if (!userId) return
+
+  useProgressListener(userId)
+  return null // 이 컴포넌트는 화면에 아무것도 렌더링하지 않음
+}
+
+export default function MyApp({
+  Component,
+  pageProps: { session, ...pageProps }
+}: AppProps) {
+  const userId = getUserId() ?? null
+
   return (
     <SessionProvider session={session}>
-        <Layout>
-            <Component {...pageProps} />
-        </Layout>
+      {/* 전역 SSE 리스너 추가 */}
+      <GlobalProgressListener userId={userId} />
+
+      <Layout>
+        <Component {...pageProps} />
+      </Layout>
     </SessionProvider>
   );
 }
+
+
+MyApp.getInitialProps = async () => ({ pageProps: {} })

@@ -19,6 +19,14 @@ from datetime import datetime
 load_dotenv()
 GPU_BACKEND_URL = os.getenv("GPU_BACKEND_URL", "http://localhost:8000")
 
+def check_user_busy(session: Session, user_id: int):
+    running = session.query(ModelInfo).filter(
+        ModelInfo.user_id == user_id,
+        ModelInfo.model_status.in_(["TRAINING", "INFERING"])
+    ).first()
+    print("Model Status:", running)
+    return running is not None
+
 def get_model_status(session, user_id: int, target_code: str, task_type: str):
     target_code = f"{task_type}_{target_code}"
     model_info = (
@@ -126,6 +134,8 @@ async def run_training(session, user_id: int, target_id: int, params: dict):
         "model_code": model_code,
         "target_code": target_code
     }
+
+    print("GPU_BACKEND_URL:", GPU_BACKEND_URL)
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.post(
@@ -145,7 +155,6 @@ async def run_training(session, user_id: int, target_id: int, params: dict):
             return {"status": "requested", "gpu_backend": resp.json(), "model_id": model_info.id, "model_code": model_code}
             
     except Exception as e:
-        print("+"*100)
         print(str(e))
         # 실패 시 ModelInfo 상태도 FAILED로 변경
         session.query(ModelInfo).filter(ModelInfo.id == model_info.id).update(
