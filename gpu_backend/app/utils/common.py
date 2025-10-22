@@ -1,4 +1,5 @@
 import os, sys, traceback
+import asyncio
 import torch
 from pathlib import Path
 
@@ -77,3 +78,12 @@ def get_best_gpu() -> torch.device:
 
     print(f"[GPU SELECT] cuda:{best_gpu} selected ({max_free:.2f} GB free)")
     return torch.device(f"cuda:{best_gpu}")
+
+
+def safe_create_task(coro):
+    """현재 루프가 없을 때도 안전하게 비동기 함수 실행"""
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(coro)
+    except RuntimeError:
+        asyncio.run(coro)

@@ -85,7 +85,7 @@ def train_classification(user_id: int, model_id: int, project_id: int, params: d
 
     # 7) (선택) 진행률 100 보장 ping
     # try:
-    #     httpx.post(f"{BACKEND_URL}/api/progress/{model_id}", json={"progress": 100, "remaining_time": "0:00:00"}, timeout=3.0)
+    #     httpx.post(f"{BACKEND_URL}/api/status/progress/{model_id}", json={"progress": 100, "remaining_time": "0:00:00"}, timeout=3.0)
     # except Exception:
     #     pass
     
@@ -93,7 +93,7 @@ def train_classification(user_id: int, model_id: int, project_id: int, params: d
     # for i in tqdm(range(100)):
     #     try:
     #         httpx.post(
-    #             f"{BACKEND_URL}/api/progress/{model_id}",
+    #             f"{BACKEND_URL}/api/status/progress/{model_id}",
     #             json={"progress": i + 1},
     #             timeout=5.0,
     #         )
@@ -176,7 +176,7 @@ def train_recommendation(user_id: int, model_id: int, project_id: int, params: d
 
     # 학습 완료 후 진행률 보고
     try:
-        httpx.post(f"{BACKEND_URL}/api/progress/train/{model_id}", json={"progress": 100, "remaining_time": "0:00:00"}, timeout=3.0)
+        httpx.post(f"{BACKEND_URL}/api/status/progress/train/{model_id}", json={"progress": 100, "remaining_time": "0:00:00"}, timeout=3.0)
     except Exception:
         pass
     finally:

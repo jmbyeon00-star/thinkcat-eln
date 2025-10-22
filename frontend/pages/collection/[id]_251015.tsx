@@ -234,10 +234,10 @@ export default function CollectionDetailPage() {
             )}
 
             <div className="flex flex-col sm:flex-row gap-6">
-                {/* 학습 파라미터 입력 */}
-                <div className="flex-1">
-                    <RecommendationTrainingPanel collection={collection} hasTrainedModel={hasTrainedModel} setHasTrainedModel={setHasTrainedModel} />
-                </div>
+              {/* 학습 파라미터 입력 */}
+              <div className="flex-1">
+                <RecommendationTrainingPanel collection={collection} hasTrainedModel={hasTrainedModel} setHasTrainedModel={setHasTrainedModel} />
+              </div>
 
             </div>
           </section>
@@ -248,207 +248,207 @@ export default function CollectionDetailPage() {
 }
 
 function RecommendationTrainingPanel({ collection, hasTrainedModel, setHasTrainedModel }: { collection: CollectionDetail, hasTrainedModel: number, setHasTrainedModel: React.Dispatch<React.SetStateAction<number>>; }) {
-    console.log(hasTrainedModel)
-    const [params, setParams] = useState({ epoch: 2, batch_size: 16, learning_rate: 2e-5, max_length: 256, shuffle: true, });
-    const [modelInfo, setModelInfo] = useState<{ id: number; progress: number; version: number } | null>(null);
-  
-    const [progress, setProgress] = useState(0);
-    const [loading, setLoading] = useState(false);
-    const API_BASE = "http://192.168.1.20:8000";
-    
-    // 추천 학습 요청
-    async function handleTrainRecommendation() {
-        setLoading(true);
-        try {
-        const res = await fetch(`${API_BASE}/api/ai/train/recommendation/${collection.id}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({
-                data_scope: "collection",
-                task_type: "recommendation",
-                source_type: collection.source_type,
-                collection_name: collection.collection_name,
-                collection_code: collection.collection_code,
-                collection_num: 1,
-                model_name: `${collection?.collection_name} 추천 모델`,
-                project_name: collection.project_names?.[0] ?? "추천 테스트",
-                ...params,
-            }),
-        });
+  console.log(hasTrainedModel)
+  const [params, setParams] = useState({ epoch: 2, batch_size: 16, learning_rate: 2e-5, max_length: 256, shuffle: true, });
+  const [modelInfo, setModelInfo] = useState<{ id: number; progress: number; version: number } | null>(null);
 
-        const data = await res.json();
-        if (data.model_id) {
-            setModelInfo({ id: data.model_id, progress: 0, version: data.version ?? 0 });
-            setHasTrainedModel(data.version)
-            setProgress(0);
-        }
+  const [progress, setProgress] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const API_BASE = "http://192.168.1.20:8000";
 
-        } catch (err) {
-            alert("추천 모델 학습 요청 실패");
-        } finally {
-            setLoading(false);
-        }
+  // 추천 학습 요청
+  async function handleTrainRecommendation() {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/ai/train/recommendation/${collection.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          data_scope: "collection",
+          task_type: "recommendation",
+          source_type: collection.source_type,
+          collection_name: collection.collection_name,
+          collection_code: collection.collection_code,
+          collection_num: 1,
+          model_name: `${collection?.collection_name} 추천 모델`,
+          project_name: collection.project_names?.[0] ?? "추천 테스트",
+          ...params,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.model_id) {
+        setModelInfo({ id: data.model_id, progress: 0, version: data.version ?? 0 });
+        setHasTrainedModel(data.version)
+        setProgress(0);
+      }
+
+    } catch (err) {
+      alert("추천 모델 학습 요청 실패");
+    } finally {
+      setLoading(false);
     }
+  }
 
-    // 진행률 SSE
-    useEffect(() => {
-        if (!modelInfo?.id) return;
-        const es = new EventSource(`${API_BASE}/api/progress/stream/${modelInfo.id}`);
-    
-        es.onmessage = (e) => {
-          const value = Number(e.data);
-          setProgress(value);
-    
-          if (value >= 100) {
-            es.close();
-            // 완료 후 모델 version 갱신 fetch
-            fetch(`${API_BASE}/api/ai/status/rec/${collection.collection_code}`, {
-                credentials: "include"
-            })
-              .then((r) => r.json())
-              .then((data) => setModelInfo((prev) => prev ? { ...prev, version: data.version } : null));
-          }
-        };
-    
-        es.onerror = () => es.close();
-        return () => es.close();
-      }, [modelInfo?.id]);
+  // 진행률 SSE
+  useEffect(() => {
+    if (!modelInfo?.id) return;
+    const es = new EventSource(`${API_BASE}/api/status/progress/stream/${modelInfo.id}`);
 
-    // ✅ version < 1 → 최초 학습 상태
-    const isTraining = progress > 0 && progress < 100;
-    const canShowButtons = modelInfo?.version && modelInfo.version >= 1;
+    es.onmessage = (e) => {
+      const value = Number(e.data);
+      setProgress(value);
 
-    // 추천 추론 요청
-    async function handleInferRecommendation(collection: CollectionDetail) {
-        try {
-        const res = await fetch(`${API_BASE}/api/ai/${collection.id}/infer`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({
-            task_type: "recommendation",
-            source_type: collection.source_type,
-            collection_name: collection.collection_name,
-            collection_code: collection.collection_code,
-            collection_num: 1,
-            project_name: collection.project_names?.[0] ?? "추천 추론 테스트",
-            model_name: `${collection?.collection_name} 추천 모델`,
-            }),
-        });
+      if (value >= 100) {
+        es.close();
+        // 완료 후 모델 version 갱신 fetch
+        fetch(`${API_BASE}/api/ai/status/rec/${collection.collection_code}`, {
+          credentials: "include"
+        })
+          .then((r) => r.json())
+          .then((data) => setModelInfo((prev) => prev ? { ...prev, version: data.version } : null));
+      }
+    };
 
-        const data = await res.json();
-        // alert(`추천 추론 요청 완료: ${data.status || "ok"}`);
-        if (data.file_id) window.location.href = `/inference/result/${data.file_id}`;
-        } catch (err) {
-            console.error("추천 추론 요청 실패:", err);
-        alert("추천 추론 요청 실패");
-        }
+    es.onerror = () => es.close();
+    return () => es.close();
+  }, [modelInfo?.id]);
+
+  // ✅ version < 1 → 최초 학습 상태
+  const isTraining = progress > 0 && progress < 100;
+  const canShowButtons = modelInfo?.version && modelInfo.version >= 1;
+
+  // 추천 추론 요청
+  async function handleInferRecommendation(collection: CollectionDetail) {
+    try {
+      const res = await fetch(`${API_BASE}/api/ai/${collection.id}/infer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          task_type: "recommendation",
+          source_type: collection.source_type,
+          collection_name: collection.collection_name,
+          collection_code: collection.collection_code,
+          collection_num: 1,
+          project_name: collection.project_names?.[0] ?? "추천 추론 테스트",
+          model_name: `${collection?.collection_name} 추천 모델`,
+        }),
+      });
+
+      const data = await res.json();
+      // alert(`추천 추론 요청 완료: ${data.status || "ok"}`);
+      if (data.file_id) window.location.href = `/inference/result/${data.file_id}`;
+    } catch (err) {
+      console.error("추천 추론 요청 실패:", err);
+      alert("추천 추론 요청 실패");
     }
+  }
 
-    return (
-        <div className="space-y-4 border p-4 rounded-lg bg-zinc-50">
-        <div className="grid grid-cols-2 gap-3 text-sm">
-            <label className="flex flex-col">
-            Epoch
-            <input
-                type="number"
-                value={params.epoch}
-                onChange={(e) => setParams({ ...params, epoch: Number(e.target.value) })}
-                className="mt-1 border rounded px-2 py-1"
-            />
-            </label>
-            <label className="flex flex-col">
-            Batch Size
-            <input
-                type="number"
-                value={params.batch_size}
-                onChange={(e) => setParams({ ...params, batch_size: Number(e.target.value) })}
-                className="mt-1 border rounded px-2 py-1"
-            />
-            </label>
-            <label className="flex flex-col">
-            Learning Rate
-            <input
-                type="number"
-                step="0.00001"
-                value={params.learning_rate}
-                onChange={(e) => setParams({ ...params, learning_rate: parseFloat(e.target.value) })}
-                className="mt-1 border rounded px-2 py-1"
-            />
-            </label>
-            <label className="flex flex-col">
-            Max Length
-            <input
-                type="number"
-                value={params.max_length}
-                onChange={(e) => setParams({ ...params, max_length: Number(e.target.value) })}
-                className="mt-1 border rounded px-2 py-1"
-            />
-            </label>
-        </div>
+  return (
+    <div className="space-y-4 border p-4 rounded-lg bg-zinc-50">
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <label className="flex flex-col">
+          Epoch
+          <input
+            type="number"
+            value={params.epoch}
+            onChange={(e) => setParams({ ...params, epoch: Number(e.target.value) })}
+            className="mt-1 border rounded px-2 py-1"
+          />
+        </label>
+        <label className="flex flex-col">
+          Batch Size
+          <input
+            type="number"
+            value={params.batch_size}
+            onChange={(e) => setParams({ ...params, batch_size: Number(e.target.value) })}
+            className="mt-1 border rounded px-2 py-1"
+          />
+        </label>
+        <label className="flex flex-col">
+          Learning Rate
+          <input
+            type="number"
+            step="0.00001"
+            value={params.learning_rate}
+            onChange={(e) => setParams({ ...params, learning_rate: parseFloat(e.target.value) })}
+            className="mt-1 border rounded px-2 py-1"
+          />
+        </label>
+        <label className="flex flex-col">
+          Max Length
+          <input
+            type="number"
+            value={params.max_length}
+            onChange={(e) => setParams({ ...params, max_length: Number(e.target.value) })}
+            className="mt-1 border rounded px-2 py-1"
+          />
+        </label>
+      </div>
 
-        {/* Shuffle 옵션 */}
-        <div className="flex items-center gap-4 mt-2">
-            <label className="flex items-center gap-1 text-sm">
-            <input
-                type="radio"
-                name="shuffle"
-                checked={params.shuffle === true}
-                onChange={() => setParams({ ...params, shuffle: true })}
-            />
-            <span>Shuffle On</span>
-            </label>
-            <label className="flex items-center gap-1 text-sm">
-            <input
-                type="radio"
-                name="shuffle"
-                checked={params.shuffle === false}
-                onChange={() => setParams({ ...params, shuffle: false })}
-            />
-            <span>Shuffle Off</span>
-            </label>
-        </div>
+      {/* Shuffle 옵션 */}
+      <div className="flex items-center gap-4 mt-2">
+        <label className="flex items-center gap-1 text-sm">
+          <input
+            type="radio"
+            name="shuffle"
+            checked={params.shuffle === true}
+            onChange={() => setParams({ ...params, shuffle: true })}
+          />
+          <span>Shuffle On</span>
+        </label>
+        <label className="flex items-center gap-1 text-sm">
+          <input
+            type="radio"
+            name="shuffle"
+            checked={params.shuffle === false}
+            onChange={() => setParams({ ...params, shuffle: false })}
+          />
+          <span>Shuffle Off</span>
+        </label>
+      </div>
 
-        {/* 학습 및 추론 버튼 */}
-        <div className="space-y-4 border p-4 rounded-lg bg-zinc-50 flex flex-col justify-start">
-            {/* 🔹 학습 중에는 모든 버튼 감춤 */}
-            {isTraining ? (
-                <ModelProgressSSE targetId={modelInfo!.id} initialProgress={progress} />
-            ) : (
-                <>
-                {/* 🔹 최초 학습 전 */}
-                {hasTrainedModel && hasTrainedModel < 1 && (
-                    <button
-                        onClick={handleTrainRecommendation}
-                        disabled={loading}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
-                    >
-                    {loading ? "학습 요청 중..." : "추천 모델 학습하기"}
-                    </button>
-                )}
-
-                {/* 🔹 학습 완료 후 (version >= 1) */}
-                {hasTrainedModel && hasTrainedModel > 0 && (
-                    <div className="flex flex-col justify-start">
-                        <button
-                            onClick={handleTrainRecommendation}
-                            className="mb-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                        >
-                            추가 학습하기
-                        </button>
-                        <button
-                            onClick={() => handleInferRecommendation(collection)}
-                            className="mt-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
-                        >
-                            추천 받기
-                        </button>
-                    </div>
-                )}
-                </>
+      {/* 학습 및 추론 버튼 */}
+      <div className="space-y-4 border p-4 rounded-lg bg-zinc-50 flex flex-col justify-start">
+        {/* 🔹 학습 중에는 모든 버튼 감춤 */}
+        {isTraining ? (
+          <ModelProgressSSE targetId={modelInfo!.id} initialProgress={progress} />
+        ) : (
+          <>
+            {/* 🔹 최초 학습 전 */}
+            {hasTrainedModel && hasTrainedModel < 1 && (
+              <button
+                onClick={handleTrainRecommendation}
+                disabled={loading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
+              >
+                {loading ? "학습 요청 중..." : "추천 모델 학습하기"}
+              </button>
             )}
-        </div>
-        
-        </div>
-    );
+
+            {/* 🔹 학습 완료 후 (version >= 1) */}
+            {hasTrainedModel && hasTrainedModel > 0 && (
+              <div className="flex flex-col justify-start">
+                <button
+                  onClick={handleTrainRecommendation}
+                  className="mb-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  추가 학습하기
+                </button>
+                <button
+                  onClick={() => handleInferRecommendation(collection)}
+                  className="mt-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                >
+                  추천 받기
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+    </div>
+  );
 }

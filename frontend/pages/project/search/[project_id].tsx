@@ -27,6 +27,12 @@ export default function ProjectSearchPage() {
     const { project_id } = router.query;
     const API_BASE = "http://192.168.1.20:8000";
 
+    const { data: session, status } = useSession() as {
+        data: (Session & { access_token?: string }) | null;
+        status: "loading" | "authenticated" | "unauthenticated";
+    };
+    const token = session?.access_token;
+
     const [project, setProject] = useState<Project | null>(null);
     const [collections, setCollections] = useState<Collections | null>(null);
     const [inputValue, setInputValue] = useState("");       // 입력창의 현재 값
@@ -67,12 +73,6 @@ export default function ProjectSearchPage() {
         "etc": "기타"
     };
 
-    const { data: session, status } = useSession() as {
-        data: (Session & { access_token?: string }) | null;
-        status: "loading" | "authenticated" | "unauthenticated";
-    };
-    const token = session?.access_token;
-
     useEffect(() => {
         if (!project_id) return;
         async function loadProject() {
@@ -81,7 +81,10 @@ export default function ProjectSearchPage() {
                 const dataProject = await resProject.json();
                 setProject(dataProject);
 
-                const resColections = await fetch(`${API_BASE}/api/collection/project/${project_id}`, { credentials: "include" });
+                const resColections = await fetch(`${API_BASE}/api/collection/project/${project_id}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                    credentials: "include"
+                });
                 const dataCollections = await resColections.json();
                 console.log(dataCollections)
                 setCollections(dataCollections)

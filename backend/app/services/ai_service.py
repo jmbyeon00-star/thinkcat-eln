@@ -22,9 +22,9 @@ GPU_BACKEND_URL = os.getenv("GPU_BACKEND_URL", "http://localhost:8000")
 def check_user_busy(session: Session, user_id: int):
     running = session.query(ModelInfo).filter(
         ModelInfo.user_id == user_id,
-        ModelInfo.model_status.in_(["TRAINING", "INFERING"])
+        ModelInfo.progress_status.in_(["RUNNING", "TRAINING", "INFERING"])
     ).first()
-    print("Model Status:", running)
+    
     return running is not None
 
 def get_model_status(session, user_id: int, target_code: str, task_type: str):
@@ -135,7 +135,6 @@ async def run_training(session, user_id: int, target_id: int, params: dict):
         "target_code": target_code
     }
 
-    print("GPU_BACKEND_URL:", GPU_BACKEND_URL)
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.post(

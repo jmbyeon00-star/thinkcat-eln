@@ -71,7 +71,7 @@ def train_classification(user_id: int, model_id: int, project_id: int, params: d
     # for i in tqdm(range(100)):
     #     try:
     #         httpx.post(
-    #             f"{BACKEND_URL}/api/progress/{model_id}",
+    #             f"{BACKEND_URL}/api/status/progress/{model_id}",
     #             json={"progress": i + 1},
     #             timeout=5.0,
     #         )

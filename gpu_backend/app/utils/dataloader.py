@@ -307,7 +307,7 @@ def log_used_distribution(df, label="train"):
         #         "progress": 0,
         #     }
         #     try:
-        #         httpx.post(f"{backend_url}/api/progress/train/{model_id}", json=payload, timeout=3.0)
+        #         httpx.post(f"{backend_url}/api/status/progress/train/{model_id}", json=payload, timeout=3.0)
         #     except Exception:
         #         pass
     except Exception as e:
@@ -344,8 +344,9 @@ def get_train_data(config):
         # 클래스 편향이 심할 때 stratify 에러 방지: 최소 test_size를 클래스 수 기반으로 보호
         num_classes = df['target'].nunique()
         min_test_size = num_classes / max(1, len(df))
+
         df_train, df_valid = train_test_split(
-            df, test_size=max(0.1, min_test_size), random_state=42, stratify=df['target']
+            df, test_size=max(0.1, min_test_size), random_state=42, stratify=df['target'], shuffle=config.get('shuffle', True)
         )
         
         # 데이터 분포도 체크

@@ -99,7 +99,7 @@ def infer_classification(config: dict):
     # 7) 완료 상태 알림
     # try:
     #     httpx.post(
-    #         f"{BACKEND_URL}/api/progress/infer/{file_id}",
+    #         f"{BACKEND_URL}/api/status/progress/infer/{file_id}",
     #         json={"progress": 100, "status": "COMPLETED", "remaining_time": "0:00:00"},
     #         timeout=3.0
     #     )

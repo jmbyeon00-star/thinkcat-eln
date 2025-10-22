@@ -57,7 +57,7 @@ class SklearnTextClassifierTrainer(BaseTrainer):
             return
         try:
             httpx.post(
-                f"{self.backend_url}/api/progress/{self.model_id}",
+                f"{self.backend_url}/api/status/progress/{self.model_id}",
                 json={"progress": int(value)},
                 timeout=3.0
             )

@@ -20,7 +20,7 @@ export default function ModelProgressSSE({
     useEffect(() => {
         // const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
         const base = "http://192.168.1.20:8000"
-        const es = new EventSource(`${base}/api/progress/stream/${targetId}`);
+        const es = new EventSource(`${base}/api/status/progress/stream/${targetId}`);
         es.onmessage = (e) => {
             const data = JSON.parse(e.data);
 

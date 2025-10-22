@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, users, ai_router, project_router, progress_router, search_router, file_router, patent_router, collection_router
+from app.routers import auth, users, ai_router, project_router, status_router, search_router, file_router, patent_router, collection_router
 import os
 
 app = FastAPI(title="ipforce_next API", version="0.1.0")
@@ -21,15 +21,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(auth.router, prefix="/api")
-app.include_router(users.router, prefix="/api")
 app.include_router(ai_router.router, prefix="/api")
-app.include_router(project_router.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
 app.include_router(collection_router.router, prefix="/api")
-app.include_router(progress_router.router, prefix="/api")
-app.include_router(search_router.router, prefix="/api")
 app.include_router(file_router.router, prefix="/api")
 app.include_router(patent_router.router, prefix="/api")
+app.include_router(project_router.router, prefix="/api")
+app.include_router(search_router.router, prefix="/api")
+app.include_router(status_router.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
 
 # 확인용
 # for route in app.routes:

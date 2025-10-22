@@ -4,15 +4,24 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { UploadCloud, FileText, Target, ArrowRight, Loader2 } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Session } from "next-auth";
 
 function ProjectUploadIndex() {
     const router = useRouter();
+    const API_BASE = "http://192.168.1.20:8000";
+
+    const { data: session, status } = useSession() as {
+        data: (Session & { access_token?: string }) | null;
+        status: "loading" | "authenticated" | "unauthenticated";
+    };
+    const token = session?.access_token;
+
     const [name, setName] = useState("");
     const [desc, setDesc] = useState("");
     const [taskType, setTaskType] = useState("classification");
     const [creating, setCreating] = useState(false);
 
-    const API_BASE = "http://192.168.1.20:8000";
 
     async function createProject() {
         if (!name.trim()) {
@@ -23,7 +32,10 @@ function ProjectUploadIndex() {
         try {
             const res = await fetch(`${API_BASE}/api/project`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
                 credentials: "include",
                 body: JSON.stringify({
                     project_name: name,
@@ -43,9 +55,10 @@ function ProjectUploadIndex() {
     }
 
     const taskOptions = [
-        { value: "classification", label: "단일 분류", desc: "하나의 카테고리로 분류" },
-        { value: "multilabel", label: "멀티라벨 분류", desc: "여러 카테고리로 분류" },
-        { value: "regression", label: "회귀", desc: "연속적인 값 예측" },
+        { value: "classification", label: "특허 분류", desc: "하나의 카테고리로 분류" },
+        // { value: "classification", label: "단일 분류", desc: "하나의 카테고리로 분류" },
+        // { value: "multilabel", label: "멀티라벨 분류", desc: "여러 카테고리로 분류" },
+        // { value: "regression", label: "회귀", desc: "연속적인 값 예측" },
     ];
 
     return (

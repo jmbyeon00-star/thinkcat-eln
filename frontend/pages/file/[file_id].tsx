@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { BarChart3, CircleDashed, CircleCheckBig } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Session } from "next-auth";
 
 type InferenceResult = {
   source: string;
@@ -29,6 +31,12 @@ export default function FileDetailPage() {
   const { file_id } = router.query;
   const API_BASE = "http://192.168.1.20:8000";
 
+  const { data: session, status } = useSession() as {
+    data: (Session & { access_token?: string }) | null;
+    status: "loading" | "authenticated" | "unauthenticated";
+  };
+  const token = session?.access_token;
+
   const [data, setData] = useState<InferenceDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -38,7 +46,9 @@ export default function FileDetailPage() {
 
     const loadDetail = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/ai/history/${file_id}`);
+        const res = await fetch(`${API_BASE}/api/ai/history/${file_id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         setData(json);

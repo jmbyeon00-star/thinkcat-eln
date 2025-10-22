@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from app.models.ai_model import ModelInfo
 from app.models.project_model import ProjectInfo
 from app.models.file_model import FileInfo
+from app.models.user import User
 from app.core.db import get_session
 
 import os
@@ -13,8 +14,15 @@ from dotenv import load_dotenv
 from datetime import datetime
 from sqlalchemy.orm import Session
 
+# 진행률 구독자 (모델/파일 단위)
+_progress_subscribers: dict[str, list[asyncio.Queue]] = {}
+# 상태 구독자 (유저 단위)
 _subscribers: dict[str, list[asyncio.Queue]] = {}
 
+
+# ------------------------
+# 상태
+# ------------------------
 async def _event_generator(target_id: str):
     q = asyncio.Queue()
     key = str(target_id)
@@ -29,6 +37,49 @@ async def _event_generator(target_id: str):
     finally:
         if key in _subscribers:
             _subscribers[key].remove(q)
+
+async def update_status_sse(session: Session, run_type: str, user_id: str, body: dict):
+    user = session.query(User).filter(User.id == int(user_id)).first()
+    if not user:
+        print(f"[WARN] No user found for id={user_id}")
+        return {"ok": False, "reason": "user_not_found"}
+
+    email = user.email
+    key = str(email).lower()
+
+    raw_status = body.get("status", "AVAILABLE").upper()
+    status = "RUNNING" if raw_status == "RUNNING" else "AVAILABLE"
+
+    payload = {
+        "run_type": run_type,
+        "status": status
+    }
+
+    for q in _subscribers.get(key, []):
+        # await q.put(progress)
+        await q.put(json.dumps(payload))
+
+    print(f"[STATUS] User {user_id} → {status}")
+    return {"ok": True, "status": status}
+
+
+# ------------------------
+# 진행률
+# ------------------------
+async def _progress_event_generator(target_id: str):
+    q = asyncio.Queue()
+    key = str(target_id)
+    _progress_subscribers.setdefault(key, []).append(q)
+    try:
+        while True:
+            data = await q.get()
+            # SSE 포맷: "data: ..." + 빈 줄
+            yield f"data: {data}\n\n"
+    except asyncio.CancelledError:
+        print(f"[SSE] Disconnected: {target_id}")
+    finally:
+        if key in _progress_subscribers:
+            _progress_subscribers[key].remove(q)
 
 # ------------------------
 # 진행률 업데이트

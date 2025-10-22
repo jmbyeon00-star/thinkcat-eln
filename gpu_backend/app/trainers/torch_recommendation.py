@@ -1,7 +1,7 @@
 # app/trainers/torch_recommendation.py
 from __future__ import annotations
 from app.trainers.base import BaseTrainer
-from app.utils.common import get_best_gpu
+from app.utils.common import get_best_gpu, safe_create_task
 from typing import Any, Dict, Optional
 
 import torch
@@ -64,16 +64,50 @@ class TorchRecommendationTrainer(BaseTrainer):
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate)
         os.makedirs(self.model_path, exist_ok=True)
 
-    def _progress(self, json_data: dict):
-        """FastAPI 백엔드로 진행률 전송"""
-        target_id = self.model_id
-        target_id = self.user_id
+    # def _status(self, json: dict):
+    #     """FastAPI 백엔드로 진행률 전송"""
+    #     try:
+    #         httpx.post(
+    #             f"{self.backend_url}/api/status/{self.run_type}/{self.user_id}",
+    #             json=json,
+    #             timeout=3.0,
+    #         )
+    #     except Exception:
+    #         pass
+
+    async def _status(self, json: dict):
+        """FastAPI 백엔드로 상태 전송 (비동기 안전 버전)"""
         try:
-            httpx.post(
-                f"{self.backend_url}/api/progress/{self.run_type}/{target_id}",
-                json=json_data,
-                timeout=3.0,
-            )
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                await client.post(
+                    f"{self.backend_url}/api/status/{self.run_type}/{self.user_id}",
+                    json=json,
+                )
+        except Exception:
+            pass
+
+    # def _progress(self, json_data: dict):
+    #     """FastAPI 백엔드로 진행률 전송"""
+    #     target_id = self.user_id
+    #     target_id = self.model_id
+    #     try:
+    #         httpx.post(
+    #             f"{self.backend_url}/api/status/progress/{self.run_type}/{target_id}",
+    #             json=json_data,
+    #             timeout=3.0,
+    #         )
+    #     except Exception:
+    #         pass
+
+    async def _progress(self, json: dict):
+        """FastAPI 백엔드로 진행률 전송 (비동기 안전 버전)"""
+        try:
+            target_id = self.model_id if self.run_type == "train" else self.file_id
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                await client.post(
+                    f"{self.backend_url}/api/status/progress/{self.run_type}/{target_id}",
+                    json=json,
+                )
         except Exception:
             pass
 
@@ -85,7 +119,7 @@ class TorchRecommendationTrainer(BaseTrainer):
     # TRAIN
     # -------------------------------------------------------
     def train(self, data):
-        self._progress({"progress": 1, "status": "RUNNING", "remaining_time": None})
+        safe_create_task(self._progress({"progress": 1, "status": "RUNNING", "remaining_time": None}))
         start = time.time()
 
         df_train = data["train"]
@@ -132,7 +166,7 @@ class TorchRecommendationTrainer(BaseTrainer):
                 elapsed = time.time() - start
                 est_total = elapsed / max(1e-9, step / total_steps)
                 remaining = str(timedelta(seconds=int(est_total - elapsed)))
-                self._progress({"progress": min(prog, 95), "status": "RUNNING", "remaining_time": remaining})
+                safe_create_task(self._progress({"progress": min(prog, 95), "status": "RUNNING", "remaining_time": remaining}))
 
             train_loss = t_loss / max(1, t_total)
             train_acc = t_correct / max(1, t_total)
@@ -180,7 +214,9 @@ class TorchRecommendationTrainer(BaseTrainer):
         with open(os.path.join(self.model_path, "histories.json"), "w") as f:
             json.dump(history, f, ensure_ascii=False, indent=2)
 
-        self._progress({"progress": 100, "status": "COMPLETED", "remaining_time": "0:00:00"})
+        safe_create_task(self._progress({"progress": 100, "status": "COMPLETED", "remaining_time": "0:00:00"}))
+        safe_create_task(self._status({"status": "COMPLETED"}))
+        
         gc.collect()
         torch.cuda.empty_cache()
 
@@ -216,11 +252,12 @@ class TorchRecommendationTrainer(BaseTrainer):
         data["pred_label"] = [label_names[i] for i in pred_labels]
         data["confidence"] = pred_probs
 
-
         topk = data.sort_values("confidence", ascending=False).head(50).reset_index(drop=True)
         result_path = f"{self.model_path}/inference_result.json"
         topk.to_json(result_path, orient="records", force_ascii=False, indent=2)
         print(f"✅ 추천 결과 저장 완료 → {result_path}")
+
+        self._status({"status": "COMPLETED"})
         return topk.to_dict(orient="records")
 
     def save(self, path: str):

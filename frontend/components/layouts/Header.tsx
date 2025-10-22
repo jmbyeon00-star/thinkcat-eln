@@ -7,7 +7,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useUserTaskStore } from '@/lib/store/useUserTaskStore';
 
 export default function Header() {
-    const { isBusy, progress, status: taskStatus } = useUserTaskStore()
+    const { isBusy, status: taskStatus } = useUserTaskStore()
     const { data: session, status: authStatus } = useSession();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);

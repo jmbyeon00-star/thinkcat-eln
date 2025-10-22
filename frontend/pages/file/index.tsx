@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FileText, Loader2, CheckCircle2, XCircle, Search, LayoutGrid, Table as TableIcon } from "lucide-react";
 import ModelProgressSSE from "@/components/ModelProgressSSE";
+import { useSession } from "next-auth/react";
+import { Session } from "next-auth";
 
 type FileItem = {
   id: number;
@@ -20,12 +22,16 @@ type FileItem = {
 export default function FileListPage() {
   //   const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
   const API_BASE = "http://192.168.1.20:8000"
+  const { data: session, status: sessionStatus } = useSession() as {
+    data: (Session & { access_token?: string }) | null;
+    status: "loading" | "authenticated" | "unauthenticated";
+  };
+  const token = session?.access_token;
+
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState("");
-
-  console.log("files:", files)
 
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -39,8 +45,9 @@ export default function FileListPage() {
       try {
         setLoading(true);
         const res = await fetch(
-          `${API_BASE}/api/files?page=${page}&limit=${limit}&q=${encodeURIComponent(query)}`
-        );
+          `${API_BASE}/api/files?page=${page}&limit=${limit}&q=${encodeURIComponent(query)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         const data = await res.json();
         setFiles(data.items || []);
         setTotal(data.total || 0);

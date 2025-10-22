@@ -82,7 +82,7 @@ class TorchRecommendationTrainer(BaseTrainer):
         """FastAPI 백엔드로 진행률 전송"""
         try:
             httpx.post(
-                f"{self.backend_url}/api/progress/{self.run_type}/{self.model_id}",
+                f"{self.backend_url}/api/status/progress/{self.run_type}/{self.model_id}",
                 json=json,
                 timeout=3.0,
             )

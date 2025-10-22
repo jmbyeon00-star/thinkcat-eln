@@ -15,13 +15,17 @@ type ProjectInfo = {
 
 export default function ProjectTrainPage() {
     const router = useRouter();
+    const { project_id, collection_num, task_type, source_type } = router.query;
     const { setState } = useUserTaskStore()
+    const API_BASE = "http://192.168.1.20:8000";
+    const { data: session } = useSession() as {
+        data: (Session & { access_token?: string }) | null;
+        status: "loading" | "authenticated" | "unauthenticated";
+    };
 
     const [status, setStatus] = useState(false);
-    const { project_id, collection_num, task_type, source_type } = router.query;
     const [projectInfo, setProjectInfo] = useState<ProjectInfo | null>(null);
     const [loading, setLoading] = useState(false);
-    const API_BASE = "http://192.168.1.20:8000";
 
     const [modelName, setModelName] = useState('');
     const [modelDesc, setModelDesc] = useState('');
@@ -31,10 +35,6 @@ export default function ProjectTrainPage() {
     const [maxLength, setMaxLength] = useState(128);
     const [shuffle, setShuffle] = useState(true);
 
-    const { data: session } = useSession() as {
-        data: (Session & { access_token?: string }) | null;
-        status: "loading" | "authenticated" | "unauthenticated";
-    };
     const token = session?.access_token;
 
     useEffect(() => {
@@ -48,7 +48,9 @@ export default function ProjectTrainPage() {
             return;
         }
         setLoading(true);
-        fetch(`${API_BASE}/api/project/${project_id}/stats`)
+        fetch(`${API_BASE}/api/project/${project_id}/stats`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
             .then((res) => res.json())
             .then((data) => {
                 const collectionNumber = data?.project_info?.collection_num ?? 0;
@@ -71,7 +73,10 @@ export default function ProjectTrainPage() {
 
         fetch(`${API_BASE}/api/ai/train/classification/project/${project_id}`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
             credentials: "include",
             body: JSON.stringify({
                 epoch,

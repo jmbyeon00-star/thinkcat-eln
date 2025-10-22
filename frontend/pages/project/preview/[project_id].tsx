@@ -3,6 +3,8 @@ import Head from "next/head";
 import { useEffect, useState } from "react";
 import ProjectLayout from "@/components/layouts/ProjectLayout";
 import { FileText, Save, ArrowLeft, ArrowRight, Loader2, Edit3 } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Session } from "next-auth";
 
 type PreviewItem = {
     application_number: string;
@@ -15,6 +17,12 @@ export default function ProjectPreviewPage() {
     const router = useRouter();
     const { project_id } = router.query;
     const API_BASE = "http://192.168.1.20:8000";
+
+    const { data: session, status } = useSession() as {
+        data: (Session & { access_token?: string }) | null;
+        status: "loading" | "authenticated" | "unauthenticated";
+    };
+    const token = session?.access_token;
 
     const [loading, setLoading] = useState(true);
     const [items, setItems] = useState<PreviewItem[]>([]);
@@ -34,7 +42,9 @@ export default function ProjectPreviewPage() {
         if (!project_id) return;
         async function loadPreview() {
             try {
-                const res = await fetch(`${API_BASE}/api/project/${project_id}/preview`);
+                const res = await fetch(`${API_BASE}/api/project/${project_id}/preview`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
                 if (!res.ok) throw new Error("불러오기 실패");
                 const data = await res.json();
                 setItems(data.items || []);

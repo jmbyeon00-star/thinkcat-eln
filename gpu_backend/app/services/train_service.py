@@ -32,7 +32,7 @@ def train_classification(payload: dict):
     connection, cursor = db_connect()
     try:
         query = """
-            SELECT data_scope, source_type, task_type, collection_num
+            SELECT data_scope, source_type, task_type, collection_num, epoch, learning_rate, batch_size, max_length, shuffle
             FROM MODEL_INFO_TB
             WHERE id=%s AND user_id=%s
         """
@@ -71,6 +71,7 @@ def train_classification(payload: dict):
         "progress_type:": "train"
     }
 
+    print("config 1:", config)
     # 4) 데이터 적재 (project / collection 모두 get_train_data로 위임)
     data_pack, lengths = get_train_data(config)
     if isinstance(data_pack, dict) and data_pack.get("error"):
@@ -85,7 +86,7 @@ def train_classification(payload: dict):
 
     # 7) (선택) 진행률 100 보장 ping
     # try:
-    #     httpx.post(f"{BACKEND_URL}/api/progress/{model_id}", json={"progress": 100, "remaining_time": "0:00:00"}, timeout=3.0)
+    #     httpx.post(f"{BACKEND_URL}/api/status/progress/{model_id}", json={"progress": 100, "remaining_time": "0:00:00"}, timeout=3.0)
     # except Exception:
     #     pass
     
@@ -93,7 +94,7 @@ def train_classification(payload: dict):
     # for i in tqdm(range(100)):
     #     try:
     #         httpx.post(
-    #             f"{BACKEND_URL}/api/progress/{model_id}",
+    #             f"{BACKEND_URL}/api/status/progress/{model_id}",
     #             json={"progress": i + 1},
     #             timeout=5.0,
     #         )
@@ -117,7 +118,7 @@ def train_recommendation(payload: dict):
     connection, cursor = db_connect()
     try:
         query = """
-            SELECT data_scope, source_type, task_type, collection_num
+            SELECT data_scope, source_type, task_type, collection_num, epoch, learning_rate, batch_size, max_length, shuffle
             FROM MODEL_INFO_TB
             WHERE id=%s AND user_id=%s
         """
@@ -184,7 +185,7 @@ def train_recommendation(payload: dict):
 
     # 학습 완료 후 진행률 보고
     try:
-        httpx.post(f"{BACKEND_URL}/api/progress/train/{model_id}", json={"progress": 100, "remaining_time": "0:00:00"}, timeout=3.0)
+        httpx.post(f"{BACKEND_URL}/api/status/progress/train/{model_id}", json={"progress": 100, "remaining_time": "0:00:00"}, timeout=3.0)
     except Exception:
         pass
     finally:

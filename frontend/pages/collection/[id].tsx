@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { 
-  ArrowLeft, 
-  Database, 
-  FileText, 
-  Folder, 
-  Loader2, 
-  ChevronLeft, 
+import {
+  ArrowLeft,
+  Database,
+  FileText,
+  Folder,
+  Loader2,
+  ChevronLeft,
   ChevronRight,
   PlayCircle,
   RefreshCw,
@@ -17,6 +17,8 @@ import {
   CheckSquare
 } from "lucide-react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Session } from "next-auth";
+import { useSession } from "next-auth/react";
 
 // 날짜 포맷 함수 (hydration 오류 방지)
 const formatDate = (dateString?: string) => {
@@ -56,6 +58,12 @@ export default function CollectionDetailPage() {
   const id = params?.id ? String(params.id) : null;
   const API_BASE = "http://192.168.1.20:8000";
 
+  const { data: session, status } = useSession() as {
+    data: (Session & { access_token?: string }) | null;
+    status: "loading" | "authenticated" | "unauthenticated";
+  };
+  const token = session?.access_token;
+
   const [collection, setCollection] = useState<CollectionDetail | null>(null);
   const [dataItems, setDataItems] = useState<ProjectData[]>([]);
   const [page, setPage] = useState(1);
@@ -67,9 +75,12 @@ export default function CollectionDetailPage() {
   // ✅ 실제 데이터 조회
   async function fetchCollection(pageNum = 1) {
     if (!id) return;
+    if (!token) return;
+
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/collection/${id}?page=${pageNum}&limit=${limit}`, {
+        headers: { Authorization: `Bearer ${token}` },
         credentials: "include",
       });
       const data = await res.json();
@@ -246,7 +257,7 @@ export default function CollectionDetailPage() {
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
-                    
+
                     <span className="px-4 text-sm text-zinc-700">
                       페이지 <span className="font-semibold text-blue-600">{page}</span> / {totalPages}
                     </span>
@@ -298,12 +309,12 @@ export default function CollectionDetailPage() {
   );
 }
 
-function RecommendationTrainingPanel({ collection, setDataItems }: { 
-    collection: CollectionDetail,
-    setDataItems: React.Dispatch<React.SetStateAction<any[]>>;
+function RecommendationTrainingPanel({ collection, setDataItems }: {
+  collection: CollectionDetail,
+  setDataItems: React.Dispatch<React.SetStateAction<any[]>>;
 }) {
   const API_BASE = "http://192.168.1.20:8000";
-  
+
   const [params, setParams] = useState({
     epoch: 2,
     batch_size: 16,
@@ -312,7 +323,7 @@ function RecommendationTrainingPanel({ collection, setDataItems }: {
     shuffle: true,
     length: 500,
   });
-  
+
   const [hasTrainedModel, setHasTrainedModel] = useState(0);
   const [modelInfo, setModelInfo] = useState<{ id: number; progress: number; version: number; } | null>(null);
   const [inferenceResults, setInferenceResults] = useState<any[]>([]);
@@ -339,7 +350,7 @@ function RecommendationTrainingPanel({ collection, setDataItems }: {
           progress: data.model_info.progress,
           version: data.version,
         });
-        
+
         if (data.model_info?.model_status === 1) {
           fetchRecommendationResult(data.model_info.id);
         }
@@ -368,22 +379,22 @@ function RecommendationTrainingPanel({ collection, setDataItems }: {
   // ✅ 실제 진행률 SSE
   useEffect(() => {
     if (!modelInfo?.id) return;
-    const es = new EventSource(`${API_BASE}/api/progress/stream/${modelInfo.id}`);
-    
+    const es = new EventSource(`${API_BASE}/api/status/progress/stream/${modelInfo.id}`);
+
     es.onmessage = (e) => {
       const value = Number(e.data);
       setProgress(value);
-      
+
       if (value >= 100) {
         es.close();
         fetch(`${API_BASE}/api/ai/status/rec/${collection.collection_code}`, {
           credentials: "include"
         })
-        .then((r) => r.json())
-        .then((data) => setModelInfo((prev) => prev ? { ...prev, version: data.version } : null));
+          .then((r) => r.json())
+          .then((data) => setModelInfo((prev) => prev ? { ...prev, version: data.version } : null));
       }
     };
-    
+
     es.onerror = () => es.close();
     return () => es.close();
   }, [modelInfo?.id]);
@@ -455,8 +466,8 @@ function RecommendationTrainingPanel({ collection, setDataItems }: {
   async function handleSubmitCart() {
     if (cartItems.length === 0) return alert("바구니가 비어 있습니다.");
     try {
-        setDataItems((prev) => [...prev, ...cartItems]);
-        
+      setDataItems((prev) => [...prev, ...cartItems]);
+
       await fetch(`${API_BASE}/api/cart/add`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -496,7 +507,7 @@ function RecommendationTrainingPanel({ collection, setDataItems }: {
               <div className="w-1 h-5 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
               학습 파라미터
             </h3>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <label className="flex flex-col">
                 <span className="text-sm font-medium text-zinc-700 mb-2">Epoch</span>
@@ -644,7 +655,7 @@ function RecommendationTrainingPanel({ collection, setDataItems }: {
                 <div className="w-1 h-5 bg-gradient-to-b from-emerald-600 to-teal-600 rounded-full" />
                 추천 설정
               </h3>
-              
+
               <label className="flex flex-col mb-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-zinc-700">추천 개수</span>
@@ -664,11 +675,10 @@ function RecommendationTrainingPanel({ collection, setDataItems }: {
               <button
                 onClick={handleInferRecommendation}
                 disabled={!modelInfo?.id || loading}
-                className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl transition-all shadow-md font-medium ${
-                  !modelInfo?.id || loading
-                    ? "bg-gray-400 cursor-not-allowed text-white"
-                    : "bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700"
-                }`}
+                className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl transition-all shadow-md font-medium ${!modelInfo?.id || loading
+                  ? "bg-gray-400 cursor-not-allowed text-white"
+                  : "bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700"
+                  }`}
               >
                 {loading ? (
                   <>

@@ -7,7 +7,7 @@ export default function useProgressListener(targetId: number | string) {
 
     useEffect(() => {
         if (!targetId) return
-        const source = new EventSource(`/api/progress/stream/${targetId}`)
+        const source = new EventSource(`/api/status/stream/${targetId}`)
 
         source.onmessage = (event) => {
             const data = JSON.parse(event.data)
@@ -15,7 +15,6 @@ export default function useProgressListener(targetId: number | string) {
 
             // 상태에 따라 전역변수 갱신
             setState({
-                progress: data.progress ?? 0,
                 status: data.status ?? 'RUNNING',
                 isBusy: data.status === 'RUNNING',
             })

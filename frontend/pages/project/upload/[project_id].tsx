@@ -32,6 +32,10 @@ function ProjectUploadPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
+  const totalPages = Math.ceil(rows.length / rowsPerPage);
+  const currentRows = rows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   // 프로젝트 정보 불러오기
   useEffect(() => {

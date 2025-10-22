@@ -1,7 +1,9 @@
-"use client"; 
+"use client";
 
 import { useEffect, useState } from "react";
 import { Folder, Database, FileText, Search, LayoutGrid, Table, ChevronLeft, ChevronRight } from "lucide-react";
+import { Session } from "next-auth";
+import { useSession } from "next-auth/react";
 
 type Collection = {
   id: number;
@@ -17,6 +19,13 @@ type Collection = {
 
 export default function CollectionListPage() {
   const API_BASE = "http://192.168.1.20:8000";
+  const { data: session, status } = useSession() as {
+    data: (Session & { access_token?: string }) | null;
+    status: "loading" | "authenticated" | "unauthenticated";
+  };
+  const token = session?.access_token;
+
+
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -30,9 +39,10 @@ export default function CollectionListPage() {
       try {
         setLoading(true);
         const res = await fetch(
-          `${API_BASE}/api/collection?page=${page}&limit=${limit}&q=${encodeURIComponent(query)}`,
-          { credentials: "include" }
-        );
+          `${API_BASE}/api/collection?page=${page}&limit=${limit}&q=${encodeURIComponent(query)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: "include"
+        });
         const data = await res.json();
         setCollections(data.items || []);
         setTotal(data.total || 0);
@@ -339,11 +349,10 @@ export default function CollectionListPage() {
                 <button
                   key={num}
                   onClick={() => setPage(num)}
-                  className={`min-w-[40px] px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                    num === page
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
-                      : "border border-zinc-200 text-zinc-700 hover:bg-zinc-50"
-                  }`}
+                  className={`min-w-[40px] px-3 py-2 rounded-lg text-sm font-medium transition-all ${num === page
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                    : "border border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                    }`}
                 >
                   {num}
                 </button>

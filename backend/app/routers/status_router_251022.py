@@ -8,12 +8,12 @@ import asyncio
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-router = APIRouter(prefix="/progress", tags=["progress-sse"])
+router = APIRouter(prefix="/status", tags=["status"])
 
-@router.get("/stream/{target_id}")
+@router.get("/progress/stream/{target_id}")
 async def stream_progress(target_id: str):
     return StreamingResponse(progress_service._event_generator(target_id), media_type="text/event-stream")
 
-@router.post("/{target_type}/{target_id}")
+@router.post("/progress/{target_type}/{target_id}")
 async def update_progress(target_type: str, target_id: str, body: dict, session: Session = Depends(get_session)):
     return await progress_service.update_progress_sse(session, target_type, target_id, body)

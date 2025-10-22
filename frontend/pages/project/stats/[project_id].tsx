@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, PieLabelRenderProps, Legend } from "recharts";
 import ProjectLayout from "@/components/layouts/ProjectLayout";
 import { BarChart3, AlertTriangle, FileText, CheckCircle, XCircle, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Session } from "next-auth";
 
 type ProjectInfo = {
   id: number;
@@ -49,16 +51,25 @@ const CustomTooltip = ({ active, payload }: any) => {
 
 export default function ProjectStatsPage() {
   const router = useRouter();
+  const API_BASE = "http://192.168.1.20:8000";
   const { project_id } = router.query;
+
+  const { data: session, status: sessionStatus } = useSession() as {
+    data: (Session & { access_token?: string }) | null;
+    status: "loading" | "authenticated" | "unauthenticated";
+  };
+  const token = session?.access_token;
+
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const API_BASE = "http://192.168.1.20:8000";
   const MIN_PER_GROUP = 5;
 
   useEffect(() => {
     if (!project_id) return;
     setLoading(true);
-    fetch(`${API_BASE}/api/project/${project_id}/stats`)
+    fetch(`${API_BASE}/api/project/${project_id}/stats`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
       .then(setStats)
       .catch((err) => console.error("통계 불러오기 실패:", err))
@@ -349,8 +360,8 @@ export default function ProjectStatsPage() {
               onClick={goNext}
               disabled={!canProceed}
               className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2 ${canProceed
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700'
-                  : 'bg-zinc-300 text-zinc-500 cursor-not-allowed'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700'
+                : 'bg-zinc-300 text-zinc-500 cursor-not-allowed'
                 }`}
               title={
                 canProceed

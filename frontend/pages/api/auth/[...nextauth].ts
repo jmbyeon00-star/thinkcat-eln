@@ -12,8 +12,8 @@ export const authOptions: AuthOptions = {
                 password: { label: "비밀번호", type: "password" },
             },
             async authorize(credentials) {
-                const res = await fetch(`${process.env.BACKEND_URL}/api/auth/login`, {
                 // const res = await fetch(`http://192.168.1.20:8000/api/auth/login`, {
+                const res = await fetch(`${process.env.BACKEND_URL}/api/auth/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -41,12 +41,12 @@ export const authOptions: AuthOptions = {
 
     callbacks: {
         async jwt({ token, user }: { token: JWT; user?: User }) {
-        if (user) (token as any).access_token = (user as any).token;
-        return token;
+            if (user) (token as any).access_token = (user as any).token;
+            return token;
         },
         async session({ session, token }: { session: Session; token: JWT }) {
-        (session as any).access_token = (token as any).access_token;
-        return session;
+            (session as any).access_token = (token as any).access_token;
+            return session;
         },
     },
 

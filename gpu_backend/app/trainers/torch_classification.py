@@ -3,10 +3,12 @@ from __future__ import annotations
 from app.trainers.base import BaseTrainer
 from app.utils.dataloader import prepare_dataframe
 from app.utils.collate import build_dataloaders
-from app.utils.common import get_best_gpu
+from app.utils.common import get_best_gpu, safe_create_task
 
 import os, json, time
 import httpx
+import asyncio
+
 import torch, gc
 import torch.nn.functional as F
 from torch.optim import AdamW
@@ -79,16 +81,48 @@ class TorchTextClassifierTrainer(BaseTrainer):
         self.model.to(self.device)
         self.optimizer = AdamW(self.model.parameters(), lr=self.learning_rate)
 
-    def _progress(self, json: dict):
-        """FastAPI 백엔드로 진행률 전송"""
+    # def _status(self, json: dict):
+    #     """FastAPI 백엔드로 진행률 전송"""
+    #     try:
+    #         httpx.post(
+    #             f"{self.backend_url}/api/status/{self.run_type}/{self.user_id}",
+    #             json=json,
+    #             timeout=3.0,
+    #         )
+    #     except Exception:
+    #         pass
+    async def _status(self, json: dict):
+        """FastAPI 백엔드로 상태 전송 (비동기 안전 버전)"""
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                await client.post(
+                    f"{self.backend_url}/api/status/{self.run_type}/{self.user_id}",
+                    json=json,
+                )
+        except Exception:
+            pass
+
+    # def _progress(self, json: dict):
+    #     """FastAPI 백엔드로 진행률 전송"""
+    #     try:
+    #         target_id = self.user_id
+    #         target_id = self.model_id if self.run_type == "train" else self.file_id
+    #         httpx.post(
+    #             f"{self.backend_url}/api/status/progress/{self.run_type}/{target_id}",
+    #             json=json,
+    #             timeout=3.0,
+    #         )
+    #     except Exception:
+    #         pass
+    async def _progress(self, json: dict):
+        """FastAPI 백엔드로 진행률 전송 (비동기 안전 버전)"""
         try:
             target_id = self.model_id if self.run_type == "train" else self.file_id
-            target_id = self.user_id
-            httpx.post(
-                f"{self.backend_url}/api/progress/{self.run_type}/{target_id}",
-                json=json,
-                timeout=3.0,
-            )
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                await client.post(
+                    f"{self.backend_url}/api/status/progress/{self.run_type}/{target_id}",
+                    json=json,
+                )
         except Exception:
             pass
 
@@ -137,6 +171,11 @@ class TorchTextClassifierTrainer(BaseTrainer):
         data: {"train": list[dict], "valid": list[dict]} 혹은 {"raw": list[dict]}
         또는 train_service에서 raw_data만 넣었다면 self.params로 처리.
         """
+        print("config 2:")
+        print("학습률:", self.learning_rate)
+        print("최대 사이즈:", self.max_length)
+        print("배치 사이즈:", self.batch_size)
+        print("셔플:", self.shuffle)
         start = time.time()
         enc = labels = out = None  # 정리 시 안전
 
@@ -168,11 +207,7 @@ class TorchTextClassifierTrainer(BaseTrainer):
         self.steps_completed = 0
         best_acc = -1.0
 
-        self._progress({
-            "progress": 1,
-            "status": "RUNNING",
-            "remaining_time": None
-        })
+        safe_create_task(self._progress({"progress": 1, "status": "RUNNING", "remaining_time": None}))
         for epoch in range(self.n_epochs):
             # train
             self.model.train()
@@ -197,11 +232,7 @@ class TorchTextClassifierTrainer(BaseTrainer):
                 elapsed = time.time() - start
                 est_total = elapsed / max(1e-9, self.steps_completed / max(1, self.total_steps))
                 remaining = str(timedelta(seconds=int(est_total - elapsed)))
-                self._progress({
-                    "progress": min(prog, 95),
-                    "status": "RUNNING",
-                    "remaining_time": remaining
-                })
+                safe_create_task(self._progress({"progress": min(prog, 95), "status": "RUNNING", "remaining_time": remaining }))
 
             train_loss = t_loss / max(1, t_count)
             train_acc = t_correct / max(1, t_count)
@@ -239,11 +270,9 @@ class TorchTextClassifierTrainer(BaseTrainer):
                 self.model.save_pretrained(save_dir)
 
         # cleanup
-        self._progress({
-            "progress": 100,
-            "status": "COMPLETED",
-            "remaining_time": "0:00:00"
-        })
+        safe_create_task(self._progress({"progress": 100, "status": "COMPLETED", "remaining_time": "0:00:00"}))
+        safe_create_task(self._status({"status": "COMPLETED"}))
+
         try:
             if enc is not None: del enc
             if labels is not None: del labels
@@ -254,11 +283,7 @@ class TorchTextClassifierTrainer(BaseTrainer):
         gc.collect()
     
     def infer(self, packaged: dict):
-        self._progress({
-            "progress": 1,
-            "status": "RUNNING",
-            "remaining_time": None
-        })
+        safe_create_task(self._progress({"progress": 1, "status": "RUNNING", "remaining_time": None}))
         results = []
 
         texts = packaged["data"]["source"].astype(str).tolist()
@@ -273,17 +298,10 @@ class TorchTextClassifierTrainer(BaseTrainer):
             for t, p, pr in zip(batch, preds, probs.cpu().tolist()):
                 results.append({"source": t, "label": int(p), "prob": max(pr)})
 
-            self._progress({
-                "progress": min(100, int(i/len(texts)*100)),
-                "status": "RUNNING",
-                "remaining_time": None
-            })
+            safe_create_task(self._progress({"progress": min(100, int(i/len(texts)*100)), "status": "RUNNING", "remaining_time": None}))
 
-        self._progress({
-            "progress": 100,
-            "status": "COMPLETED",
-            "remaining_time": "0:00:00"
-        })
+        safe_create_task(self._progress({"progress": 100, "status": "COMPLETED", "remaining_time": "0:00:00" }))
+        safe_create_task(self._status({"status": "COMPLETED"}))
         
         gc.collect()
         torch.cuda.empty_cache()

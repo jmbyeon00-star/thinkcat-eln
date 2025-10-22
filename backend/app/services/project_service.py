@@ -307,13 +307,12 @@ async def insert_project_data_from_json(db: Session, project_id: int, items: lis
     """
     JSON 형태로 업로드된 데이터 처리 (application_number → Elasticsearch에서 vector/title/abstract 병합)
     """
-    print("?")
     if not items:
         return 0
-    print(items, "<< 2")
+
     # 1️⃣ 출원번호 리스트 추출
     ids = [str(row.get("application_number")) for row in items if row.get("application_number")]
-    print(ids, "<< 2")
+
     # 2️⃣ DataFrame으로 변환
     df = pd.DataFrame(items)
     if "application_number" not in df.columns:
