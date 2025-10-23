@@ -10,7 +10,6 @@ from app.schemas.project_schema import ProjectCreate, ProjectResponse
 from app.schemas.search_schema import PatentSearchRequest
 from app.utils.security import get_current_user_from_request
 
-import os, json
 import traceback
 
 router = APIRouter(prefix="/project", tags=["project"])
@@ -108,57 +107,38 @@ async def upload_project_source(
     project_id: int,
     request: Request,
     session: Session = Depends(get_session),
-    user_email: str = Form(...),
-    source_type: str = Form(...),
-    file: UploadFile = File(...),
 ):
-    print("hello")
+    """
+    프로젝트 파일 업로드 및 데이터 삽입
+    """
+    content_type = request.headers.get("content-type", "")
     try:
-        # """
-        # 프로젝트 파일 업로드 및 데이터 삽입
-        # """
-        user_id = get_current_user_from_request(request)
-        content_type = request.headers.get("content-type", "")
-        
         if "application/json" in content_type:
             body = await request.json()
-            file_data = body.get("items", [])
-            
-            if not file_data:
+            items = body.get("items", [])
+            print(">>>>>", items)
+            if not items:
                 raise HTTPException(status_code=400, detail="No items found in body.")
-            count = await project_service.insert_project_data_with_file(
-                db=session,
-                user_id=user_id,
-                project_id=project_id,
-                file_data=file_data
-            )
+            count = await project_service.insert_project_data_from_json(session, project_id, items)
             return {"status": "success", "inserted": count}
 
         elif "multipart/form-data" in content_type:
-            print("?")
-            # form = await request.form()
-            # file = form.get("file")
-            # user_email = int(form.get("user_email", 0))
-            # project_code = form.get("project_code", "")
-            
-            file_data = await file.read()
-            await file.close()
-
-
-            base_dir = f"/app/users/{user_id}/data/classification/{project_id}"
-            os.makedirs(base_dir, exist_ok=True)
-
-            save_path = os.path.join(base_dir, f"{project_id}_{file.filename}")
-            with open(save_path, "wb") as f:
-                f.write(file_data)
-
-            return await insert_project_data_with_file(
+            form = await request.form()
+            file = form.get("file")
+            user_id = int(form.get("user_id", 0))
+            project_type = form.get("project_type", "file")
+            project_code = form.get("project_code", "")
+            project_name = form.get("project_name", "")
+            count = await insert_project_data_service(
                 db=session,
                 user_id=user_id,
                 project_id=project_id,
-                file_data=file_data,
+                project_type=project_type,
+                project_code=project_code,
+                project_name=project_name,
+                file=file,
             )
-            # return {"status": "success", "inserted": count}
+            return {"status": "success", "inserted": count}
 
         else:
             raise HTTPException(status_code=415, detail="Unsupported content type")

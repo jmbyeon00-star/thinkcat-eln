@@ -38,14 +38,9 @@ function ProjectUploadPage() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [rows, setRows] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const [originalFile, setOriginalFile] = useState<File | null>(null);
-  const [hasEdited, setHasEdited] = useState(false);
-
-
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
   const totalPages = Math.ceil(rows.length / rowsPerPage);
@@ -73,8 +68,6 @@ function ProjectUploadPage() {
   // 파일 읽기 (프론트 메모리)
   async function handleFileUpload(f: File) {
     setUploading(true);
-    setOriginalFile(f); // 원본 파일 저장
-
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -85,7 +78,6 @@ function ProjectUploadPage() {
         const jsonData = XLSX.utils.sheet_to_json(firstSheet);
         setRows(jsonData as any[]);
         setCurrentPage(1);
-        setHasEdited(false); // 새 파일 올리면 수정 상태 리셋
 
       } catch (e) {
         alert("파일을 읽는 중 오류가 발생했습니다.");
@@ -94,12 +86,10 @@ function ProjectUploadPage() {
       }
     };
     reader.readAsArrayBuffer(f);
-    setUploading(false);
   }
 
   // 개별 셀 수정
   function updateCell(index: number, key: string, value: string) {
-    setHasEdited(true); // 수정 플래그 활성화
     setRows((prev) =>
       prev.map((r, i) => (i === index ? { ...r, [key]: value } : r))
     );
@@ -113,53 +103,22 @@ function ProjectUploadPage() {
 
   // 백엔드로 전송
   async function handleSave() {
-    if (!originalFile) {
-      alert("파일이 없습니다.");
+    if (rows.length === 0) {
+      alert("업로드된 데이터가 없습니다.");
       return;
     }
     setSaving(true);
     try {
-      const formData = new FormData();
-
-      if (hasEdited) {
-        // ✅ 수정된 경우: rows → 새 엑셀 파일 생성
-        const ws = XLSX.utils.json_to_sheet(rows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-
-        const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-        const blob = new Blob([wbout], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        });
-        const newFile = new File([blob], "edited_" + originalFile.name, {
-          type: blob.type,
-        });
-        formData.append("file", newFile);
-      } else {
-        // ✅ 수정이 없는 경우: 원본 파일 그대로 전송
-        formData.append("file", originalFile);
-      }
-
-      // ✅ 공통 메타데이터
-      formData.append("project_id", String(project_id));
-      formData.append("user_email", String(session?.user?.email || ""));
-      formData.append("source_type", "upload");
-
-      // console.log("*:", Array.from(formData.entries()));
-
       const res = await fetch(`${API_BASE}/api/project/${project_id}/source/upload`, {
         method: "POST",
         headers: {
-          // "Content-Type": "application/json",
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        // body: JSON.stringify({ items: rows }),
-        body: formData,
+        body: JSON.stringify({ items: rows }),
       });
-
       if (!res.ok) throw new Error("저장 실패");
-      alert(hasEdited ? "✅ 수정 후 저장 완료!" : "✅ 원본 파일 저장 완료!");
-      setHasEdited(false);
+      alert("✅ 저장 완료!");
     } catch (e: any) {
       alert(e.message || "저장 실패");
     } finally {

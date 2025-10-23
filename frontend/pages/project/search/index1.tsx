@@ -41,9 +41,10 @@ export default function ProjectSearchIndex() {
     }
 
     const taskOptions = [
-        { value: "classification", label: "단일 분류", desc: "하나의 카테고리로 분류" },
-        { value: "multilabel", label: "멀티라벨 분류", desc: "여러 카테고리로 분류" },
-        { value: "regression", label: "회귀", desc: "연속적인 값 예측" },
+        { value: "classification", label: "특허 분류", desc: "하나의 카테고리로 분류" },
+        // { value: "classification", label: "단일 분류", desc: "하나의 카테고리로 분류" },
+        // { value: "multilabel", label: "멀티라벨 분류", desc: "여러 카테고리로 분류" },
+        // { value: "regression", label: "회귀", desc: "연속적인 값 예측" },
     ];
 
     return (
@@ -176,7 +177,7 @@ export default function ProjectSearchIndex() {
                                 <div className="flex items-start gap-3">
                                     <div className="bg-cyan-500 text-white rounded-full p-1.5 mt-0.5">
                                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                         </svg>
                                     </div>
                                     <div className="flex-1">
@@ -184,7 +185,7 @@ export default function ProjectSearchIndex() {
                                             프로젝트 생성 안내
                                         </p>
                                         <p className="text-xs text-cyan-800 leading-relaxed">
-                                            프로젝트를 생성한 후 데이터베이스에서 원하는 데이터를 검색하여 추가할 수 있습니다. 
+                                            프로젝트를 생성한 후 데이터베이스에서 원하는 데이터를 검색하여 추가할 수 있습니다.
                                             작업 유형은 나중에 변경할 수 없으니 신중하게 선택해주세요.
                                         </p>
                                     </div>

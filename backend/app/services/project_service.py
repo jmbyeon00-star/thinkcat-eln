@@ -8,7 +8,9 @@ from app.utils.common import *
 
 from collections import defaultdict
 from datetime import datetime
+
 import uuid
+import traceback
 import numpy as np
 
 def create_project(req: ProjectCreate, session: Session, user_id: int) -> ProjectInfo:
@@ -303,40 +305,69 @@ from app.models.collection_model import CollectionInfo
 
 ELASTICSEARCH_HOST = "elasticsearch"  # docker-compose에서 ES 컨테이너 이름
 
-async def insert_project_data_from_json(db: Session, project_id: int, items: list[dict]) -> int:
-    """
-    JSON 형태로 업로드된 데이터 처리 (application_number → Elasticsearch에서 vector/title/abstract 병합)
-    """
-    if not items:
-        return 0
+async def insert_project_data_with_file(db: Session, user_id: int, project_id: int, file_data: list[dict]) -> int:
+    try:
+        """
+        JSON 형태로 업로드된 데이터 처리 (application_number → Elasticsearch에서 vector/title/abstract 병합)
+        """
+        if not file_data:
+            return 0
 
-    # 1️⃣ 출원번호 리스트 추출
-    ids = [str(row.get("application_number")) for row in items if row.get("application_number")]
+        # DataFrame으로 변환
+        df = pd.DataFrame(file_data)
+        
+        # Elasticsearch에서 vector 정보 조회
+        if "application_number" not in df.columns:
+            print("[INFO] No application_number column — inserting raw file data")
 
-    # 2️⃣ DataFrame으로 변환
-    df = pd.DataFrame(items)
-    if "application_number" not in df.columns:
-        raise ValueError("application_number column is required in uploaded data")
+            # 컬렉션 이름 추출 (없으면 default)
+            # cname = df.columns[0] if "collection_name" in df.columns else "default"
+            # ccode = str(uuid.uuid4())
 
-    # 3️⃣ Elasticsearch에서 vector 정보 조회
-    enriched_data = get_vector_by_application_number(df)
+            # # 평균 벡터 없이 COLLECTION_INFO_TB 기록
+            # insert_collection_info(
+            #     db=db,
+            #     project_id=project_id,
+            #     collection_name=cname,
+            #     collection_code=ccode,
+            #     data_rows=file_data,
+            #     mean_vector=None,  # 벡터 없음
+            # )
 
-    # 4️⃣ collection_name, collection_code 부여
-    collection_codes = {}
-    for row in enriched_data:
-        cname = row.get("collection_name") or "default"
-        if cname not in collection_codes:
-            collection_codes[cname] = str(uuid.uuid4())
-        row["collection_code"] = collection_codes[cname]
+            # # 파일 데이터 PROJECT_DATA_TB 저장
+            # insert_project_data_by_file(db, project_id, file_data)
 
-    # 5️⃣ CollectionInfo 테이블 삽입
-    for cname, ccode in collection_codes.items():
-        insert_collection_info(db, project_id, cname, ccode, enriched_data)
+            # db.commit()
+            # return {"status": "success", "inserted": len(file_data)}
 
-    # 6️⃣ ProjectData 테이블 삽입
-    insert_project_data_by_file(db, project_id, enriched_data)
+            return {"status": "success"}
+            
+        else:
+            print("OK?")
+            # ids = [str(row.get("application_number")) for row in file_data if row.get("application_number")]
+            # enriched_data = get_vector_by_application_number(df)
 
-    return len(enriched_data)
+            # # 4️⃣ collection_name, collection_code 부여
+            # collection_codes = {}
+            # for row in enriched_data:
+            #     cname = row.get("collection_name") or "default"
+            #     if cname not in collection_codes:
+            #         collection_codes[cname] = str(uuid.uuid4())
+            #     row["collection_code"] = collection_codes[cname]
+
+            # # 5️⃣ CollectionInfo 테이블 삽입
+            # for cname, ccode in collection_codes.items():
+            #     insert_collection_info(db, project_id, cname, ccode, enriched_data)
+
+            # # 6️⃣ ProjectData 테이블 삽입
+            # insert_project_data_by_file(db, project_id, enriched_data)
+            # return {"status": "success", "inserted": len(enriched_data)}
+
+            return {"status": "success"}
+
+    except Exception as e:
+        tb = traceback.format_exc()
+        raise HTTPException(status_code=500, detail=f"{e}\n{tb}")
 
 
 def get_vector_by_application_number(df: pd.DataFrame):

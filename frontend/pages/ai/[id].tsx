@@ -209,7 +209,7 @@ export default function ModelDetailPage() {
 
     } catch (err) {
       setInferResult({ error: "추론 요청 중 오류가 발생했습니다." });
-      setState({ isBusy: false, status: 'IDLE' })
+      setState({ isBusy: false, status: 'AVAILABLE' })
 
     } finally {
       setInferLoading(false);

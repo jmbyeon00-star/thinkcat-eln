@@ -1,0 +1,42 @@
+# 1. 공식 Node 이미지 사용 (알파인보다 안정성 높은 슬림)
+# FROM node:20-alpine
+FROM node:20-slim AS builder
+
+# 2. 작업 디렉토리 설정
+WORKDIR /app
+
+# 3. 종속성 설치 (package.json과 lock 파일만 복사)
+# COPY ./frontend/package.json .
+COPY ./frontend/package*.json ./
+COPY ../.env ./.env
+
+# 4. 의존성 설치 (npm ci: lock 기반 설치로 더 안전함)
+# RUN npm ci
+RUN npm install
+
+# 5. 전체 소스 복사
+COPY ./frontend .
+
+# 6. Next.js 빌드
+RUN npm run build
+
+# =============================
+# 7. 경량화된 런타임 이미지로 옮김
+FROM node:20-slim AS runner
+
+# Next.js가 필요한 시스템 변수 설정
+ENV NODE_ENV=production
+
+WORKDIR /app
+
+# 8. node_modules 및 .next 복사
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
+
+# 9. 포트 개방
+EXPOSE 3000
+
+# 10. Next.js 시작
+CMD ["npm", "run", "start"]

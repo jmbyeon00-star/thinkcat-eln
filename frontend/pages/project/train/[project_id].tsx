@@ -101,7 +101,7 @@ export default function ProjectTrainPage() {
             })
             .catch((err) => {
                 console.error("학습 요청 실패:", err);
-                setState({ isBusy: false, status: 'IDLE' })
+                setState({ isBusy: false, status: 'AVAILABLE' })
                 setLoading(false);
                 alert("학습 시작 실패");
             });

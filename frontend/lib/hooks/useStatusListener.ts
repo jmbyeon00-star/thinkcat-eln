@@ -30,7 +30,7 @@ export default function useStatusListener(targetId: number | string | null) {
         source.onerror = () => {
             console.warn('SSE 연결 끊김')
             source.close()
-            setTimeout(() => useStatusListener(targetId), 3000)
+            setTimeout(() => useStatusListener(targetId), 1000)
         }
 
         return () => source.close()

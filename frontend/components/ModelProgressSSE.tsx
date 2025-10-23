@@ -32,6 +32,12 @@ export default function ModelProgressSSE({
         es.onerror = (err) => {
             console.error("SSE error:", err);
             es.close();
+            setTimeout(() => {
+                const retry = new EventSource(`${base}/api/status/progress/stream/${targetId}`);
+                // 같은 로직 다시 연결
+                retry.onmessage = es.onmessage;
+                retry.onerror = es.onerror;
+            }, 1000);
         };
 
         return () => es.close();

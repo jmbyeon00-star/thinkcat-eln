@@ -6,8 +6,6 @@ from app.services import patent_service
 from app.services import patent_price_service, patent_citation_service, patent_navigation_service, patent_npecheck_service
 from app.schemas.patent_schema import PatentPriceRequest, PatentPriceResponse
 
-
-
 router = APIRouter(prefix="/patent", tags=["patent"])
 
 @router.post("/price", response_model=PatentPriceResponse)

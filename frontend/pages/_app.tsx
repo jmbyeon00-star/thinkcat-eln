@@ -32,7 +32,6 @@ export default function MyApp({
   Component,
   pageProps: { session, ...pageProps }
 }: AppProps) {
-  // const userId = getUserId() ?? null
 
   return (
     <SessionProvider session={session}>

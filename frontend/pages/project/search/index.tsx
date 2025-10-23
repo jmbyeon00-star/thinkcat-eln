@@ -49,9 +49,10 @@ export default function ProjectSearchIndex() {
     }
 
     const taskOptions = [
-        { value: "classification", label: "단일 분류", desc: "하나의 카테고리로 분류" },
-        { value: "multilabel", label: "멀티라벨 분류", desc: "여러 카테고리로 분류" },
-        { value: "regression", label: "회귀", desc: "연속적인 값 예측" },
+        { value: "classification", label: "특허 분류", desc: "하나의 카테고리로 분류" },
+        // { value: "classification", label: "단일 분류", desc: "하나의 카테고리로 분류" },
+        // { value: "multilabel", label: "멀티라벨 분류", desc: "여러 카테고리로 분류" },
+        // { value: "regression", label: "회귀", desc: "연속적인 값 예측" },
     ];
 
     return (

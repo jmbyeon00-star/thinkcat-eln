@@ -34,9 +34,14 @@ async def _event_generator(target_id: str):
             yield f"data: {data}\n\n"
     except asyncio.CancelledError:
         print(f"[SSE] Disconnected: {target_id}")
+        raise  # 꼭 re-raise 해야 정상 종료됨
+    except Exception as e:
+        print(f"[SSE] Error in generator ({target_id}): {e}")
     finally:
         if key in _subscribers:
             _subscribers[key].remove(q)
+            if not _subscribers[key]:
+                del _subscribers[key]
 
 async def update_status_sse(session: Session, run_type: str, user_id: str, body: dict):
     user = session.query(User).filter(User.id == int(user_id)).first()
@@ -76,11 +81,17 @@ async def _progress_event_generator(target_id: str):
             # SSE 포맷: "data: ..." + 빈 줄
             yield f"data: {data}\n\n"
     except asyncio.CancelledError:
-        print(f"[SSE] Disconnected: {target_id}")
+        print(f"[SSE] Progress stream disconnected: {target_id}")
+        raise
+    except Exception as e:
+        print(f"[SSE] Progress stream error ({target_id}): {e}")
     finally:
         if key in _progress_subscribers:
             _progress_subscribers[key].remove(q)
-
+            if not _progress_subscribers[key]:
+                del _progress_subscribers[key]
+        print(f"[SSE] Progress subscriber removed: {target_id}")
+        
 # ------------------------
 # 진행률 업데이트
 # ------------------------
