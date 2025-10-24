@@ -1,0 +1,110 @@
+name: Build and Test
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '14'
+
+    - name: Install frontend dependencies
+      working-directory: frontend
+      run: |
+        export NODE_ENV=development
+        npm ci
+
+    - name: Build frontend with extended memory
+      working-directory: frontend
+      run: |
+        unset CI
+        NODE_OPTIONS=--max-old-space-size=6144 npm run build
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install backend dependencies (without pymilvus)
+      working-directory: backend
+      run: |
+        pip install -r requirements.txt
+
+    - name: Install pymilvus separately
+      working-directory: backend
+      run: |
+        pip install pymilvus==2.5.4 --no-deps
+        pip install flake8 coverage
+
+    - name: Run flake8 linter
+      working-directory: backend
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Run test with coverage
+      working-directory: backend
+      env:
+        LOCALHOST: localhost
+        ELASTICSEARCH_HOST: ${{ secrets.ELASTICSEARCH_HOST }}
+        OPS_SERVER_HOST: ${{ secrets.OPS_SERVER_HOST }}
+        GPU_SERVER_URL: ${{ secrets.GPU_SERVER_URL }}
+      run: |
+          coverage run -m unittest discover
+          coverage report
+          coverage xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./backend/coverage.xml
+        flags: unittests
+        name: codecov-backend
+    
+    - name: Check if secrets are working
+      run: |
+        echo "OPS_SERVER_HOST: ${{ secrets.OPS_SERVER_HOST }}"
+        echo "OPS_SERVER_USER: ${{ secrets.OPS_SERVER_USER }}"
+    
+    - name: Check build(dist) folder
+      run: ls -la frontend/build
+
+    - name: Upload frontend to OPS Server
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.OPS_SERVER_HOST }}
+        username: ${{ secrets.OPS_SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: frontend/build/*
+        target: /home/ipforce/www/
+
+    # - name: Upload backend to OPS Server
+    #   uses: appleboy/scp-action@master
+    #   with:
+    #     host: ${{ secrets.OPS_SERVER_HOST }}
+    #     username: ${{ secrets.OPS_SERVER_USER }}
+    #     key: ${{ secrets.SSH_PRIVATE_KEY }}
+    #     source: backend/*
+    #     target: /home/ipforce/
+
+    # - name: Upload gpu_backend to GPU Server
+    #   uses: appleboy/scp-action@master
+    #   with:
+    #     host: ${{ secrets.GPU_SERVER_HOST }}
+    #     port: 7001
+    #     username: ${{ secrets.GPU_SERVER_USER }}
+    #     key: ${{ secrets.SSH_PRIVATE_KEY }}
+    #     source: gpu_backend/
+    #     target: /home/production/ipforce/gpu_backend/
+        

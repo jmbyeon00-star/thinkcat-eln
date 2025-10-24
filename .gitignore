@@ -1,4 +1,6 @@
-# Node.js / Next.js
+########################################
+# 🌐 Node.js / Next.js
+########################################
 node_modules/
 .next/
 out/
@@ -6,23 +8,39 @@ dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
 pnpm-lock.yaml
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.vscode/
 
 # Python / FastAPI
 __pycache__/
-models/
-users/
-legacy/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
 *.egg-info/
 .venv/
 .env
-.env.local
+.env.*
 *.db
 
+# 로컬/개인 데이터 및 캐시
+# models/
+users/
+legacy/
+
+########################################
+# 🧠 GPU Backend / Model Artifacts
+########################################
+# 모델 결과물, 체크포인트, 토크나이저 파일 등
+*.bin
+*.pt
+*.ckpt
+*tokenizer.json
+*tokenizer_config.json
+vocab.txt
+
+# 훈련/추론 결과 디렉터리 (유저별·모델별 데이터)
 gpu_backend/models/
 gpu_backend/users/
 gpu_backend/app/services/model/
@@ -32,22 +50,16 @@ backend/app/services/model/
 backend/app/services/data/
 backend/app/services/stdSc/
 
-
-# 강화
-*.bin
-*.pt
-*.ckpt
-*tokenizer.json
-*tokenizer_config.json
-vocab.txt
-gpu_backend/**/users/
-gpu_backend/gpu_backend/users/
-gpu_backend/ipforce_next/gpu_backend/users/
-gpu_backend/**/models/
-EOF
+# 로컬 학습용 유저/모델 데이터
+gpu_backend/users/
+gpu_backend/models/
+backend/users/
+backend/models/
 
 
-# Docker / Infra
+########################################
+# 🐳 Docker / Infra
+########################################
 docker-compose.override.yml
 *.pid
 *.log
@@ -55,9 +67,22 @@ docker-compose.override.yml
 *.tmp
 *.swp
 
-# System
+########################################
+# 💻 System / IDE
+########################################
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 temp/
+__MACOSX/
+
+########################################
+# 🧩 기타 강화
+########################################
+# 빌드 산출물 폴더 (예: public에 자동 생성되는 임시 캐시)
+frontend/.vercel/
+frontend/.turbo/
+infra/.cache/
+
+# End of .gitignore
