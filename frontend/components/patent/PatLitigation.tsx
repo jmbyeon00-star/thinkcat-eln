@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { patentByNpecheck } from "@/lib/api"; 
 
 type NpeItem = {
-  RGSTNO: string;
-  RGT_TRNSF_SEQ: number;
-  RGTR_SEQ: number;
-  RGTR_CD: string;
-  RGTR_NM: string;
+  reg_number: string;
+  rgt_trnsf_seq: number;
+  rgtr_seq: number;
+  rgtr_cd: string;
+  rgtr_nm: string;
   npe_prob: number;
 };
 
@@ -25,22 +26,20 @@ export default function PatLitigation({ applicationNumber }: PatLitigationProps)
     if (!applicationNumber) return;
     setIsLoading(true);
 
-    const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-    fetch(`${base}/api/patent/npecheck?appNumber=${applicationNumber}`)
-      .then((res) => res.json())
+    patentByNpecheck(applicationNumber)
       .then((data) => setNpeData(Array.isArray(data) ? data : []))
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, [applicationNumber]);
 
   const handleClick = (code?: string) => {
-    if (code) router.push(`/company/${code}`);
+    if (code) router.push(`/search/company/${code}`);
   };
 
   const groupByRGT_TRNSF_SEQ = (data: NpeItem[]) => {
     const grouped: Record<string, NpeItem[]> = {};
     data.forEach((item) => {
-      const key = item.RGT_TRNSF_SEQ.toString();
+      const key = item.rgt_trnsf_seq.toString();
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(item);
     });
@@ -204,31 +203,31 @@ export default function PatLitigation({ applicationNumber }: PatLitigationProps)
                                 <td
                                   rowSpan={group.length}
                                   className="px-4 py-3 text-sm font-medium text-blue-600 cursor-pointer hover:underline"
-                                  onClick={() => handleClick(item.RGTR_CD)}
+                                  onClick={() => handleClick(item.rgtr_cd)}
                                 >
-                                  {item.RGT_TRNSF_SEQ}
+                                  {item.rgt_trnsf_seq}
                                 </td>
                               )}
                               <td
                                 className="px-4 py-3 text-sm text-blue-600 cursor-pointer hover:underline"
-                                onClick={() => handleClick(item.RGTR_CD)}
+                                onClick={() => handleClick(item.rgtr_cd)}
                               >
-                                {item.RGTR_SEQ}
+                                {item.rgtr_seq}
                               </td>
                               <td className="px-4 py-3 text-sm text-zinc-700">
                                 {applicationNumber}
                               </td>
                               <td className="px-4 py-3 text-sm text-zinc-700">
-                                {item.RGSTNO}
+                                {item.reg_number}
                               </td>
                               <td className="px-4 py-3 text-sm font-medium text-zinc-900">
-                                {item.RGTR_NM}
+                                {item.rgtr_nm}
                               </td>
                               <td
                                 className="px-4 py-3 text-sm text-blue-600 cursor-pointer hover:underline"
-                                onClick={() => handleClick(item.RGTR_CD)}
+                                onClick={() => handleClick(item.rgtr_cd)}
                               >
-                                {item.RGTR_CD || "N/A"}
+                                {item.rgtr_cd || "N/A"}
                               </td>
                               <td className="px-4 py-3">
                                 <div className="flex items-center justify-center gap-2">

@@ -30,6 +30,8 @@ export default function SignupPage() {
     const pwOk = useMemo(()=> pw.length >= 8 && pw === pw2, [pw, pw2]);
     const canSubmit = name && emailOk && pwOk && agree && !loading;
 
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
+
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
         setErr(null);
@@ -40,7 +42,7 @@ export default function SignupPage() {
         }
         setLoading(true);
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/auth/register', {
+            const res = await fetch(`${API_BASE}/api/user/register`, {
                 method: 'POST',
                 headers: { 'Content-Type':'application/json' },
                 body: JSON.stringify({ name, email, password: pw, agree }),

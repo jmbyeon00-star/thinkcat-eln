@@ -43,31 +43,31 @@ def get_project(project_id: int, session: Session = Depends(get_session)):
     return project
 
 # 프로젝트 검색
-@router.post("/{project_id}/search")
-async def search_patents_internal(
-    project_id: int,
-    request: Request,
-    page: int = Query(1, ge=1),
-    limit: int = Query(10, ge=1, le=1000),
-    section: str = 'A',
-    session: Session = Depends(get_session),
-):
-    body = await request.json()
-    total, hits, data = search_service.search_patents(
-        session=session,
-        section=section,
-        keyword=body.get('keywords', ''),
-        page=page,
-        size=limit,
-    )
+# @router.post("/{project_id}/search")
+# async def search_patents_internal(
+#     project_id: int,
+#     request: Request,
+#     page: int = Query(1, ge=1),
+#     limit: int = Query(10, ge=1, le=1000),
+#     section: str = 'A',
+#     session: Session = Depends(get_session),
+# ):
+#     body = await request.json()
+#     total, hits, data = search_service.search_patents(
+#         session=session,
+#         section=section,
+#         keyword=body.get('keywords', ''),
+#         page=page,
+#         size=limit,
+#     )
 
-    return {
-        "total": total,
-        "page": page,
-        "limit": limit,
-        "items": data,   # data에 application_number, title, abstract 등 들어있음
-        "hits": hits,    # (원하면 ES raw hit 정보도 같이 내려줄 수 있음)
-    }
+#     return {
+#         "total": total,
+#         "page": page,
+#         "limit": limit,
+#         "items": data,   # data에 application_number, title, abstract 등 들어있음
+#         "hits": hits,    # (원하면 ES raw hit 정보도 같이 내려줄 수 있음)
+#     }
 
 # 프로젝트 데이터 입력
 @router.post("/{project_id}/save")
@@ -109,56 +109,47 @@ async def upload_project_source(
     request: Request,
     session: Session = Depends(get_session),
     user_email: str = Form(...),
-    source_type: str = Form(...),
+    # source_type: str = Form(...),
     file: UploadFile = File(...),
+    project_info: str = Form(None),
 ):
-    print("hello")
     try:
-        # """
-        # 프로젝트 파일 업로드 및 데이터 삽입
-        # """
         user_id = get_current_user_from_request(request)
         content_type = request.headers.get("content-type", "")
-        
+
+        parsed_project_info = {}
+        if project_info:
+            try:
+                import json
+                parsed_project_info = json.loads(project_info)
+                print(f"[DEBUG] project_info parsed OK keys={list(parsed_project_info.keys())}")
+            except Exception as e:
+                print(f"[WARN] project_info parse error: {e}")
+
         if "application/json" in content_type:
             body = await request.json()
             file_data = body.get("items", [])
-            
             if not file_data:
                 raise HTTPException(status_code=400, detail="No items found in body.")
+
             count = await project_service.insert_project_data_with_file(
                 db=session,
                 user_id=user_id,
                 project_id=project_id,
-                file_data=file_data
+                project_info=parsed_project_info,
+                file_data=file_data,
             )
             return {"status": "success", "inserted": count}
 
         elif "multipart/form-data" in content_type:
-            print("?")
-            # form = await request.form()
-            # file = form.get("file")
-            # user_email = int(form.get("user_email", 0))
-            # project_code = form.get("project_code", "")
-            
-            file_data = await file.read()
-            await file.close()
-
-
-            base_dir = f"/app/users/{user_id}/data/classification/{project_id}"
-            os.makedirs(base_dir, exist_ok=True)
-
-            save_path = os.path.join(base_dir, f"{project_id}_{file.filename}")
-            with open(save_path, "wb") as f:
-                f.write(file_data)
-
-            return await insert_project_data_with_file(
+            count = await project_service.handle_uploaded_file(
                 db=session,
                 user_id=user_id,
                 project_id=project_id,
-                file_data=file_data,
+                project_info=parsed_project_info,
+                upload_file=file,
             )
-            # return {"status": "success", "inserted": count}
+            return {"status": "success", "inserted": count}
 
         else:
             raise HTTPException(status_code=415, detail="Unsupported content type")

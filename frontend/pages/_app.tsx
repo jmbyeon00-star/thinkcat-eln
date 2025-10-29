@@ -34,7 +34,11 @@ export default function MyApp({
 }: AppProps) {
 
   return (
-    <SessionProvider session={session}>
+    <SessionProvider 
+      session={session}
+      refetchInterval={5 * 60} // 5분마다 세션 체크
+      refetchOnWindowFocus={true} // 윈도우 포커스시 세션 체크
+    >
       {/* 전역 SSE 리스너 추가 */}
       <GlobalStatusListener />
 

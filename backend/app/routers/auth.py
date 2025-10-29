@@ -14,7 +14,7 @@ from pydantic import BaseModel, EmailStr, constr
 from sqlalchemy.orm import Session
 
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/user", tags=["user"])
 
 class Signup(BaseModel):
     name: str

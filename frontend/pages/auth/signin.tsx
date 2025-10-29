@@ -1,20 +1,31 @@
-import { useState } from 'react';
-import Head from 'next/head';
-import Link from 'next/link';
-import { Mail, Lock, LogIn, Loader2, AlertCircle } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import { useState, useEffect } from 'react';
 
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/router';
 
+import Head from 'next/head';
+import Link from 'next/link';
+import { Mail, Lock, LogIn, Loader2, AlertCircle } from 'lucide-react';
+
 export default function LoginPage() {
     const router = useRouter();
+    const { data: session, status } = useSession();
+
     const [email, setEmail] = useState('');
     const [pw, setPw] = useState('');
     const [remember, setRemember] = useState(true);
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState<string | null>(null);
 
-    const API_BASE = "http://192.168.1.20:8000";
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
+    
+    useEffect(() => {
+        if (status === 'authenticated') {
+        const callbackUrl = (router.query.callbackUrl as string) || '/';
+        router.push(callbackUrl);
+        }
+    }, [status, router]);
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -27,14 +38,15 @@ export default function LoginPage() {
 
         setLoading(true);
         try {
-
             const res = await signIn('credentials', {
                 redirect: false, // ✅ 리다이렉트를 수동 제어
                 username: email,
                 password: pw,
             });
 
-            // const res = await fetch(`${API_BASE}/api/auth/login`, {
+
+
+            // const res = await fetch(`${API_BASE}/api/user/login`, {
             //     method: 'POST',
             //     credentials: "include",
             //     headers: { 'Content-Type': 'application/json' },
@@ -49,7 +61,15 @@ export default function LoginPage() {
             // window.location.href = '/';
 
             if (res?.error) throw new Error(res.error);
-            if (res?.ok) router.push('/');
+            if (res?.ok) {
+                // ✅ 방법 1: 완전한 페이지 새로고침 (가장 안정적)
+                const callbackUrl = (router.query.callbackUrl as string) || '/';
+                window.location.href = callbackUrl;
+                
+                // ✅ 방법 2: router.reload() 후 router.push()
+                // await router.reload();
+                // router.push(callbackUrl);
+            }
 
         } catch (e: any) {
             setErr(e.message || '로그인 실패');

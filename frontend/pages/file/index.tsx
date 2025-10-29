@@ -20,8 +20,7 @@ type FileItem = {
 };
 
 export default function FileListPage() {
-  //   const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
-  const API_BASE = "http://192.168.1.20:8000"
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://ipforce.co.kr";
   const { data: session, status: sessionStatus } = useSession() as {
     data: (Session & { access_token?: string }) | null;
     status: "loading" | "authenticated" | "unauthenticated";

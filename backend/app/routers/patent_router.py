@@ -44,6 +44,7 @@ def search_app(
     db: Session = Depends(get_session)
 ):
     """특허 네비게이션 API 엔드포인트"""
+    print("herowiehroiwheroiweh")
     data, error = patent_navigation_service.search_app_service(db, application_number=appNumber, index_code=code[0])
 
     if error:
@@ -53,10 +54,12 @@ def search_app(
 
 
 @router.get("/npecheck")
-def get_appNumber(appNumber: str = Query(..., description="출원번호")):
+def get_appNumber(
+    appNumber: str = Query(..., description="출원번호"),
+    session: Session = Depends(get_session)
+):
     """NPE 예측 API"""
-    print(appNumber)
-    data, status = patent_npecheck_service.get_appNumber_service(appNumber)
+    data, status = patent_npecheck_service.get_appNumber_service(appNumber, session)
 
     if status != 200:
         raise HTTPException(status_code=400, detail="No valid data or DB error")

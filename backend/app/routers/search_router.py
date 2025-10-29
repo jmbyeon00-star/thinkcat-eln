@@ -1,88 +1,75 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, Request
-from sqlalchemy.orm import Session
 
+from sqlalchemy.orm import Session
 from app.core.db import get_session
 from app.schemas.search_schema import SearchRequest, SearchResponse, Hit, Row, KeywordSearchRequest
-from app.services.search_service import *
+from app.services import search_service
 
 import traceback
 
 router = APIRouter(prefix="/search", tags=["search"])
-        
-# def search_keyword(
-#     req: Request,
-#     page: int = Query(1, ge=1),
-#     limit: int = Query(10, ge=1, le=1000),
-#     section: str = 'A',
-#     session: Session = Depends(get_session),
-# ):
-#     total, hits, data = search_service.search_patents(
-#         session=session,
-#         section=section,
-#         keyword=body.get('keywords', ''),
-#         page=page,
-#         size=limit,
-    # )
-@router.post("", response_model=SearchResponse)
-def search(req: SearchRequest, session: Session = Depends(get_session)):
-    try:
-        total, hits, data = search_patents(session, req.category, req.keyword, req.page, req.size)
 
-        # ✅ hits가 dict(es_map)일 때도 정상 변환되게 처리
-        parsed_hits = []
-        if isinstance(hits, dict):
-            for key, val in hits.items():
-                if isinstance(val, dict):
-                    parsed_hits.append({
-                        "key": key,
-                        "title": val.get("title_es") or val.get("title"),
-                        "abstract": val.get("abstract_es") or val.get("abstract"),
-                        "score": val.get("score"),
-                        "highlight": val.get("highlight") or {},
-                    })
-        elif isinstance(hits, list):
-            # 이미 list인 경우 그대로 사용
-            parsed_hits = [
-                h if isinstance(h, dict) else {"key": str(h)}
-                for h in hits
-            ]
-
-        return SearchResponse(
-            total=total,
-            page=req.page,
-            size=req.size,
-            hits=[Hit(**h) for h in parsed_hits],
-            data=[Row(**r) for r in data]
-        )
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 # -----------------------------
 # 🔍 키워드 검색
 # -----------------------------
-@router.post("/keyword/{category}", response_model=SearchResponse)
-def keyword_search(category: str, req: KeywordSearchRequest, session: Session = Depends(get_session)):
-    try:
-        total, hits, data = search_by_keyword(session, category, req.keyword, req.page, req.size)
-        return SearchResponse(
-            total=total,
-            page=req.page,
-            size=req.size,
-            hits=[Hit(**h) for h in hits],
-            data=[Row(**r) for r in data]
-        )
-    except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/keyword")
+def search_paginated(
+    section: str,
+    keyword: str,
+    page: int = 1,
+    page_size: int = 10,
+    method: str = "bgem3",
+    include_vector: bool = Query(True, description="벡터 포함 여부 (성능 향상을 위해 기본값 False)"),
+    include_quote: bool = Query(True, description="quote 필드 포함 여부(성능 향상을 위해 기본값 False)"),
+    db: Session = Depends(get_session)
+):
+    """
+    페이지네이션 기반 특허 검색 API
+    
+    Args:
+        - section: 카테고리 (h, g, a, b, c, d, e, f)
+        - keyword: 검색 키워드
+        - page: 페이지 번호 (1부터 시작)
+        - page_size: 페이지당 결과 수 (최대 100)
+        - method: 검색 방법 ('bgem3' 또는 'mlt')
+        - include_vector: 벡터 포함 여부 (기본 False, 성능 향상)
+        - include_quote: quote 필드 포함 여부 (기본 True)
+    
+    **성능 최적화:**
+    - `include_vector=false`: 벡터를 가져오지 않아 응답 속도 향상 (권장)
+    - `include_vector=true`: 벡터 데이터 포함 (추가 분석이 필요한 경우)
+    
+    **사용 예시:**
+    ```
+    # 빠른 검색 (벡터 제외)
+    GET /api/search/keyword?section=c&keyword=battery&page=1&page_size=10&method=bgem3
+    
+    # 벡터 포함 검색
+    GET /api/search/keyword?section=c&keyword=battery&page=1&page_size=10&method=bgem3&include_vector=true
+    
+    # address만 가져오기 (최대 성능)
+    GET /api/search/keyword?section=c&keyword=battery&page=1&page_size=10&method=bgem3&include_vector=false&include_quote=false
+    ```
+    """
+    print('>>> search_paginated called with:', section, keyword, page, page_size, method, include_vector, include_quote)
+    return search_service.search_by_keyword(
+        section, 
+        keyword, 
+        page, 
+        page_size, 
+        method,
+        include_vector,
+        include_quote
+    )
 
 # -----------------------------
 # 📄 출원번호 검색
 # -----------------------------
-@router.get("/application/{app_num}")
+@router.get("/applicationNum/{app_num}")
 def application_search(app_num: str, session: Session = Depends(get_session)):
     try:
-        data = search_by_application(session, app_num)
+        data = search_service.search_by_application(session, app_num)
         return {"application_number": app_num, "result": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -90,7 +77,7 @@ def application_search(app_num: str, session: Session = Depends(get_session)):
 # -----------------------------
 # 🧾 등록번호 검색
 # -----------------------------
-@router.get("/registration/{reg_num}")
+@router.get("/registrationNum/{reg_num}")
 def registration_search(reg_num: str, session: Session = Depends(get_session)):
     try:
         data = search_by_registration(session, reg_num)
@@ -98,6 +85,27 @@ def registration_search(reg_num: str, session: Session = Depends(get_session)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ------------------------------------------
+# 🏢 출원인코드 검색
+# ------------------------------------------
+@router.get("/applicant/{applicant_code}")
+def applicant_search(applicant_code: str, session: Session = Depends(get_session)):
+    """
+    출원인 코드로 특허 및 기업 정보 조회
+    - result_1 : 출원하고 최종 특허로 가진것
+    - result_2 : 출원했지만 최종 특허로 없는 것
+    - result_3 : 출원 안 했지만 최종 특허로 가진 것
+    - company : 기업정보
+    """
+    try:
+        data = search_fetch_by_applicant(session, applicant_code)
+        return {
+            "applicant_code": applicant_code,
+            "result": data
+        }
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # -----------------------------

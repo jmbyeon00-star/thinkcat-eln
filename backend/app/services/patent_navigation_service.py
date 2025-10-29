@@ -61,7 +61,7 @@ def find_relevant(app_number: str, index: str, maxsize: int = 10):
         for hits in result:
             for hit in hits:
                 final_result.append({
-                    "application_number": hit.entity.get("address"),
+                    "application_number": str(hit.entity.get('address')),
                     "score": hit.distance
                 })
         return final_result
@@ -93,7 +93,9 @@ def process_data_with_scaling(merged_data: list[dict]):
         df["scaler_date"] = 0.1
 
     df["y_value"] = df["date_type"] * df["scaler_date"]
-    df["x_value"] = scaler.fit_transform(df[["score"]].abs())
+    # ✅ 로그 스케일 변환 추가 (거리값이 너무 클 때 왼쪽으로 당김)
+    df["score_log"] = np.log1p(df["score"].abs())  # log(1 + score)
+    df["x_value"] = scaler.fit_transform(df[["score_log"]]) ** 0.8
 
     df.loc[df["score"] == 0, ["x_value", "y_value"]] = 0
 
@@ -113,20 +115,23 @@ def process_data_with_scaling(merged_data: list[dict]):
 def search_app_service(db: Session, application_number: str, index_code: str):
     """특허 네비게이션 핵심 서비스 로직"""
     index = f"{index_code.lower()}_collection"
-
+    print("1:", index)
     # 1. 유사 특허 검색
     results = find_relevant(app_number=application_number, index=index)
     if not results:
         return None, "No similar patents found"
+    print("2:", len(results))
 
     # 2. DB 조회
     score_app_list = [r["application_number"] for r in results]
+    print("score_app_list:", score_app_list)
     rows = (
         db.query(PatentResult)
         .filter(PatentResult.application_number.in_(score_app_list))
         .all()
     )
-
+    print("3:", len(rows), type(rows))
+    
     if not rows:
         return None, "No patent data found in database"
 

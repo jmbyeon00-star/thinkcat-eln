@@ -10,6 +10,7 @@ import { Session } from "next-auth";
 
 type Project = {
   id: number;
+  project_code: string;
   project_name: string;
   project_description?: string;
   source_type: string;
@@ -27,8 +28,7 @@ const taskMapper: Record<string, string> = {
 function ProjectUploadPage() {
   const router = useRouter();
   const { project_id } = router.query;
-  const API_BASE = "http://192.168.1.20:8000";
-
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://ipforce.co.kr";
 
   const { data: session, status } = useSession() as {
     data: (Session & { access_token?: string }) | null;
@@ -141,9 +141,20 @@ function ProjectUploadPage() {
       }
 
       // ✅ 공통 메타데이터
+      const projectInfo = {
+        source_type: project?.source_type || "search",
+        project_code: project?.project_code || "",
+        project_name: project?.project_name || "",
+        project_desc: project?.project_description || "",
+        // application_numbers: cart.map((r) => r.application_number),
+        // title: cart.map((r) => r.title),
+        // abstract: cart.map((r) => r.abstract),
+        // collection_name: cart.map((r) => r.collection_name),
+      };
       formData.append("project_id", String(project_id));
       formData.append("user_email", String(session?.user?.email || ""));
-      formData.append("source_type", "upload");
+      // formData.append("source_type", "upload");
+      formData.append("project_info", JSON.stringify(projectInfo));
 
       // console.log("*:", Array.from(formData.entries()));
 

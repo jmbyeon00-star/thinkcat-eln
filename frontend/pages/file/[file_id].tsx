@@ -29,7 +29,7 @@ type InferenceDetail = {
 export default function FileDetailPage() {
   const router = useRouter();
   const { file_id } = router.query;
-  const API_BASE = "http://192.168.1.20:8000";
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
 
   const { data: session, status } = useSession() as {
     data: (Session & { access_token?: string }) | null;

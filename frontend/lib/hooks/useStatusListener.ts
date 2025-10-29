@@ -7,8 +7,8 @@ export default function useStatusListener(targetId: number | string | null) {
     const { setState } = useUserTaskStore()
     useEffect(() => {
         if (!targetId) return
-        const base = "http://192.168.1.20:8000"
-        const source = new EventSource(`${base}/api/status/stream/${targetId}`)
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
+        const source = new EventSource(`${API_BASE}/api/status/stream/${targetId}`)
 
         source.onmessage = (event) => {
             try {

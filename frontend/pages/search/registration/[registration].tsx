@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { apiJson } from "@lib/api";
+import { fetchAPI } from "@lib/api";
 
 export default function RegistrationSearchPage() {
   const [regNo, setRegNo] = useState("");
@@ -11,7 +11,7 @@ export default function RegistrationSearchPage() {
   const search = async () => {
     if (!regNo) return alert("등록번호를 입력하세요.");
     setLoading(true);
-    apiJson(`/search/by-registration/${regNo}`)
+    fetchAPI(`/search/by-registration/${regNo}`)
       .then(setData)
       .catch((err) => alert(err.message))
       .finally(() => setLoading(false));

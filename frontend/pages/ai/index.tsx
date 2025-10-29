@@ -83,8 +83,8 @@ const ProgressBar = ({ progress, status }: { progress: number; status: string })
 };
 
 export default function AIModelListPage() {
-    const API_BASE = "http://192.168.1.20:8000";
-
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
+    
     const [models, setModels] = useState<Model[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [query, setQuery] = useState("");
@@ -100,9 +100,10 @@ export default function AIModelListPage() {
     };
     const token = session?.access_token;
     const user = session?.user;
-
+    
     useEffect(() => {
         if (!token) return;
+
         async function loadModels() {
             try {
                 setIsLoading(true);

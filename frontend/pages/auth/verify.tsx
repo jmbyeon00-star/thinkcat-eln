@@ -2,8 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 
-// const API_BASE = process.env.NEXT_PUBLIC_API_BASE; // 예: http://localhost:8000
-const API_BASE = "http://192.168.1.20:8000"
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
 
 type Phase = 'checking' | 'form' | 'success' | 'error';
 
@@ -34,9 +33,9 @@ export default function VerifyPage() {
   async function doVerify(e: string, c: string) {
     setPhase('checking');
     setMessage('인증 처리 중입니다...');
-    console.log("API_BASE:", API_BASE)
+    
     try {
-      const res = await fetch(`${API_BASE}/api/auth/verify`, {
+      const res = await fetch(`${API_BASE}/api/user/verify`, {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ email: e, code: c })

@@ -51,7 +51,7 @@ class ProjectData(Base):
     title = Column(Integer)
     applicant_name = Column(Text)
     applicant_code = Column(String(100))
-    application_number = Column(Integer)
+    application_number = Column(String(20))
     application_date = Column(DateTime(timezone=True), server_default=func.now())
     created_datetime = Column(DateTime(timezone=True), server_default=func.now())
     updated_datetime = Column(DateTime(timezone=True))

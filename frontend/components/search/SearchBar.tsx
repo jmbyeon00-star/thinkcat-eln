@@ -16,9 +16,10 @@ const CPC_SECTIONS = [
 type Props = {
   loading: boolean;
   onSearch: (params: { keyword: string; category: string }) => void;
+  searchType?: "keyword" | "application" | "registration";
 };
 
-export function SearchBar({ loading, onSearch }: Props) {
+export function SearchBar({ loading, onSearch, searchType = "keyword" }: Props) {
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState("a");
 
@@ -28,8 +29,53 @@ export function SearchBar({ loading, onSearch }: Props) {
     onSearch({ keyword: keyword.trim(), category });
   };
 
+  // 검색 타입에 따른 텍스트 설정
+  const getSearchLabel = () => {
+    switch (searchType) {
+      case "application":
+        return "출원번호 입력";
+      case "registration":
+        return "등록번호 입력";
+      default:
+        return "검색어 입력";
+    }
+  };
+
+  const getPlaceholder = () => {
+    switch (searchType) {
+      case "application":
+        return "출원번호를 입력하세요...";
+      case "registration":
+        return "등록번호를 입력하세요...";
+      default:
+        return "특허 검색어를 입력하세요...";
+    }
+  };
+
+  const getHeaderDescription = () => {
+    switch (searchType) {
+      case "application":
+        return "출원번호로 특허를 검색하세요";
+      case "registration":
+        return "등록번호로 특허를 검색하세요";
+      default:
+        return "CPC 분류와 키워드로 특허를 검색하세요";
+    }
+  };
+
+  const getHelperText = () => {
+    switch (searchType) {
+      case "application":
+        return "출원번호를 정확히 입력하세요. 예:1020240001234(13자리)";
+      case "registration":
+        return "등록번호를 정확히 입력하세요. 예:1016473180000(13자리)";
+      default:
+        return "CPC 분류를 선택하고 관련 키워드를 입력하면 더 정확한 검색 결과를 얻을 수 있습니다.";
+    }
+  };
+
   return (
-    <div className="w-full max-w-4xl mx-auto p-6">
+    <div className="w-full max-w-4xl mx-auto p-6 mb-6">
       <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
@@ -37,39 +83,41 @@ export function SearchBar({ loading, onSearch }: Props) {
             특허 검색
           </h2>
           <p className="text-blue-100 text-sm">
-            CPC 분류와 키워드로 특허를 검색하세요
+            {getHeaderDescription()}
           </p>
         </div>
 
         {/* Content */}
         <div className="p-8 space-y-6">
-          {/* Category Selector */}
-          <div>
-            <label className="block text-sm font-semibold text-zinc-700 mb-3 flex items-center gap-2">
-              <div className="w-1 h-4 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
-              CPC 분류 선택
-            </label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-5 py-3.5 bg-white border-2 border-zinc-200 rounded-xl text-zinc-900 font-medium 
-                focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100
-                transition-all duration-200 cursor-pointer hover:border-blue-400
-                shadow-sm hover:shadow-md"
-            >
-              {CPC_SECTIONS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Category Selector - 키워드 검색일 때만 표시 */}
+          {searchType === "keyword" && (
+            <div>
+              <label className="block text-sm font-semibold text-zinc-700 mb-3 flex items-center gap-2">
+                <div className="w-1 h-4 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
+                CPC 분류 선택
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full px-5 py-3.5 bg-white border-2 border-zinc-200 rounded-xl text-zinc-900 font-medium 
+                  focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100
+                  transition-all duration-200 cursor-pointer hover:border-blue-400
+                  shadow-sm hover:shadow-md"
+              >
+                {CPC_SECTIONS.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Search Input */}
           <div>
             <label className="block text-sm font-semibold text-zinc-700 mb-3 flex items-center gap-2">
               <div className="w-1 h-4 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
-              검색어 입력
+              {getSearchLabel()}
             </label>
             <div className="flex items-stretch shadow-lg hover:shadow-xl transition-shadow duration-200 rounded-xl overflow-hidden">
               <div className="relative flex-1">
@@ -81,7 +129,7 @@ export function SearchBar({ loading, onSearch }: Props) {
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit(e)}
-                  placeholder="특허 검색어를 입력하세요..."
+                  placeholder={getPlaceholder()}
                   disabled={loading}
                   className="w-full pl-12 pr-4 py-4 bg-white border-2 border-zinc-200 
                     focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100
@@ -125,12 +173,11 @@ export function SearchBar({ loading, onSearch }: Props) {
               </svg>
             </div>
             <div className="flex-1">
-              <p className="text-sm text-blue-900 font-semibold mb-1">
+              <p className="text-sm text-blue-900 font-semibold mb-1 text-left">
                 검색 팁
               </p>
-              <p className="text-xs text-blue-800 leading-relaxed">
-                CPC 분류를 선택하고 관련 키워드를 입력하면 더 정확한 검색 결과를 얻을 수 있습니다. 
-                여러 단어를 입력하면 OR 검색으로 처리됩니다.
+              <p className="text-xs text-blue-800 leading-relaxed text-left">
+                {getHelperText()}
               </p>
             </div>
           </div>
@@ -138,4 +185,4 @@ export function SearchBar({ loading, onSearch }: Props) {
       </div>
     </div>
   );
-}
+} 

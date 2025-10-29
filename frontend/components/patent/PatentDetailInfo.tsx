@@ -2,6 +2,7 @@ import React from "react";
 
 type PatentDetailInfoProps = {
   data?: {
+    reg_number:string;
     application_number: string;
     filing_date?: string;
     publication_number?: string;
@@ -60,7 +61,7 @@ export default function PatentDetailInfo({ data, loading = false }: PatentDetail
             특허 상세 정보
           </h1>
           <p className="text-zinc-600">
-            출원번호: {data.application_number}
+            {data.reg_number ? `등록번호: ${data.reg_number}` : `출원번호: ${data.application_number}`}
           </p>
         </div>
 
@@ -116,8 +117,9 @@ export default function PatentDetailInfo({ data, loading = false }: PatentDetail
                   <div className="w-3 h-3 bg-purple-500 rounded-full" />
                   <span className="text-sm font-medium text-zinc-700">청구항 수</span>
                 </div>
-                <div className="text-lg font-semibold text-zinc-900">
-                  {data.claim_count}개
+                <div className={`text-lg font-semibold ${
+                  data.claim_count ? "text-zinc-900" : "text-zinc-400"}`}>
+                  {data.claim_count ? `${data.claim_count}개` : "정보 없음"}
                 </div>
               </div>
             )}

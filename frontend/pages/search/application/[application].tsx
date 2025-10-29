@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { searchByApplication } from "@/lib/api";
@@ -12,11 +11,7 @@ export default function ApplicationSearchDetail() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    searchByApplication({
-        application_number: appNo,
-        page: 1,
-        size: 10,
-    }).then(setData).finally(() => setLoading(false));
+    searchByApplication(appNo).then(setData).finally(() => setLoading(false));
   }, [appNo]);
 
   return (

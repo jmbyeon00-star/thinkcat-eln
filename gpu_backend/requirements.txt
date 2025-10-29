@@ -4,6 +4,7 @@ uvicorn[standard]==0.30.6
 python-dotenv
 email-validator>=2.1.0.post1
 pydantic[email]
+pydantic_settings
 passlib
 httpx
 peft>=0.6.0

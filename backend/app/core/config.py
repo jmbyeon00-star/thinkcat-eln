@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     SQL_ECHO: bool = False
     POOL_PRE_PING: bool = True
     
-    ES_HOST: str
+    ES_HOST: str = "192.168.1.116:9200"
     ES_USER: str | None = None
     ES_PASS: str | None = None
     ES_TIMEOUT: int = 10

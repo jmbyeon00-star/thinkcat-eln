@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Folder, Database, FileText, Search, LayoutGrid, Table, ChevronLeft, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { 
+  Folder, 
+  Database, 
+  FileText, 
+  Search, 
+  LayoutGrid, 
+  Table, 
+  ChevronLeft, 
+  ChevronRight,
+  BarChart3
+} from "lucide-react";
 import { Session } from "next-auth";
 import { useSession } from "next-auth/react";
 
@@ -18,13 +29,13 @@ type Collection = {
 };
 
 export default function CollectionListPage() {
-  const API_BASE = "http://192.168.1.20:8000";
+  const router = useRouter();
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
   const { data: session, status } = useSession() as {
     data: (Session & { access_token?: string }) | null;
     status: "loading" | "authenticated" | "unauthenticated";
   };
   const token = session?.access_token;
-
 
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,17 +44,25 @@ export default function CollectionListPage() {
   const [limit] = useState(6);
   const [total, setTotal] = useState(0);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  
+  // ✅ 체크박스 선택 상태
+  const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
 
   useEffect(() => {
     async function loadCollections() {
+      if (!token) return;
+      
       try {
         setLoading(true);
         const res = await fetch(
-          `${API_BASE}/api/collection?page=${page}&limit=${limit}&q=${encodeURIComponent(query)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: "include"
-        });
+          `${API_BASE}/api/collection?page=${page}&limit=${limit}&q=${encodeURIComponent(query)}`, 
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: "include"
+          }
+        );
         const data = await res.json();
+        console.log("컬렉션 데이터:", data);
         setCollections(data.items || []);
         setTotal(data.total || 0);
       } catch (e) {
@@ -55,7 +74,39 @@ export default function CollectionListPage() {
 
     const debounce = setTimeout(loadCollections, 300);
     return () => clearTimeout(debounce);
-  }, [query, page, limit]);
+  }, [query, page, limit, token]);
+
+  // ✅ 체크박스 토글
+  const handleCheckboxChange = (collectionCode: string) => {
+    setSelectedCollections(prev => {
+      if (prev.includes(collectionCode)) {
+        return prev.filter(code => code !== collectionCode);
+      } else {
+        return [...prev, collectionCode];
+      }
+    });
+  };
+
+  // ✅ 전체 선택/해제
+  const handleSelectAll = () => {
+    if (selectedCollections.length === collections.length) {
+      setSelectedCollections([]);
+    } else {
+      setSelectedCollections(collections.map(c => c.collection_code));
+    }
+  };
+
+  // ✅ 클러스터 분석 실행
+  const handleAnalyze = () => {
+    if (selectedCollections.length === 0) {
+      alert("분석할 컬렉션을 선택해주세요.");
+      return;
+    }
+    
+    // 선택한 컬렉션 코드들을 쿼리 파라미터로 전달
+    const codes = selectedCollections.join(',');
+    router.push(`/collection/analysis?codes=${codes}`);
+  };
 
   const totalPages = Math.ceil(total / limit);
 
@@ -128,18 +179,47 @@ export default function CollectionListPage() {
           </div>
         </div>
 
-        {/* Stats Bar */}
-        <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+        {/* ✅ 통계 및 분석 버튼 */}
+        <div className="mb-6 bg-white rounded-xl shadow-sm border border-zinc-100 p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span className="text-sm font-medium text-zinc-700">
-                전체 컬렉션
-              </span>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span className="text-sm text-zinc-600">
+                  전체 <span className="font-bold text-blue-600">{total.toLocaleString()}</span>개 컬렉션
+                </span>
+              </div>
+              
+              {selectedCollections.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                  <span className="text-sm text-zinc-600">
+                    선택됨 <span className="font-bold text-emerald-600">{selectedCollections.length}</span>개
+                  </span>
+                </div>
+              )}
             </div>
-            <span className="text-2xl font-bold text-blue-600">
-              {total.toLocaleString()}
-            </span>
+            
+            <div className="flex items-center gap-3">
+              {collections.length > 0 && (
+                <button
+                  onClick={handleSelectAll}
+                  className="px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 rounded-lg transition-colors"
+                >
+                  {selectedCollections.length === collections.length ? '전체 해제' : '전체 선택'}
+                </button>
+              )}
+              
+              {selectedCollections.length > 0 && (
+                <button
+                  onClick={handleAnalyze}
+                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-medium transition-all shadow-md flex items-center gap-2"
+                >
+                  <BarChart3 className="w-5 h-5" />
+                  <span>클러스터 분석</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -189,24 +269,44 @@ export default function CollectionListPage() {
             <div className="grid gap-4 md:grid-cols-2 mb-8">
               {collections.map((c) => {
                 const sourceInfo = getSourceIcon(c.source_type);
+                const isSelected = selectedCollections.includes(c.collection_code);
+                
                 return (
-                  <a
+                  <div
                     key={c.id}
-                    href={`/collection/${c.id}`}
-                    className="block group"
+                    className={`bg-white rounded-2xl shadow-sm border transition-all duration-300 ${
+                      isSelected 
+                        ? 'border-blue-500 ring-2 ring-blue-200' 
+                        : 'border-zinc-100 hover:border-blue-200'
+                    }`}
                   >
-                    <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6 hover:shadow-xl hover:border-blue-200 transition-all duration-300">
+                    <div className="p-6">
                       <div className="flex items-start gap-4">
+                        {/* ✅ 체크박스 */}
+                        <div className="flex items-center pt-1">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleCheckboxChange(c.collection_code)}
+                            className="w-5 h-5 text-blue-600 border-zinc-300 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                          />
+                        </div>
+
                         {/* Icon */}
-                        <div className={`rounded-xl bg-gradient-to-br ${sourceInfo.bg} p-3 ring-1 ${sourceInfo.ring} group-hover:ring-blue-300 transition-all`}>
+                        <div className={`rounded-xl bg-gradient-to-br ${sourceInfo.bg} p-3 ring-1 ${sourceInfo.ring}`}>
                           {sourceInfo.icon}
                         </div>
 
                         {/* Content */}
                         <div className="flex-1 min-w-0">
-                          <h2 className="text-lg font-semibold text-zinc-900 group-hover:text-blue-600 transition-colors mb-2 truncate">
-                            {c.collection_name}
-                          </h2>
+                          <a
+                            href={`/collection/${c.id}`}
+                            className="block group"
+                          >
+                            <h2 className="text-lg font-semibold text-zinc-900 group-hover:text-blue-600 transition-colors mb-2 truncate">
+                              {c.collection_name}
+                            </h2>
+                          </a>
 
                           <p className="text-sm text-zinc-600 mb-3 truncate">
                             {c.project_name || "관련 프로젝트 없음"}
@@ -239,7 +339,7 @@ export default function CollectionListPage() {
                         </div>
                       </div>
                     </div>
-                  </a>
+                  </div>
                 );
               })}
             </div>
@@ -251,6 +351,15 @@ export default function CollectionListPage() {
               <table className="min-w-full">
                 <thead>
                   <tr className="bg-gradient-to-r from-zinc-50 to-zinc-100 border-b border-zinc-200">
+                    <th className="px-6 py-4 text-left w-12">
+                      {/* ✅ 전체 선택 체크박스 */}
+                      <input
+                        type="checkbox"
+                        checked={collections.length > 0 && selectedCollections.length === collections.length}
+                        onChange={handleSelectAll}
+                        className="w-4 h-4 text-blue-600 border-zinc-300 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">
                       컬렉션 이름
                     </th>
@@ -272,13 +381,26 @@ export default function CollectionListPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
-                  {collections.map((c, idx) => {
+                  {collections.map((c) => {
                     const sourceInfo = getSourceIcon(c.source_type);
+                    const isSelected = selectedCollections.includes(c.collection_code);
+                    
                     return (
                       <tr
                         key={c.id}
-                        className="hover:bg-blue-50 transition-colors"
+                        className={`transition-colors ${
+                          isSelected ? 'bg-blue-50' : 'hover:bg-zinc-50'
+                        }`}
                       >
+                        <td className="px-6 py-4">
+                          {/* ✅ 체크박스 */}
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleCheckboxChange(c.collection_code)}
+                            className="w-4 h-4 text-blue-600 border-zinc-300 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                          />
+                        </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className={`rounded-lg bg-gradient-to-br ${sourceInfo.bg} p-2 ring-1 ${sourceInfo.ring}`}>
@@ -349,10 +471,11 @@ export default function CollectionListPage() {
                 <button
                   key={num}
                   onClick={() => setPage(num)}
-                  className={`min-w-[40px] px-3 py-2 rounded-lg text-sm font-medium transition-all ${num === page
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
-                    : "border border-zinc-200 text-zinc-700 hover:bg-zinc-50"
-                    }`}
+                  className={`min-w-[40px] px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    num === page
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                      : "border border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                  }`}
                 >
                   {num}
                 </button>

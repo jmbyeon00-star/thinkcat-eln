@@ -45,7 +45,7 @@ ALGORITHM = "HS256"
 # ACCESS_TOKEN_EXPIRE_MINUTES = 30 # 30분
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7일 (일주일)
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/user/token")
 
 class TokenData(BaseModel):
     user_id: Optional[int] = None

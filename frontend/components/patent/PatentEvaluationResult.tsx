@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getPatentPrice } from "@/lib/api"; 
 import {
   Radar,
   RadarChart,
@@ -8,6 +9,7 @@ import {
   Legend,
   Tooltip,
 } from "recharts";
+
 
 type PatentEvaluationResultProps = {
   appNumber: string;
@@ -47,27 +49,28 @@ export default function PatentEvaluationResult({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!appNumber) return;
-    const base = "http://192.168.1.20:8000";
+      // ✅ 디버깅 로그 추가
+    console.log("=== PatentEvaluationResult ===");
+    console.log("Received appNumber:", appNumber);
+    console.log("Type:", typeof appNumber);
+    console.log("Length:", appNumber?.length);
+    console.log("============================");
 
-    setLoading(true);
-    setError(null);
 
-    fetch(`${base}/api/patent/price`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ app_number: appNumber }),
+useEffect(() => {
+  if (!appNumber) return;
+
+  setLoading(true);
+  setError(null);
+
+  getPatentPrice(appNumber)
+    .then((d) => {
+      setData(d);
+      // console.log(d);
     })
-      .then(async (res) => {
-            if (!res.ok) throw new Error("응답 실패");
-            const d = await res.json();
-            setData(d);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [appNumber]);
+    .catch((e) => setError(e.message))
+    .finally(() => setLoading(false));
+}, [appNumber]);
 
   if (loading) {
     return (
@@ -98,9 +101,8 @@ export default function PatentEvaluationResult({
     return (
       <div className="min-h-screen bg-white p-8">
         <div className="max-w-5xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
-            <div className="text-red-500 text-5xl mb-4">❌</div>
-            <p className="text-red-700 font-semibold text-lg">{error}</p>
+          <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-8 text-center">
+            <p className="text-zinc-500 text-lg">특허평가 예측 데이터가 없습니다.</p>
           </div>
         </div>
       </div>
@@ -138,7 +140,7 @@ export default function PatentEvaluationResult({
   const totalScore = rows.reduce((sum, r) => sum + r.value, 0);
   const avgScore = (totalScore / rows.length).toFixed(1);
 
-  console.log(data)
+  // console.log(data)
 
   return (
     <div className="min-h-screen bg-white p-8">
@@ -193,10 +195,13 @@ export default function PatentEvaluationResult({
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-3 h-3 bg-purple-500 rounded-full" />
                 <span className="text-sm font-medium text-zinc-700">실제 가격</span>
-              </div>
-              <div className="text-2xl font-bold text-zinc-900">
-                ₩{formatPrice(data.real_price)}
-              </div>
+                </div>
+                <div className="text-2xl font-bold text-zinc-900">
+                  {data.real_price != null && !isNaN(Number(data.real_price))
+                    ? `₩${formatPrice(data.real_price)}`
+                    : <span className="text-zinc-400">정보없음</span>
+                  }
+                </div>
               <div className="text-xs text-zinc-500 mt-1">거래 실거래가</div>
             </div>
           </div>

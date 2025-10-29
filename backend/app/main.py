@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, users, ai_router, project_router, status_router, search_router, file_router, patent_router, collection_router
+from app.routers import auth, ai_router, collection_router, file_router, patent_router, project_router, search_router, status_router, users, user_router
 import os
 
 app = FastAPI(title="ipforce_next API", version="0.1.0")
@@ -9,10 +9,11 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # CORS (프론트 도커 서비스명/로컬 둘 다 허용)
 origins = [
+    "https://ipforce.co.kr"
     "http://localhost:3000",
     "http://frontend:3000",
     "http://127.0.0.1:3000",
-    "http://192.168.1.20:3000",
+    "http://175.128.126.24:3000",
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -22,14 +23,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(ai_router.router, prefix="/api")
-app.include_router(auth.router, prefix="/api")
+# app.include_router(auth.router, prefix="/api")
 app.include_router(collection_router.router, prefix="/api")
 app.include_router(file_router.router, prefix="/api")
 app.include_router(patent_router.router, prefix="/api")
 app.include_router(project_router.router, prefix="/api")
 app.include_router(search_router.router, prefix="/api")
 app.include_router(status_router.router, prefix="/api")
-app.include_router(users.router, prefix="/api")
+# app.include_router(users.router, prefix="/api")
+app.include_router(user_router.router, prefix="/api")
 
 # 확인용
 # for route in app.routes:

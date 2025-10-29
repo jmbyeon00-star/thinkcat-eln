@@ -7,28 +7,77 @@ import {
   YAxis,
   Tooltip,
   Legend,
-  ReferenceDot,
   ResponsiveContainer,
+  ReferenceLine,
 } from "recharts";
+import { patentByCitpredict } from "@/lib/api"; 
 
 type CitationPredictionChartProps = {
   applicationNumber: string;
 };
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
+    const data = payload[0].payload;
     return (
       <div className="bg-white px-4 py-3 rounded-lg shadow-lg border border-zinc-200">
-        <p className="text-sm font-semibold text-zinc-700 mb-2">{label}년차</p>
+        <p className="text-sm font-semibold text-zinc-700 mb-2">{data.label}</p>
         <div className="flex items-center gap-2 text-sm">
           <div className="w-3 h-3 bg-blue-500 rounded-full" />
-          <span className="text-zinc-600">예측 피인용수:</span>
-          <span className="font-semibold text-zinc-900">{payload[0].value}회</span>
+          <span className="text-zinc-600">누적 피인용수:</span>
+          <span className="font-semibold text-zinc-900">{data.citation}회</span>
         </div>
+        {data.isActual && (
+          <div className="mt-1 text-xs text-green-600 font-medium">
+            ✓ 실제 데이터
+          </div>
+        )}
+        {data.isPredicted && (
+          <div className="mt-1 text-xs text-blue-600 font-medium">
+            ⚡ 예측 데이터
+          </div>
+        )}
       </div>
     );
   }
   return null;
+};
+
+// 그래프 라인에 화살표를 그리는 커스텀 컴포넌트
+const LineWithArrow = ({ points, currentYear, chartData }: any) => {
+  if (!points || points.length === 0) return null;
+  
+  const currentIdx = chartData.findIndex((d: any) => d.isActual);
+  if (currentIdx === -1) return null;
+  
+  const isForward = currentYear <= 10;
+  
+  // 현재 연차 포인트와 다음 포인트 찾기
+  const currentPoint = points[currentIdx];
+  const nextIdx = isForward ? currentIdx + 1 : currentIdx - 1;
+  
+  if (!currentPoint || nextIdx < 0 || nextIdx >= points.length) return null;
+  
+  const nextPoint = points[nextIdx];
+  
+  // 두 점 사이의 중간 지점 계산
+  const midX = (currentPoint.x + nextPoint.x) / 2;
+  const midY = (currentPoint.y + nextPoint.y) / 2;
+  
+  // 화살표 방향 계산
+  const angle = Math.atan2(nextPoint.y - currentPoint.y, nextPoint.x - currentPoint.x);
+  const arrowSize = 10;
+  
+  return (
+    <g>
+      {/* 화살표 마커 */}
+      <polygon
+        points={`0,${-arrowSize/2} ${arrowSize},0 0,${arrowSize/2}`}
+        fill="#06b6d4"
+        transform={`translate(${midX},${midY}) rotate(${angle * 180 / Math.PI})`}
+      />
+    </g>
+  );
 };
 
 export default function CitationPredictionChart({
@@ -41,10 +90,9 @@ export default function CitationPredictionChart({
   useEffect(() => {
     if (!applicationNumber) return;
     setIsLoading(true);
-    const API_BASE = "http://192.168.1.20:8000";
-    fetch(`${API_BASE}/api/patent/citpredict/${applicationNumber}`)
-      .then((res) => res.json())
-      .then((data) => {
+    
+    patentByCitpredict(applicationNumber)
+      .then((data: any) => {
         if (data.error) {
           console.error("API 오류:", data.error);
           setCitationInfo(null);
@@ -53,7 +101,7 @@ export default function CitationPredictionChart({
         setCitationInfo(data);
         prepareChartData(data);
       })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error("API 호출 오류:", err);
         setCitationInfo(null);
       })
@@ -62,19 +110,38 @@ export default function CitationPredictionChart({
 
   const prepareChartData = (data: any) => {
     const currentYear = data["연차수"];
-    const currentCitation = data["현재 누적 피인용수"];
-    const predicted10Year = data["10년차 누적 피인용수"];
+    const yearlyPredictions = data["연도별_예측"] || [];
 
-    const linePoints = Array.from({ length: 10 }, (_, i) => {
-      const year = i + 1;
-      const y =
-        currentCitation +
-        ((predicted10Year - currentCitation) / (10 - currentYear)) *
-          (year - currentYear);
-      return { year, citation: Math.max(0, Math.round(y)) };
-    });
+    // 10년 이하 특허
+    if (currentYear <= 10) {
+      // 현재 연차까지는 실제 데이터, 이후는 예측 데이터
+      const chartPoints = yearlyPredictions.map((item: any) => ({
+        year: item.year,
+        citation: item.cumulative_citation,
+        label: item.is_actual 
+          ? `${item.year}년차 (현재)` 
+          : `${item.year}년차 (예측)`,
+        isActual: item.is_actual || false,
+        isPredicted: !item.is_actual
+      }));
 
-    setChartData(linePoints);
+      setChartData(chartPoints);
+    } 
+    // 10년 이상 특허
+    else {
+      // 10년차부터 현재까지의 데이터
+      const chartPoints = yearlyPredictions.map((item: any) => ({
+        year: item.year,
+        citation: item.cumulative_citation,
+        label: item.is_actual 
+          ? `${item.year}년차 (현재)` 
+          : `${item.year}년차 (예측)`,
+        isActual: item.is_actual || false,
+        isPredicted: !item.is_actual
+      }));
+
+      setChartData(chartPoints);
+    }
   };
 
   if (isLoading) {
@@ -113,9 +180,13 @@ export default function CitationPredictionChart({
   }
 
   const currentYear = citationInfo?.["연차수"] ?? 0;
-  const currentCitation = citationInfo?.["현재 누적 피인용수"] ?? 0;
-  const predictedCitation = citationInfo?.["10년차 누적 피인용수"] ?? 0;
-  const growthRate = currentCitation > 0 
+  const currentCitation = citationInfo?.["현재_누적_피인용수"] ?? 0;
+  const predictedCitation = citationInfo?.["10년차_누적_피인용수"] ?? 0;
+  
+  // X축 범위 설정: 1부터 시작, 10년 이하면 10까지, 10년 이상이면 현재 연차까지
+  const xAxisDomain = [1, currentYear <= 10 ? 10 : currentYear];
+  
+  const growthRate = currentYear <= 10 && currentCitation > 0
     ? (((predictedCitation - currentCitation) / currentCitation) * 100).toFixed(1)
     : "0";
     
@@ -145,10 +216,10 @@ export default function CitationPredictionChart({
           </div>
 
           {/* Stats Summary */}
-          <div className="grid grid-cols-3 gap-6 px-8 py-6 bg-zinc-50 border-b border-zinc-100">
+          <div className="grid grid-cols-3 gap-6 px-8 py-6 bg-zinc-50 border-b border-cyan-100">
             <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 bg-blue-500 rounded-full" />
+                <div className="w-3 h-3 bg-cyan-500 rounded-full" />
                 <span className="text-sm font-medium text-zinc-700">현재 연차</span>
               </div>
               <div className="text-2xl font-bold text-zinc-900">
@@ -157,9 +228,9 @@ export default function CitationPredictionChart({
               <div className="text-xs text-zinc-500 mt-1">출원 후 경과 기간</div>
             </div>
 
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-cyan-100">
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-emerald-100">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 bg-cyan-500 rounded-full" />
+                <div className="w-3 h-3 bg-emerald-500 rounded-full" />
                 <span className="text-sm font-medium text-zinc-700">현재 누적</span>
               </div>
               <div className="text-2xl font-bold text-zinc-900">
@@ -168,16 +239,16 @@ export default function CitationPredictionChart({
               <div className="text-xs text-zinc-500 mt-1">누적 피인용수</div>
             </div>
 
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-emerald-100">
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 bg-emerald-500 rounded-full" />
+                <div className="w-3 h-3 bg-blue-500 rounded-full" />
                 <span className="text-sm font-medium text-zinc-700">10년차 예측</span>
               </div>
               <div className="text-2xl font-bold text-emerald-600">
-                {Math.round(predictedCitation).toLocaleString()}회
+                {predictedCitation.toLocaleString()}회
               </div>
               <div className="text-xs text-zinc-500 mt-1">
-                +{growthRate}% 증가 예상
+                {currentYear <= 10 ? `+${growthRate}% 증가 예상` : "역산 추정값"}
               </div>
             </div>
           </div>
@@ -186,26 +257,42 @@ export default function CitationPredictionChart({
           <div className="p-8">
             <h3 className="text-lg font-semibold text-zinc-900 mb-6 flex items-center gap-2">
               <div className="w-1 h-5 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
-              피인용수 추이 예측
+              {currentYear <= 10 ? "피인용수 추이 및 예측" : "피인용수 역산 추정"}
             </h3>
 
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
               <ResponsiveContainer width="100%" height={400}>
                 <LineChart 
                   data={chartData}
-                  margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
+                  margin={{ top: 40, right: 30, left: 10, bottom: 20 }}
                 >
                   <defs>
-                    <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#2563eb" />
-                      <stop offset="100%" stopColor="#06b6d4" />
-                    </linearGradient>
+                    {/* 화살표 마커 정의 */}
+                    <marker
+                      id="arrowhead"
+                      markerWidth="10"
+                      markerHeight="10"
+                      refX="5"
+                      refY="5"
+                      orient="auto"
+                    >
+                      <polygon
+                        points="0 0, 10 5, 0 10"
+                        fill="#06b6d4"
+                      />
+                    </marker>
                   </defs>
                   
                   <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" />
                   
                   <XAxis
                     dataKey="year"
+                    type="number"
+                    domain={xAxisDomain}
+                    ticks={Array.from(
+                      { length: xAxisDomain[1] - xAxisDomain[0] + 1 }, 
+                      (_, i) => xAxisDomain[0] + i
+                    )}
                     tick={{ fill: '#52525b', fontSize: 12 }}
                     label={{
                       value: "연차 (년)",
@@ -218,58 +305,138 @@ export default function CitationPredictionChart({
                   <YAxis
                     tick={{ fill: '#52525b', fontSize: 12 }}
                     label={{
-                      value: "누적 피인용수 (회)",
+                      value: "누적 피인용수",
                       angle: -90,
                       position: "insideLeft",
-                      style: { fill: '#3f3f46', fontWeight: 600 }
+                      style: { fill: '#3f3f46', fontWeight: 600 },
+                      offset: 10,
+                      dy: 50
                     }}
                   />
                   
                   <Tooltip content={<CustomTooltip />} />
                   
                   <Legend 
-                    wrapperStyle={{ paddingTop: '10px' }}
+                    wrapperStyle={{ paddingTop: '25px', paddingLeft: '50px' }}
                   />
                   
+                  {/* 메인 라인 */}
                   <Line
                     type="monotone"
                     dataKey="citation"
-                    stroke="url(#lineGradient)"
+                    stroke="#06b6d4"
                     strokeWidth={3}
-                    dot={false}
-                    name="예측 추세"
-                    activeDot={{ r: 6 }}
-                  />
-                  
-                  <ReferenceDot
-                    x={currentYear}
-                    y={currentCitation}
-                    r={8}
-                    fill="#1e40af"
-                    stroke="#fff"
-                    strokeWidth={2}
-                    label={{
-                      value: "현재",
-                      position: "top",
-                      fill: "#1e40af",
-                      fontWeight: 600,
-                      fontSize: 12
+                    dot={(props: any) => {
+                      const { cx, cy, payload, index } = props;
+                      
+                      // 현재 연차 포인트
+                      if (payload.isActual) {
+                        const isForward = currentYear <= 10;
+                        const currentIdx = chartData.findIndex((d: any) => d.isActual);
+                        const nextIdx = isForward ? currentIdx + 1 : currentIdx - 1;
+                        
+                        // 다음 포인트가 있는지 확인
+                        if (nextIdx >= 0 && nextIdx < chartData.length) {
+                          const nextData = chartData[nextIdx];
+                          // 다음 포인트의 좌표를 대략적으로 계산 (recharts 내부 스케일 사용)
+                          const xScale = (nextData.year - payload.year) * 50; // 대략적인 픽셀 거리
+                          const nextX = isForward ? cx + xScale : cx - xScale;
+                          
+                          return (
+                            <g>
+                              {/* 현재 연차 포인트 */}
+                              <circle
+                                cx={cx}
+                                cy={cy}
+                                r={8}
+                                fill="#10b981"
+                                stroke="#fff"
+                                strokeWidth={2}
+                              />
+                              
+                              {/* 화살표 */}
+                              <defs>
+                                <marker
+                                  id={`arrow-${index}`}
+                                  markerWidth="6"
+                                  markerHeight="6"
+                                  refX="5"
+                                  refY="2"
+                                  orient="auto"
+                                >
+                                  <polygon
+                                    points="0 0, 6 2, 0 4"
+                                    fill="#06b6d4"
+                                  />
+                                </marker>
+                              </defs>
+                              
+                              {/* 화살표 라인 - 현재 포인트 바로 옆에서 시작 */}
+                              <line
+                                x1={isForward ? cx + 12 : cx - 12}
+                                y1={cy}
+                                x2={isForward ? cx + 35 : cx - 35}
+                                y2={cy}
+                                stroke="#06b6d4"
+                                strokeWidth={2}
+                                markerEnd={`url(#arrow-${index})`}
+                              />
+                            </g>
+                          );
+                        }
+                        
+                        // 다음 포인트가 없으면 일반 포인트만
+                        return (
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            r={8}
+                            fill="#10b981"
+                            stroke="#fff"
+                            strokeWidth={2}
+                          />
+                        );
+                      }
+                      
+                      // 예측 포인트
+                      return (
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={6}
+                          fill="#2563eb"
+                          stroke="#fff"
+                          strokeWidth={2}
+                        />
+                      );
+                    }}
+                    name={currentYear <= 10 ? "예측 추세" : "역산 추정"}
+                    activeDot={(props: any) => {
+                      const { cx, cy, payload } = props;
+                      return (
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={10}
+                          fill={payload.isActual ? "#10b981" : "#2563eb"}
+                          stroke="#fff"
+                          strokeWidth={2}
+                        />
+                      );
                     }}
                   />
                   
-                  <ReferenceDot
+                  {/* 10년차 표시 라인 */}
+                  <ReferenceLine
                     x={10}
-                    y={Math.round(predictedCitation)}
-                    r={8}
-                    fill="#059669"
-                    stroke="#fff"
-                    strokeWidth={2}
+                    stroke="#94a3b8"
+                    strokeDasharray="5 5"
                     label={{
                       value: "10년차",
                       position: "top",
-                      fill: "#059669",
-                      fontWeight: 600,
-                      fontSize: 12
+                      fill: "#64748b",
+                      fontSize: 12,
+                      fontWeight: 600
                     }}
                   />
                 </LineChart>
@@ -286,13 +453,64 @@ export default function CitationPredictionChart({
                 </div>
                 <div>
                   <h4 className="font-semibold text-blue-900 mb-1">예측 인사이트</h4>
-                  <p className="text-sm text-blue-800 leading-relaxed">
-                    현재 {currentYear}년차에 {currentCitation}회의 피인용수를 기록하고 있으며, 
-                    10년차까지 약 <strong className="text-blue-600">{Math.round(predictedCitation).toLocaleString()}회</strong>로 
-                    증가할 것으로 예측됩니다. 이는 현재 대비 약 <strong className="text-blue-600">{growthRate}%</strong> 
-                    증가한 수치입니다.
-                  </p>
+                  {currentYear <= 10 ? (
+                    <p className="text-sm text-blue-800 leading-relaxed">
+                      현재 {currentYear}년차에 {currentCitation}회의 피인용수를 기록하고 있으며, 
+                      10년차까지 약 <strong className="text-blue-600">{Math.round(predictedCitation).toLocaleString()}회</strong>로 
+                      증가할 것으로 예측됩니다. 이는 현재 대비 약 <strong className="text-blue-600">{growthRate}%</strong> 
+                      증가한 수치입니다.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-blue-800 leading-relaxed">
+                      현재 {currentYear}년차에 {currentCitation}회의 피인용수를 기록하고 있으며, 
+                      역산 모델을 통해 10년차 시점의 누적 피인용수를 약 <strong className="text-blue-600">{Math.round(predictedCitation).toLocaleString()}회</strong>로 
+                      추정합니다.
+                    </p>
+                  )}
                 </div>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="mt-4 flex items-center gap-6 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                <span className="text-zinc-600">실제 데이터</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-blue-500 rounded-full border-2 border-white"></div>
+                <span className="text-zinc-600">예측/추정 데이터</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg width="28" height="10" className="mt-0.5">
+                  <defs>
+                    <marker
+                      id="legend-arrow"
+                      markerWidth="6"
+                      markerHeight="6"
+                      refX="5"
+                      refY="2"
+                      orient="auto"
+                    >
+                      <polygon
+                        points="0 0, 6 2, 0 4"
+                        fill="#06b6d4"
+                      />
+                    </marker>
+                  </defs>
+                  <line
+                    x1="0"
+                    y1="5"
+                    x2="28"
+                    y2="5"
+                    stroke="#06b6d4"
+                    strokeWidth="2"
+                    markerEnd="url(#legend-arrow)"
+                  />
+                </svg>
+                <span className="text-zinc-600">
+                  {currentYear <= 10 ? "예측 방향" : "역산 방향"}
+                </span>
               </div>
             </div>
           </div>
@@ -300,7 +518,9 @@ export default function CitationPredictionChart({
           {/* Footer Note */}
           <div className="px-8 py-4 bg-zinc-50 border-t border-zinc-100">
             <p className="text-xs text-zinc-500">
-              💡 예측 모델은 과거 인용 추세를 기반으로 미래 피인용수를 추정합니다.
+              💡 {currentYear <= 10 
+                ? "예측 모델은 과거 인용 추세를 기반으로 미래 피인용수를 추정합니다." 
+                : "10년 이상 특허는 역산 모델을 통해 10년차 시점의 피인용수를 추정합니다."}
             </p>
           </div>
         </div>

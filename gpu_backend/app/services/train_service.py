@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 BACKEND_URL  = os.getenv("BACKEND_URL",  "http://backend:8000")
-DEFAULT_PATH = os.getenv("DEFAULT_PATH", "/app/data")  # 권장: /app/data
+DEFAULT_PATH = os.getenv("DEFAULT_PATH", "/app")
 
 def train_classification(payload: dict):
     """

@@ -16,7 +16,7 @@ type PreviewItem = {
 export default function ProjectPreviewPage() {
     const router = useRouter();
     const { project_id } = router.query;
-    const API_BASE = "http://192.168.1.20:8000";
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
 
     const { data: session, status } = useSession() as {
         data: (Session & { access_token?: string }) | null;

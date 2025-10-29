@@ -18,9 +18,8 @@ export default function ModelProgressSSE({
     const [progress, setProgress] = useState(initialProgress);
 
     useEffect(() => {
-        // const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-        const base = "http://192.168.1.20:8000"
-        const es = new EventSource(`${base}/api/status/progress/stream/${targetId}`);
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
+        const es = new EventSource(`${API_BASE}/api/status/progress/stream/${targetId}`);
         es.onmessage = (e) => {
             const data = JSON.parse(e.data);
 
@@ -33,7 +32,7 @@ export default function ModelProgressSSE({
             console.error("SSE error:", err);
             es.close();
             setTimeout(() => {
-                const retry = new EventSource(`${base}/api/status/progress/stream/${targetId}`);
+                const retry = new EventSource(`${API_BASE}/api/status/progress/stream/${targetId}`);
                 // 같은 로직 다시 연결
                 retry.onmessage = es.onmessage;
                 retry.onerror = es.onerror;

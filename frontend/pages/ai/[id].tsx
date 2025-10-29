@@ -51,7 +51,7 @@ export default function ModelDetailPage() {
   const { setState } = useUserTaskStore()
 
   const { id } = router.query;
-  const API_BASE = "http://192.168.1.20:8000";
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
 
   const [model, setModel] = useState<ModelDetail | null>(null);
   const [loading, setLoading] = useState(true);

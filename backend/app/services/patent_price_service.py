@@ -1,6 +1,5 @@
 """
 특허 가격 예측 서비스
-
 """
 
 import os
@@ -18,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from datetime import datetime
 from app.core.db import SessionLocal
+from pathlib import Path
 
 # ★ SQLAlchemy 모델 임포트 (프로젝트 실제 경로에 맞추세요)
 from app.models.stanine_techdna import StanineTechdna  # STANINE_TECHDNA
@@ -30,14 +30,20 @@ logger = logging.getLogger(__name__)
 # ========================================
 # 환경 변수 설정
 # ========================================
-DEFAULT_PATH = os.getenv("PATENT_DEFAULT_PATH", "./")
+SERVICE_DIR = Path(__file__).parent
+DATA_DIR = SERVICE_DIR / "data"
+MODEL_DIR = SERVICE_DIR / "model"
+SCALER_DIR = SERVICE_DIR / "stdSc"
+# DEFAULT_PATH = os.getenv("PATENT_DEFAULT_PATH", "./")
 
 # JSON 설정 로드
 try:
-    with open(f"{DEFAULT_PATH}/data/model_column.json", "r", encoding="utf-8") as f:
+    with open(DATA_DIR / "model_column.json", "r", encoding="utf-8") as f:
         MODEL_COL = json.load(f)
-    with open(f"{DEFAULT_PATH}/data/techdna_col_mapping.json", "r", encoding="utf-8") as f:
+    with open(DATA_DIR / "techdna_col_mapping.json", "r", encoding="utf-8") as f:
         TECHDNA_COL = json.load(f)
+    with open(DATA_DIR / "bscore_col_mapping.json", "r", encoding="utf-8") as f:
+        BSCORE_COL = json.load(f)
 except Exception as e:
     logger.error(f"JSON 설정 파일 로드 실패: {e}")
     MODEL_COL = {}
@@ -125,14 +131,13 @@ def preprocess_citation_inputs(techdna: dict, biblio: dict):
     
     for ipc in ['B', 'C', 'D', 'E', 'F', 'G', 'H']:
         total[f'IPC_{ipc}'] = total['main_ipc'].apply(lambda x: 1 if str(x).startswith(ipc) else 0)
-    
     return total
 
 
 def load_citation_model_and_thresholds():
     """모델과 스테나인 변환 threshold 로드"""
-    full_model = joblib.load(f"{DEFAULT_PATH}/model/poisson_model(251002).joblib")
-    with open(f'{DEFAULT_PATH}/data/stanine_thresholds_zscore.json', 'r') as f:
+    full_model = joblib.load(MODEL_DIR / "poisson_model(251002).joblib")
+    with open(DATA_DIR / 'stanine_thresholds_zscore.json', 'r') as f:
         data = json.load(f)
     return full_model, np.array(data['thresholds']), data["mean"], data['std']
 
@@ -140,7 +145,7 @@ def load_citation_model_and_thresholds():
 def predict_final_citation(total, full_model, start_year: int, end_year: int = 10):
     """10년 이하 특허의 피인용수 예측"""
     cumulative_cit = total['f_cit_cnt'].values[0]
-    original_days = total['등록후일자'].values[0]
+    original_days = 0 if pd.isna(total['등록후일자'].values[0] ) else total['등록후일자'].values[0]
     
     input_vars = [
         '연차수', '연차수_x2', '연차수_x3', 'log(누적피인용수)', 'log(등록후일수)', '권리자변동여부',
@@ -206,30 +211,31 @@ def map_to_stanine_zscore(new_value, thresholds, log_mean, log_std):
     return np.digitize(z_val, bins=thresholds, right=True) + 1
 
 
-def calculate_tech_score(app_number: str) -> float:
+def calculate_tech_score(session: Session, app_number: str) -> float:
     """tech 점수를 10년차 누적 피인용수 기반 스테나인으로 계산"""
     try:
         full_model, thresholds, log_mean, log_std = load_citation_model_and_thresholds()
-        techdna, biblio = fetch_techdna_for_citation(app_number)
+        techdna, biblio = fetch_techdna_for_citation(app_number, session)
         
-        if not techdna or not biblio:
+        if not techdna or not biblio.get('grand_date'):
             logger.warning(f"피인용수 데이터 없음 ({app_number}), 기본값 사용")
-            return 35.38
         
         total = preprocess_citation_inputs(techdna, biblio)
+
         year = total['연차수'].values[0]
         
         if year > 10:
             final_10year = estimate_10yr_from_now(total, full_model)
         else:
             final_10year = predict_final_citation(total, full_model, start_year=year)
-        
+
         stanine = map_to_stanine_zscore(final_10year, thresholds, log_mean, log_std)
+
         return float(stanine * 10.0)
     
     except Exception as e:
         logger.error(f"Tech 점수 계산 오류 ({app_number}): {e}")
-        return 35.38
+        return 34.54
 
 
 def get_real_price(app_number: str):
@@ -256,8 +262,8 @@ def get_real_price(app_number: str):
 def load_model_and_scaler(model_name: str):
     """모델과 스케일러 로드"""
     try:
-        model_path = f'{DEFAULT_PATH}/model/model_{model_name}'
-        scaler_path = f'{DEFAULT_PATH}/stdSc/stan_{model_name}_stdSc'
+        model_path = MODEL_DIR / f'model_{model_name}'
+        scaler_path = SCALER_DIR / f'stan_{model_name}_stdSc'
         model = load(open(model_path, 'rb'))
         scaler = load(open(scaler_path, 'rb'))
         return model, scaler
@@ -268,7 +274,7 @@ def load_model_and_scaler(model_name: str):
 def get_main_model():
     """가격 예측 메인 모델 로드"""
     try:
-        model_path = f'{DEFAULT_PATH}/model/price_lr'
+        model_path = MODEL_DIR / 'price_lr'
         with open(model_path, 'rb') as f:
             return load(f)
     except Exception as e:
@@ -306,7 +312,7 @@ def eval_patent_price(session: Session, app_number: str) -> dict:
         logger.info(f"특허 가격 예측 시작: {app_number}")
         
         # 1️⃣ Tech 점수 계산 (별도 서버에서)
-        tech_score = calculate_tech_score(app_number)
+        tech_score = calculate_tech_score(session, app_number)
         
         # 2️⃣ StanineTechdna 조회
         techdna_objs = (
@@ -316,6 +322,7 @@ def eval_patent_price(session: Session, app_number: str) -> dict:
         )
         
         if not techdna_objs:
+            logger.warning(f"출원번호 {app_number}에 해당하는 데이터가 없습니다")
             raise Exception(f"출원번호 {app_number}에 해당하는 데이터가 없습니다")
         
         # Pydantic 스키마로 검증 후 DataFrame 변환
@@ -342,6 +349,7 @@ def eval_patent_price(session: Session, app_number: str) -> dict:
                 df_bscore = df_bscore.drop(columns=['_sa_instance_state'], errors='ignore')
             else:
                 df_bscore = pd.DataFrame()
+                # print('bscore 없음')
         else:
             df_bscore = pd.DataFrame()
         
@@ -360,6 +368,8 @@ def eval_patent_price(session: Session, app_number: str) -> dict:
             # 데이터 병합 및 컬럼 매핑
             df_merged = pd.merge(df_techdna, df_bscore, on='applicant_code', how='left')
             df_merged.rename(columns=TECHDNA_COL, inplace=True)
+            df_merged.rename(columns=BSCORE_COL, inplace=True)
+            # print(df_merged.info())
             
             # 각 feature 예측
             total_pred = {'tech': tech_score}
@@ -405,6 +415,9 @@ def eval_patent_price(session: Session, app_number: str) -> dict:
         logger.info(f"특허 가격 예측 완료: {app_number}")
         return response_data
     
+    except Exception as e:
+        logger.error(f"특허 가격 예측 오류 ({app_number}): {e}", exc_info=True)
+        raise
     except Exception as e:
         logger.error(f"특허 가격 예측 오류 ({app_number}): {e}", exc_info=True)
         raise

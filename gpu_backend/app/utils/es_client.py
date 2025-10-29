@@ -1,7 +1,7 @@
 from elasticsearch import Elasticsearch
 import os
 
-ES_HOST = os.getenv("ES_HOST", "http://elasticsearch:9200")
+ES_HOST = os.getenv("ES_HOST", "http://192.168.1.116:9200")
 ES_USER = os.getenv("ES_USER")
 ES_PASS = os.getenv("ES_PASS")
 ES_TIMEOUT = int(os.getenv("ES_TIMEOUT", "10"))
