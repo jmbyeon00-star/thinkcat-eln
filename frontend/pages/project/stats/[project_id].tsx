@@ -1,8 +1,8 @@
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, PieLabelRenderProps, Legend } from "recharts";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, PieLabelRenderProps, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import ProjectLayout from "@/components/layouts/ProjectLayout";
-import { BarChart3, AlertTriangle, FileText, CheckCircle, XCircle, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { BarChart3, AlertTriangle, FileText, CheckCircle, XCircle, ArrowLeft, ArrowRight, Loader2, PieChartIcon, BarChart2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { Session } from "next-auth";
 
@@ -62,6 +62,10 @@ export default function ProjectStatsPage() {
 
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [chartType, setChartType] = useState<'pie' | 'bar'>('pie');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
   const MIN_PER_GROUP = 5;
 
   useEffect(() => {
@@ -75,7 +79,7 @@ export default function ProjectStatsPage() {
       .catch((err) => console.error("통계 불러오기 실패:", err))
       .finally(() => setLoading(false));
   }, [project_id]);
-
+  
   const projectInfo = stats?.project_info;
   const collectionInfo: CollectionInfo[] = stats?.collection_info ?? [];
 
@@ -99,6 +103,14 @@ export default function ProjectStatsPage() {
     [collectionInfo]
   );
   const canProceed = invalidGroups.length === 0 && collectionInfo.length > 0;
+
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(collectionInfo.length / itemsPerPage);
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return collectionInfo.slice(startIndex, endIndex);
+  }, [collectionInfo, currentPage]);
 
   const goNext = () => {
     if (!canProceed) {
@@ -151,7 +163,7 @@ export default function ProjectStatsPage() {
   }
 
   return (
-    <ProjectLayout step={4}>
+    <ProjectLayout step={4} sourceType={projectInfo?.source_type} projectNo={Number(project_id)}>
       <div className="min-h-screen bg-white p-8">
         <div className="max-w-6xl mx-auto space-y-6">
           {/* Warning Banner */}
@@ -234,49 +246,91 @@ export default function ProjectStatsPage() {
           {/* Chart Section */}
           <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden">
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
-              <div className="flex items-center gap-3">
-                <BarChart3 className="w-6 h-6 text-white" />
-                <h2 className="text-xl font-semibold text-white">컬렉션 분포</h2>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <BarChart3 className="w-6 h-6 text-white" />
+                    <h2 className="text-xl font-semibold text-white">컬렉션 분포</h2>
+                  </div>
+                  <p className="text-blue-100 text-sm mt-2">컬렉션별 데이터 분포를 확인하세요</p>
+                </div>
+                
+                {/* Chart Type Toggle */}
+                <div className="flex bg-white/20 rounded-lg p-1 gap-1">
+                  <button
+                    onClick={() => setChartType('pie')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all ${
+                      chartType === 'pie'
+                        ? 'bg-white text-blue-600 shadow-md'
+                        : 'text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <PieChartIcon size={18} />
+                    <span className="text-sm font-medium">원형</span>
+                  </button>
+                  <button
+                    onClick={() => setChartType('bar')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all ${
+                      chartType === 'bar'
+                        ? 'bg-white text-blue-600 shadow-md'
+                        : 'text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <BarChart2 size={18} />
+                    <span className="text-sm font-medium">막대</span>
+                  </button>
+                </div>
               </div>
-              <p className="text-blue-100 text-sm mt-2">컬렉션별 데이터 분포를 확인하세요</p>
             </div>
 
             <div className="p-8">
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={120}
-                        // 수정: PieLabelRenderProps 타입 사용 및 payload에서 percent 추출
-                        label={(props: PieLabelRenderProps) => {
-                          const name = props.name as string;
-                          const percent = props.percent as number; // percent가 포함되어 있다면 사용
-                          // 만약 props.percent가 undefined라면, payload에서 ratio를 가져와 percent를 계산할 수 있습니다.
-                          // 하지만 간단한 해결을 위해 props에 percent가 있다고 가정하고 안전하게 사용합니다.
-                          // Recharts는 내부적으로 percent 값을 전달하는 경우가 많습니다.
-
-                          // 안전하게 percent가 있는지 확인 후 사용
-                          if (percent) {
-                            return `${name} (${(percent * 100).toFixed(1)}%)`;
-                          }
-
-                          // percent가 없을 경우, 이름만 반환하거나 다른 로직을 적용
-                          return name;
-                        }}
-                        labelLine={{ stroke: '#64748b', strokeWidth: 1 }}
-                      >
-                        {pieData.map((_, idx) => (
-                          <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<CustomTooltip />} />
-                    </PieChart>
+                    {chartType === 'pie' ? (
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={120}
+                          label={(props: PieLabelRenderProps) => {
+                            const name = props.name as string;
+                            const percent = props.percent as number;
+                            if (percent) {
+                              return `${name} (${(percent * 100).toFixed(1)}%)`;
+                            }
+                            return name;
+                          }}
+                          labelLine={{ stroke: '#64748b', strokeWidth: 1 }}
+                        >
+                          {pieData.map((_, idx) => (
+                            <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </PieChart>
+                    ) : (
+                      <BarChart data={pieData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis 
+                          dataKey="name" 
+                          angle={-45}
+                          textAnchor="end"
+                          height={100}
+                          tick={{ fill: '#52525b', fontSize: 12 }}
+                        />
+                        <YAxis tick={{ fill: '#52525b', fontSize: 12 }} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                          {pieData.map((_, idx) => (
+                            <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    )}
                   </ResponsiveContainer>
                 </div>
               </div>
@@ -286,7 +340,12 @@ export default function ProjectStatsPage() {
           {/* Table Section */}
           <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden">
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
-              <h2 className="text-xl font-semibold text-white">컬렉션별 상세 정보</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-white">컬렉션별 상세 정보</h2>
+                <span className="text-blue-100 text-sm">
+                  전체 {collectionInfo.length}개 컬렉션
+                </span>
+              </div>
             </div>
 
             <div className="p-8">
@@ -301,8 +360,9 @@ export default function ProjectStatsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {collectionInfo.map((c, idx) => {
+                    {paginatedData.map((c, idx) => {
                       const isInsufficient = c.collection_data_num < MIN_PER_GROUP;
+                      const originalIndex = (currentPage - 1) * itemsPerPage + idx;
                       return (
                         <tr
                           key={c.id}
@@ -313,7 +373,7 @@ export default function ProjectStatsPage() {
                             <div className="flex items-center gap-2">
                               <div
                                 className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                                style={{ backgroundColor: COLORS[originalIndex % COLORS.length] }}
                               />
                               <span className="font-medium text-zinc-900">{c.collection_name}</span>
                             </div>
@@ -343,6 +403,78 @@ export default function ProjectStatsPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-6">
+                  <div className="text-sm text-zinc-600">
+                    {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, collectionInfo.length)} / {collectionInfo.length}
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className={`flex items-center gap-1 px-4 py-2 rounded-lg font-medium transition-all ${
+                        currentPage === 1
+                          ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
+                          : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                      }`}
+                    >
+                      <ChevronLeft size={18} />
+                      이전
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                        // 페이지 번호 표시 로직: 첫 페이지, 마지막 페이지, 현재 페이지 근처만 표시
+                        if (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 1 && page <= currentPage + 1)
+                        ) {
+                          return (
+                            <button
+                              key={page}
+                              onClick={() => setCurrentPage(page)}
+                              className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                                currentPage === page
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          );
+                        } else if (
+                          page === currentPage - 2 ||
+                          page === currentPage + 2
+                        ) {
+                          return (
+                            <span key={page} className="text-zinc-400 px-2">
+                              ...
+                            </span>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className={`flex items-center gap-1 px-4 py-2 rounded-lg font-medium transition-all ${
+                        currentPage === totalPages
+                          ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
+                          : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                      }`}
+                    >
+                      다음
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -369,7 +501,7 @@ export default function ProjectStatsPage() {
                   : `모든 라벨이 최소 ${MIN_PER_GROUP}개 이상이어야 이동할 수 있습니다.`
               }
             >
-              학습 시작
+              학습 설정
               <ArrowRight size={18} />
             </button>
           </div>

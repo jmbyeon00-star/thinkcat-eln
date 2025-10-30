@@ -9,9 +9,9 @@ import {
 } from "recharts";
 
 const radarData = [
-  { model: "m-BERT", accuracy: 30.2 },
-  { model: "KorPatBERT", accuracy: 50.5 },
-  { model: "IP-Force", accuracy: 69.4 },
+  { model: "m-BERT", accuracy: 51.1 },
+  { model: "KorPatBERT", accuracy: 56.1 },
+  { model: "IP-Force", accuracy: 70.0 },
 ];
 
 export default function ModelAccuracyRadarChart() {

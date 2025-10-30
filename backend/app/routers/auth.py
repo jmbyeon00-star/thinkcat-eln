@@ -97,7 +97,11 @@ def login(data: Signin, db: Session = Depends(get_db)):
     if not user or not verify_password(data.password, user.password):
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다.")
     
-    access_token = create_access_token(data={"sub": str(user.id)}, expires_delta=timedelta(hours=1))
+    access_token = create_access_token(
+        data={"sub": str(user.id)}, 
+        # expires_delta=timedelta(hours=1)
+        expires_delta=timedelta(days=7)
+    )
 
     # 쿠키 설정 값들
     # cookie_max_age = 60 * 60  # 초 (예: 1시간)

@@ -88,55 +88,53 @@ def get_jwt_identity(request: Request) -> Optional[int]:
         return None
 
 def _get_token_from_request(request: Request) -> Optional[str]:
-    """Authorization 헤더에서만 토큰 가져오기"""
+    # 1) Authorization 헤더 우선
     auth: str = request.headers.get("Authorization") or request.headers.get("authorization")
-    if auth and auth.startswith("Bearer "):
-        token = auth.split(" ", 1)[1]
-        print(f"[DEBUG] Extracted token: {token[:30]}...")
-        return token
+    if auth:
+        print(f"[DEBUG] Authorization header found: {auth[:30]}...")
+        if auth.startswith("Bearer "):
+            token = auth.split(" ", 1)[1]
+            print(f"[DEBUG] Extracted token: {token[:30]}...")
+            return token
     
-    print("[DEBUG] No Bearer token found in Authorization header")
+    # 2) 쿠키에서 찾기
+    cookie_token = request.cookies.get("access_token")
+    if cookie_token:
+        print(f"[DEBUG] Cookie token found: {cookie_token[:30]}...")
+        return cookie_token
+    print("[DEBUG] no token found in header or cookie")
+    print(f"[DEBUG] Available headers: {dict(request.headers)}")
+    print(f"[DEBUG] Available cookies: {request.cookies}")
     return None
 
 def get_current_user_from_request(request: Request):
     token = _get_token_from_request(request)
     
     if token is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
-    
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Not authenticated",
+                            headers={"WWW-Authenticate": "Bearer"})
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        print(f"[DEBUG] Token payload: {payload}")
+
         user_id = payload.get("sub")
         exp = payload.get("exp")
-        
         if exp:
+            from datetime import datetime
             exp_time = datetime.fromtimestamp(exp)
-            now = datetime.utcnow()  # ⚠️ utcnow() 사용 (일관성)
-            print(f"[DEBUG] Token expires at: {exp_time} UTC")
-            print(f"[DEBUG] Current time: {now} UTC")
+            now = datetime.now()
+            print(f"[DEBUG] Token expires at: {exp_time}")
+            print(f"[DEBUG] Current time: {now}")
             print(f"[DEBUG] Time remaining: {exp_time - now}")
-        
+
         if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
-            )
-        
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         return int(user_id)
     
     except jwt.ExpiredSignatureError:
         print("[DEBUG] Token has expired")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token expired"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
     except JWTError as e:
         print(f"[DEBUG] JWT Error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")

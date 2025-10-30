@@ -81,10 +81,6 @@ def insert_project_data(session: Session, user_id: int, project_id: int, body: d
     n_abstracts = body.get("n_abstract", [])
     n_vectors = body.get("n_vector", [])
 
-    print(vectors[0])
-
-    print("project_name:", project_name)
-
     if not app_nums:
         return {"message": "No data provided"}
     
@@ -277,6 +273,13 @@ def insert_project_data(session: Session, user_id: int, project_id: int, body: d
     }
 
 def get_project_data(session: Session, project_id: int):
+    types = session.query(
+        ProjectInfo.source_type,
+        ProjectInfo.task_type,
+        ProjectInfo.project_code,
+        ProjectInfo.project_name
+    ).filter_by(id=project_id).first()
+
     rows = session.query(ProjectData).filter_by(project_id=project_id, used=1).all()
     items = [
         {
@@ -287,7 +290,18 @@ def get_project_data(session: Session, project_id: int):
         }
         for r in rows
     ]
-    return {"status": True, "items": items}
+
+    return {
+        "status": True,
+        "items": items,
+        "types": {
+            "source_type": types[0],
+            "task_type": types[1],
+            "project_code": types[2],
+            "project_name": types[3],
+        } if types else {}
+    }
+
 
 def update_project_statistics(session: Session, project_id: int, updated: int):
     # 1. 현재 존재하는 컬렉션 목록 조회

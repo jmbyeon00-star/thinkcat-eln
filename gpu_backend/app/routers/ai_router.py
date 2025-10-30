@@ -12,7 +12,6 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 @router.post("/history")
 async def get_history(request: Request):
     payload = await request.json()
-    print("✅ GPU payload:", payload)
     return ai_service.get_classification_history(payload)
 
 @router.post("/{model_id}")

@@ -30,9 +30,9 @@ export default function ProjectTrainPage() {
     const [modelName, setModelName] = useState('');
     const [modelDesc, setModelDesc] = useState('');
     const [epoch, setEpoch] = useState(10);
-    const [batchSize, setBatchSize] = useState(32);
+    const [batchSize, setBatchSize] = useState(128);
     const [learningRate, setLearningRate] = useState(1e-5);
-    const [maxLength, setMaxLength] = useState(128);
+    const [maxLength, setMaxLength] = useState(256);
     const [shuffle, setShuffle] = useState(true);
 
     const token = session?.access_token;
@@ -108,7 +108,7 @@ export default function ProjectTrainPage() {
     };
 
     return (
-        <ProjectLayout step={5}>
+        <ProjectLayout step={5} sourceType={projectInfo?.source_type} projectNo={Number(project_id)}>
             <div className="min-h-screen bg-white p-8">
                 <div className="max-w-4xl mx-auto space-y-6">
                     {/* Header */}

@@ -2,7 +2,7 @@
 
 import Stepper from "./SearchStepper";
 
-export default function ModelLayout({
+export default function SearchLayout({
   step,
   keyword,
   number,
@@ -20,7 +20,7 @@ export default function ModelLayout({
   ];
 
   return (
-    <div className="mt-10 mx-auto w-full max-w-3xl">
+    <div className="mt-6 mx-auto w-full max-w-6xl px-4">
       <header>
         <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-zinc-900">
           특허 검색
@@ -30,7 +30,7 @@ export default function ModelLayout({
         </p>
       </header>
 
-      <div className="mt-4 mb-1">
+      <div className="mt-6 mb-6">
         <Stepper step={step} items={stepItems} />
       </div>
 

@@ -53,7 +53,10 @@ async def update_status_sse(session: Session, run_type: str, user_id: str, body:
     key = str(email).lower()
 
     raw_status = body.get("status", "AVAILABLE").upper()
-    status = "RUNNING" if raw_status == "RUNNING" else "AVAILABLE"
+    if raw_status == "RUNNING":
+        status = "RUNNING" if run_type == "train" else "INFERRING"
+    else:
+        status = "AVAILABLE"
 
     payload = {
         "run_type": run_type,
@@ -112,6 +115,7 @@ async def update_progress_sse(session: Session, target_type: str, target_id: str
                 model.progress_status = status
             if progress >= 100:
                 model.version = (model.version or 0) + 1
+                model.model_status = 1 
                 print(f"[PROGRESS] Model {model.id} training completed → version {model.version}")
             session.commit()
 
@@ -139,6 +143,15 @@ async def update_progress_sse(session: Session, target_type: str, target_id: str
     # ------------------------
     # SSE broadcast
     # ------------------------
+    actual_status = status
+    if not actual_status:
+        if progress >= 100:
+            actual_status = "COMPLETED"
+        elif target_type == "train":
+            actual_status = "RUNNING"
+        elif target_type == "infer":
+            actual_status = "INFERRING"
+
     key = str(target_id)
     for q in _subscribers.get(key, []):
         # await q.put(progress)
@@ -146,6 +159,7 @@ async def update_progress_sse(session: Session, target_type: str, target_id: str
             "progress": progress,
             "remaining_time": remaining_time,
             "status": status,
+            "type": target_type
         }
         await q.put(json.dumps(payload))
 

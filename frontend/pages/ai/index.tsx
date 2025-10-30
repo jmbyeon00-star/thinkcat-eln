@@ -116,6 +116,7 @@ export default function AIModelListPage() {
                     credentials: "include"
                 });
                 const data = await res.json();
+                console.log(">>> models:", data)
                 setModels(data.items || []);
                 setTotal(data.total || 0);
             } catch (e) {
@@ -124,7 +125,6 @@ export default function AIModelListPage() {
                 setIsLoading(false);
             }
         }
-
         const debounce = setTimeout(loadModels, 300);
         return () => clearTimeout(debounce);
     }, [token, query, page, limit]);
@@ -283,70 +283,73 @@ export default function AIModelListPage() {
                     /* Grid View */
                     <>
                         <div className="grid gap-4 md:grid-cols-2 mb-8">
-                            {models.map((m) => {
-                                const config = statusConfig[m.progress_status];
-                                const Icon = config.icon;
+                            {models
+                                .filter((m) => m.task_type === "classification")
+                                .map((m) => {
+                                    const config = statusConfig[m.progress_status];
+                                    const Icon = config.icon;
 
-                                return (
-                                    <a
-                                        key={m.id}
-                                        href={m.progress_status === "RUNNING"
-                                            ? `/ai/training/${m.id}`
-                                            : `/ai/${m.id}`}
-                                        className="block group"
-                                    >
-                                        <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6 hover:shadow-xl hover:border-blue-200 transition-all duration-300">
-                                            <div className="flex items-start gap-4">
-                                                {/* Icon */}
-                                                <div className={`rounded-xl bg-gradient-to-br ${config.bg} p-3 ring-1 ${config.ring} group-hover:ring-blue-300 transition-all`}>
-                                                    <Icon className={`h-6 w-6 ${config.color}`} />
-                                                </div>
-
-                                                {/* Content */}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-start justify-between gap-2 mb-2">
-                                                        <h2 className="text-lg font-semibold text-zinc-900 group-hover:text-blue-600 transition-colors truncate">
-                                                            {m.model_name}
-                                                        </h2>
-                                                        <span className={`px-2 py-1 rounded-md text-xs font-medium border whitespace-nowrap ${config.badge}`}>
-                                                            {config.label}
-                                                        </span>
+                                    return (
+                                        <a
+                                            key={m.id}
+                                            href={m.progress_status === "RUNNING"
+                                                // ? `/ai/training/${m.id}`
+                                                ? "#"
+                                                : `/ai/${m.id}`}
+                                            className="block group"
+                                        >
+                                            <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6 hover:shadow-xl hover:border-blue-200 transition-all duration-300">
+                                                <div className="flex items-start gap-4">
+                                                    {/* Icon */}
+                                                    <div className={`rounded-xl bg-gradient-to-br ${config.bg} p-3 ring-1 ${config.ring} group-hover:ring-blue-300 transition-all`}>
+                                                        <Icon className={`h-6 w-6 ${config.color}`} />
                                                     </div>
 
-                                                    <p className="text-sm text-zinc-600 mb-3 line-clamp-2">
-                                                        {m.model_desc || "설명이 없습니다"}
-                                                    </p>
-
-                                                    <div className="flex items-center gap-3 text-xs text-zinc-500">
-                                                        <div className="flex items-center gap-1">
-                                                            <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full"></div>
-                                                            <span>
-                                                                {taskMapper[m.task_type] ?? m.task_type}
+                                                    {/* Content */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-start justify-between gap-2 mb-2">
+                                                            <h2 className="text-lg font-semibold text-zinc-900 group-hover:text-blue-600 transition-colors truncate">
+                                                                {m.model_name}
+                                                            </h2>
+                                                            <span className={`px-2 py-1 rounded-md text-xs font-medium border whitespace-nowrap ${config.badge}`}>
+                                                                {config.label}
                                                             </span>
                                                         </div>
-                                                        {m.created_datetime && (
+
+                                                        <p className="text-sm text-zinc-600 mb-3 line-clamp-2">
+                                                            {m.model_desc || "설명이 없습니다"}
+                                                        </p>
+
+                                                        <div className="flex items-center gap-3 text-xs text-zinc-500">
                                                             <div className="flex items-center gap-1">
                                                                 <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full"></div>
                                                                 <span>
-                                                                    {new Date(m.created_datetime).toLocaleDateString()}
+                                                                    {taskMapper[m.task_type] ?? m.task_type}
                                                                 </span>
                                                             </div>
-                                                        )}
+                                                            {m.created_datetime && (
+                                                                <div className="flex items-center gap-1">
+                                                                    <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full"></div>
+                                                                    <span>
+                                                                        {new Date(m.created_datetime).toLocaleDateString()}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            {/* Progress Bar */}
-                                            {m.progress_status === "RUNNING" && (
-                                                <>
-                                                    {/* <ProgressBar progress={m.progress} status={m.progress_status} /> */}
-                                                    {/* <ModelProgressSSE targetId={m.id} initialProgress={m.progress} /> */}
-                                                    <ModelProgressSSE targetId={m.id} initialProgress={m.progress} />
-                                                </>
-                                            )}
-                                        </div>
-                                    </a>
-                                );
+                                                {/* Progress Bar */}
+                                                {m.progress_status === "RUNNING" && (
+                                                    <>
+                                                        {/* <ProgressBar progress={m.progress} status={m.progress_status} /> */}
+                                                        {/* <ModelProgressSSE targetId={m.id} initialProgress={m.progress} /> */}
+                                                        <ModelProgressSSE targetId={m.id} initialProgress={m.progress} />
+                                                    </>
+                                                )}
+                                            </div>
+                                        </a>
+                                    );
                             })}
                         </div>
                     </>
@@ -378,65 +381,67 @@ export default function AIModelListPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-zinc-100">
-                                    {models.map((m) => {
-                                        const config = statusConfig[m.progress_status];
-                                        const Icon = config.icon;
+                                    {models
+                                        .filter((m) => m.task_type === "classification")
+                                        .map((m) => {
+                                            const config = statusConfig[m.progress_status];
+                                            const Icon = config.icon;
 
-                                        return (
-                                            <tr key={m.id} className="hover:bg-blue-50 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`rounded-lg bg-gradient-to-br ${config.bg} p-2 ring-1 ${config.ring}`}>
-                                                            <Icon className={`h-5 w-5 ${config.color}`} />
-                                                        </div>
-                                                        <span className="font-medium text-zinc-900">
-                                                            {m.model_name}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-zinc-600 max-w-xs truncate">
-                                                    {m.model_desc || "설명 없음"}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-zinc-600">
-                                                    <span className="px-2 py-1 bg-zinc-100 rounded-md text-xs font-medium">
-                                                        {taskMapper[m.task_type] ?? m.task_type}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    {m.progress_status === "RUNNING" ? (
-                                                        <div className="relative w-32 bg-zinc-200 rounded-full h-5">
-                                                            <div
-                                                                className={`h-5 rounded-full transition-all duration-500 ${m.progress === 100 ? "bg-emerald-500" : "bg-blue-500"
-                                                                    }`}
-                                                                style={{ width: `${m.progress}%` }}
-                                                            />
-                                                            <span className={`absolute inset-0 text-xs font-semibold flex items-center justify-center ${m.progress < 50 ? "text-zinc-700" : "text-white"
-                                                                }`}>
-                                                                {m.progress}%
+                                            return (
+                                                <tr key={m.id} className="hover:bg-blue-50 transition-colors">
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`rounded-lg bg-gradient-to-br ${config.bg} p-2 ring-1 ${config.ring}`}>
+                                                                <Icon className={`h-5 w-5 ${config.color}`} />
+                                                            </div>
+                                                            <span className="font-medium text-zinc-900">
+                                                                {m.model_name}
                                                             </span>
                                                         </div>
-                                                    ) : (
-                                                        <span className={`px-2 py-1 rounded-md text-xs font-medium border ${config.badge}`}>
-                                                            {config.label}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-zinc-600 max-w-xs truncate">
+                                                        {m.model_desc || "설명 없음"}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-zinc-600">
+                                                        <span className="px-2 py-1 bg-zinc-100 rounded-md text-xs font-medium">
+                                                            {taskMapper[m.task_type] ?? m.task_type}
                                                         </span>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-zinc-600">
-                                                    {m.created_datetime
-                                                        ? new Date(m.created_datetime).toLocaleDateString()
-                                                        : "-"}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <a
-                                                        href={m.progress_status === "RUNNING" ? `/ai/training/${m.id}` : `/ai/${m.id}`}
-                                                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
-                                                    >
-                                                        {m.progress_status === "RUNNING" ? "모니터링" : "상세보기"}
-                                                        <ChevronRight className="h-4 w-4" />
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        );
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {m.progress_status === "RUNNING" ? (
+                                                            <div className="relative w-32 bg-zinc-200 rounded-full h-5">
+                                                                <div
+                                                                    className={`h-5 rounded-full transition-all duration-500 ${m.progress === 100 ? "bg-emerald-500" : "bg-blue-500"
+                                                                        }`}
+                                                                    style={{ width: `${m.progress}%` }}
+                                                                />
+                                                                <span className={`absolute inset-0 text-xs font-semibold flex items-center justify-center ${m.progress < 50 ? "text-zinc-700" : "text-white"
+                                                                    }`}>
+                                                                    {m.progress}%
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className={`px-2 py-1 rounded-md text-xs font-medium border ${config.badge}`}>
+                                                                {config.label}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm text-zinc-600">
+                                                        {m.created_datetime
+                                                            ? new Date(m.created_datetime).toLocaleDateString()
+                                                            : "-"}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <a
+                                                            href={m.progress_status === "RUNNING" ? `/ai/training/${m.id}` : `/ai/${m.id}`}
+                                                            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                                                        >
+                                                            {m.progress_status === "RUNNING" ? "모니터링" : "상세보기"}
+                                                            <ChevronRight className="h-4 w-4" />
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            );
                                     })}
                                 </tbody>
                             </table>

@@ -52,26 +52,22 @@ export default function Home() {
 
                 <div className="mt-10">
                     <SearchBar loading={loading} onSearch={handleSearch} />
-                    {/* <ModelAccuracyRadarChart /> */}
                     
-                    <section className="ml-10 m-10 mx-auto bg-white p-8 rounded-xl border border-zinc-200 shadow-sm mt-10">
-                        {/* <h1 className="text-xl font-semibold text-zinc-900 mb-6 border-b border-zinc-200 pb-3">
-                            아이피포스 소개
-                        </h1> */}
-                        <header>
+                    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
+                        <header className="mb-6">
                             <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-zinc-900">
-                                특허 자동 분류: 성능 분류
+                                특허 자동 분류: 성능 비교
                             </h1>
                             <p className="mt-2 text-sm md:text-base text-zinc-500">
-                                학습용 데이터가 부족할 수 있는 경우의 성능 비교<br/>
+                                학습용 데이터가 부족할 수 있는 경우의 성능 비교
                             </p>
                         </header>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pl-20 pr-20 pt-10 ">
-                            <div className="bg-white p-6 rounded-xl shadow-sm">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="bg-white rounded-xl shadow-sm border border-zinc-100 p-4">
                                 <BarChart />
                             </div>
-                            <div className="bg-white p-6 rounded-xl shadow-sm">
+                            <div className="bg-white rounded-xl shadow-sm border border-zinc-100 p-4">
                                 <ModelAccuracyLineChart />
                             </div>
                         </div>

@@ -95,7 +95,7 @@ def get_collection_detail_with_analysis(
         return {"error": "Collection not found"}
 
     # 2️⃣ 데이터 필터링 기본 쿼리
-    query = session.query(ProjectData).filter(ProjectData.collection_name == collection.collection_name)
+    query = session.query(ProjectData).filter(ProjectData.collection_code == collection.collection_code, ProjectData.used==1)
 
     # 3️⃣ 검색어 필터 (옵션)
     if q:

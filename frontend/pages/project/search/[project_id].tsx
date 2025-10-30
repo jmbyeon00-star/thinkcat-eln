@@ -106,26 +106,6 @@ export default function ProjectSearchPage() {
 
     const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
 
-    // function toggleGroupSelect(code: string) {
-    //     const isSelected = selectedGroups.includes(code);
-    //     const newSelectedGroups = isSelected
-    //         ? selectedGroups.filter((c) => c !== code)
-    //         : [...selectedGroups, code];
-    //     setSelectedGroups(newSelectedGroups);
-
-    //     const groupAppNums = (cpcGroups[code] || []).map((r) => r.application_number);
-
-    //     setSelected((prev) => {
-    //         const current = new Set(prev);
-    //         if (isSelected) {
-    //             groupAppNums.forEach((num) => current.delete(num));
-    //         } else {
-    //             groupAppNums.forEach((num) => current.add(num));
-    //         }
-    //         return Array.from(current);
-    //     });
-    // }
-
     async function doSearch(pageNum: number = 1) {
         if (pageNum === 1) {
             setSelected([]);
@@ -151,19 +131,28 @@ export default function ProjectSearchPage() {
             const dataArray = data.data || [];
             const hitsArray = data.hits || [];
             
+            // 검색어의 첫 20자를 collection_name으로 사용
+            const autoCollectionName = keywords.trim().substring(0, 20);
             
-            // const newResults = data.data || [];
             const newResults = dataArray.map((item: any, index: number) => {
                 const hit = hitsArray[index] || {};
                 return {
                     ...item,
                     vector: hit.vector || null, // hits에서 벡터 가져오기
                     score: hit.score || item.score,
+                    collection_name: autoCollectionName, // 자동으로 collection_name 설정
                 };
             });
 
             // 카트에 이미 있는 항목 제외
-            setResults(newResults.filter((r: any) => !cart.some((c) => c.application_number === r.application_number)));
+            const filteredResults = newResults.filter((r: any) => !cart.some((c) => c.application_number === r.application_number));
+            setResults(filteredResults);
+            
+            // 검색 성공 시 inputValue도 업데이트 (기존 컬렉션 선택이 아닌 경우)
+            if (!inputLocked) {
+                setInputValue(autoCollectionName);
+            }
+            
             setTotal(data.data?.length || 0);
             setTotalHits(data.total_hits || 0);
             setMaxSize(data.max_size || 0);
@@ -186,6 +175,24 @@ export default function ProjectSearchPage() {
 
     function addToCart() {
         const newItems = results.filter((r) => selected.includes(r.application_number));
+        
+        // ✅ collection_name 통계 계산
+        const collectionStats = new Map<string, number>();
+        newItems.forEach((item) => {
+            const name = item.collection_name || "(미지정)";
+            collectionStats.set(name, (collectionStats.get(name) || 0) + 1);
+        });
+        
+        // ✅ 알림 메시지 생성
+        const collectionCount = collectionStats.size;
+        const collectionDetails = Array.from(collectionStats.entries())
+            .map(([name, count]) => `  • ${name}: ${count}개`)
+            .join('\n');
+        
+        const message = `총 ${collectionCount}개의 컬렉션으로 ${newItems.length}개 항목을 담습니다.\n\n${collectionDetails}\n\n계속하시겠습니까?`;
+        
+        if (!confirm(message)) return;
+        
         setCart((prev) => {
             const existing = new Set(prev.map((x) => x.application_number));
             return [...prev, ...newItems.filter((r) => !existing.has(r.application_number))];
@@ -273,7 +280,7 @@ export default function ProjectSearchPage() {
             </div>
         );
     }
-
+    console.log("?:", results)
     return (
         <ProjectLayout step={2}>
             <Head>
@@ -379,7 +386,7 @@ export default function ProjectSearchPage() {
 
                             {/* Collection Name Input */}
                             <div className="flex items-center gap-3 border border-zinc-200 p-4 rounded-xl bg-zinc-50">
-                                <label className="text-sm font-medium text-zinc-700">콜렉션 명:</label>
+                                <label className="text-sm font-medium text-zinc-700">컬렉션 명:</label>
 
                                 <select
                                     value={section || "__new__"}
@@ -435,51 +442,7 @@ export default function ProjectSearchPage() {
                                         inputLocked ? "bg-zinc-100 text-zinc-500" : "bg-white"
                                     }`}
                                 />
-
-                                <button
-                                    onClick={() => {
-                                        if (!inputValue.trim()) return alert("콜렉션 이름을 입력하세요.");
-                                        alert(`현재 검색 결과에 "${inputValue}" 콜렉션이 적용되었습니다.`);
-                                    }}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-all"
-                                >
-                                    적용
-                                </button>
                             </div>
-
-                            {/* CPC Group Selection */}
-                            {/* {results.length > 0 && (
-                                <div className="border border-blue-100 bg-blue-50 rounded-xl p-4 space-y-3">
-                                    <h3 className="text-sm font-semibold text-blue-900">
-                                        CPC 코드별 그룹 선택
-                                    </h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                                        {Object.entries(cpcGroups).map(([code, items]) => {
-                                            const isSelected = selectedGroups.includes(code);
-                                            return (
-                                                <button
-                                                    key={code}
-                                                    onClick={() => toggleGroupSelect(code)}
-                                                    className={`px-3 py-2 text-sm rounded-lg border transition-all font-medium ${
-                                                        isSelected
-                                                            ? "bg-blue-600 text-white border-blue-600"
-                                                            : "bg-white text-blue-700 border-blue-200 hover:bg-blue-100"
-                                                    }`}
-                                                >
-                                                    {code} <span className="text-xs opacity-80">({items.length})</span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-
-                                    {selectedGroups.length > 0 && (
-                                        <div className="text-xs text-blue-800 mt-2">
-                                            선택된 그룹: {selectedGroups.join(", ")} (
-                                            {selected.length.toLocaleString()}건 선택됨)
-                                        </div>
-                                    )}
-                                </div>
-                            )} */}
 
                             {/* Action Buttons */}
                             <div className="flex justify-between items-center">

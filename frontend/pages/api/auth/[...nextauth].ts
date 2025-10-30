@@ -25,23 +25,28 @@ export const authOptions: AuthOptions = {
                 const data = await res.json().catch(() => null);
                 if (!res.ok || !data?.ok) return null;
 
-                const user = {
+                return {
                     id: data.user.id,
                     name: data.user.name,
                     email: data.user.email,
                     token: data.access_token,
                 } as User;
-
-                return user;
             },
         }),
     ],
 
-    session: { strategy: "jwt" },
+    session: { 
+        strategy: "jwt",
+        maxAge: 7 * 24 * 60 * 60, // 7일 (백엔드와 동일하게)
+    },
 
     callbacks: {
         async jwt({ token, user }: { token: JWT; user?: User }) {
-            if (user) (token as any).access_token = (user as any).token;
+            if (user) {
+                (token as any).access_token = (user as any).token;
+                // 토큰 만료 시간 저장
+                // (token as any).accessTokenExpires = Date.now() + 7 * 24 * 60 * 60 * 1000;
+            }
             return token;
         },
         async session({ session, token }: { session: Session; token: JWT }) {
@@ -50,7 +55,6 @@ export const authOptions: AuthOptions = {
         },
     },
 
-    // ✅ 오타 수정
     pages: { signIn: "/auth/signin" },
     secret: process.env.NEXTAUTH_SECRET,
 };

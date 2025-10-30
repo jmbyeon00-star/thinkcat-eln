@@ -37,6 +37,7 @@ class ModelInfo(Base):
     max_length: Mapped[int] = mapped_column(Integer, nullable=False)
     shuffle: Mapped[int] = mapped_column(Integer, nullable=False)
     progress: Mapped[int] = mapped_column(Integer, default=0)  # 0~100%
+    last_inference_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     created_datetime: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     updated_datetime: Mapped[datetime] = mapped_column(DateTime, onupdate=datetime.now)
     

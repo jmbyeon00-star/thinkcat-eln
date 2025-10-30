@@ -26,17 +26,17 @@ export default function SearchIndexPage() {
 
   return (
     <SearchLayout step={1}>
-        <div className="bg-white shadow-md rounded-xl p-6 w-full max-w-2xl">
+        <div className="bg-white shadow-md rounded-xl p-6 w-full">
             <div className="flex justify-start mb-4">
-            <select
-                value={searchType}
-                onChange={(e) => setSearchType(e.target.value as any)}
-                className="border px-3 py-2 rounded-lg text-sm"
-            >
-                <option value="keyword">키워드 검색</option>
-                <option value="application">출원번호</option>
-                <option value="registration">등록번호</option>
-            </select>
+                <select
+                    value={searchType}
+                    onChange={(e) => setSearchType(e.target.value as any)}
+                    className="border px-3 py-2 rounded-lg text-sm"
+                >
+                    <option value="keyword">키워드 검색</option>
+                    <option value="application">출원번호</option>
+                    <option value="registration">등록번호</option>
+                </select>
             </div>
 
             <SearchBar loading={false} searchType={searchType} onSearch={handleSearch} />

@@ -2,7 +2,7 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 import { useEffect, useState } from "react";
 import ProjectLayout from "@/components/layouts/ProjectLayout";
-import { FileText, Save, ArrowLeft, ArrowRight, Loader2, Edit3 } from "lucide-react";
+import { FileText, Save, ArrowLeft, ArrowRight, Loader2, Edit3, ChevronDown, ChevronUp } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { Session } from "next-auth";
 
@@ -26,8 +26,10 @@ export default function ProjectPreviewPage() {
 
     const [loading, setLoading] = useState(true);
     const [items, setItems] = useState<PreviewItem[]>([]);
+    const [types, setTypes] = useState<{ source_type: string; task_type: string, project_code: string, project_name: string } | null>(null);
     const [editingCell, setEditingCell] = useState<{ row: number; key: keyof PreviewItem } | null>(null);
     const [modified, setModified] = useState<Record<string, Partial<PreviewItem>>>({});
+    const [expandedRow, setExpandedRow] = useState<number | null>(null); // 단일 행만 확장
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(10);
 
@@ -48,6 +50,8 @@ export default function ProjectPreviewPage() {
                 if (!res.ok) throw new Error("불러오기 실패");
                 const data = await res.json();
                 setItems(data.items || []);
+                setTypes(data.types || null);
+
             } catch (e) {
                 alert("미리보기 데이터를 불러오지 못했습니다.");
             } finally {
@@ -89,6 +93,15 @@ export default function ProjectPreviewPage() {
         }
     };
 
+    const toggleExpandRow = (index: number) => {
+        setExpandedRow((prev) => prev === index ? null : index);
+    };
+
+    const truncateText = (text: string | undefined, maxLength: number) => {
+        if (!text) return "";
+        return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
+    };
+
     if (loading) {
         return (
             <ProjectLayout step={3}>
@@ -103,13 +116,13 @@ export default function ProjectPreviewPage() {
     }
 
     return (
-        <ProjectLayout step={3}>
+        <ProjectLayout step={3} sourceType={types?.source_type} projectNo={Number(project_id)}>
             <Head>
                 <title>프로젝트 #{project_id} | 미리보기 | IPFORCE</title>
             </Head>
 
             <div className="min-h-screen bg-white p-8">
-                <div className="max-w-6xl mx-auto space-y-6">
+                <div className="max-w-7xl mx-auto space-y-6">
                     {/* Main Card */}
                     <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden">
                         {/* Card Header */}
@@ -131,7 +144,7 @@ export default function ProjectPreviewPage() {
                                 </div>
                             </div>
                             <p className="text-blue-100 text-sm mt-2">
-                                특허 정보를 확인하고 편집할 수 있습니다. 셀을 클릭하여 수정하세요.
+                                특허 정보를 확인하고 편집할 수 있습니다. 특허명과 요약문을 클릭하여 수정하세요.
                             </p>
                         </div>
 
@@ -151,7 +164,8 @@ export default function ProjectPreviewPage() {
                                             <div>
                                                 <p className="text-sm font-semibold text-blue-900 mb-1">편집 안내</p>
                                                 <p className="text-xs text-blue-800 leading-relaxed">
-                                                    특허명과 라벨을 클릭하면 직접 수정할 수 있습니다.
+                                                    특허명과 요약문을 클릭하면 직접 수정할 수 있습니다.
+                                                    "보기" 버튼을 클릭하면 잘린 내용의 전체를 확인할 수 있습니다.
                                                     수정 후 하단의 "저장하기" 버튼을 눌러 변경사항을 저장하세요.
                                                 </p>
                                             </div>
@@ -160,71 +174,116 @@ export default function ProjectPreviewPage() {
 
                                     {/* Table */}
                                     <div className="overflow-hidden rounded-xl border-2 border-zinc-200">
-                                        <table className="w-full">
+                                        <table className="w-full table-fixed">
                                             <thead className="bg-zinc-50">
                                                 <tr>
-                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 w-16">#</th>
-                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 w-1/4">출원번호</th>
-                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 w-1/2">특허명</th>
-                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700 w-1/4">라벨</th>
+                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700" style={{ width: '60px' }}>#</th>
+                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700" style={{ width: '140px' }}>출원번호</th>
+                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700" style={{ width: '30%' }}>특허명</th>
+                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700" style={{ width: '35%' }}>요약문</th>
+                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700" style={{ width: '15%' }}>컬렉션</th>
+                                                    <th className="px-4 py-3 text-center text-sm font-semibold text-zinc-700" style={{ width: '80px' }}>보기</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {pagedItems.map((r, i) => {
                                                     const globalIndex = (page - 1) * perPage + i;
                                                     const isModified = modified[r.application_number];
+                                                    const isExpanded = expandedRow === globalIndex;
                                                     return (
-                                                        <tr
-                                                            key={r.application_number}
-                                                            className={`border-t border-zinc-200 hover:bg-blue-50 transition-colors ${isModified ? 'bg-yellow-50' : ''}`}
-                                                        >
-                                                            <td className="px-4 py-3 text-sm text-zinc-600">
-                                                                {globalIndex + 1}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-sm font-mono text-zinc-900">
-                                                                {r.application_number}
-                                                            </td>
-                                                            <td
-                                                                className="px-4 py-3 text-sm cursor-pointer group relative"
-                                                                onClick={() => setEditingCell({ row: globalIndex, key: "title" })}
+                                                        <>
+                                                            <tr
+                                                                key={r.application_number}
+                                                                className={`border-t border-zinc-200 hover:bg-blue-50 transition-colors ${isModified ? 'bg-yellow-50' : ''}`}
                                                             >
-                                                                {editingCell?.row === globalIndex && editingCell.key === "title" ? (
-                                                                    <input
-                                                                        className="w-full px-3 py-2 border-2 border-blue-500 rounded-lg text-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
-                                                                        value={r.title}
-                                                                        onChange={(e) => handleChange(globalIndex, "title", e.target.value)}
-                                                                        onBlur={() => setEditingCell(null)}
-                                                                        autoFocus
-                                                                    />
-                                                                ) : (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="flex-1">{r.title}</span>
-                                                                        <Edit3 className="w-4 h-4 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                                    </div>
-                                                                )}
-                                                            </td>
-                                                            <td
-                                                                className="px-4 py-3 text-sm cursor-pointer group relative"
-                                                                onClick={() => setEditingCell({ row: globalIndex, key: "collection_name" })}
-                                                            >
-                                                                {editingCell?.row === globalIndex && editingCell.key === "collection_name" ? (
-                                                                    <input
-                                                                        className="w-full px-3 py-2 border-2 border-blue-500 rounded-lg text-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
-                                                                        value={r.collection_name || ""}
-                                                                        onChange={(e) => handleChange(globalIndex, "collection_name", e.target.value)}
-                                                                        onBlur={() => setEditingCell(null)}
-                                                                        autoFocus
-                                                                    />
-                                                                ) : (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className={`flex-1 ${r.collection_name ? 'text-blue-600 font-medium' : 'text-zinc-400'}`}>
-                                                                            {r.collection_name || "라벨 없음"}
-                                                                        </span>
-                                                                        <Edit3 className="w-4 h-4 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                                    </div>
-                                                                )}
-                                                            </td>
-                                                        </tr>
+                                                                <td className="px-4 py-3 text-sm text-zinc-600">
+                                                                    {globalIndex + 1}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-sm font-mono text-zinc-900">
+                                                                    {r.application_number}
+                                                                </td>
+                                                                <td
+                                                                    className="px-4 py-3 text-sm cursor-pointer group relative"
+                                                                    onClick={() => !isExpanded && setEditingCell({ row: globalIndex, key: "title" })}
+                                                                >
+                                                                    {editingCell?.row === globalIndex && editingCell.key === "title" && !isExpanded ? (
+                                                                        <input
+                                                                            className="w-full px-3 py-2 border-2 border-blue-500 rounded-lg text-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
+                                                                            value={r.title}
+                                                                            onChange={(e) => handleChange(globalIndex, "title", e.target.value)}
+                                                                            onBlur={() => setEditingCell(null)}
+                                                                            autoFocus
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="flex-1 truncate">{truncateText(r.title, 50)}</span>
+                                                                            {!isExpanded && (
+                                                                                <Edit3 className="w-4 h-4 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </td>
+                                                                <td
+                                                                    className="px-4 py-3 text-sm cursor-pointer group relative"
+                                                                    onClick={() => !isExpanded && setEditingCell({ row: globalIndex, key: "abstract" })}
+                                                                >
+                                                                    {editingCell?.row === globalIndex && editingCell.key === "abstract" && !isExpanded ? (
+                                                                        <textarea
+                                                                            className="w-full px-3 py-2 border-2 border-blue-500 rounded-lg text-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
+                                                                            value={r.abstract || ""}
+                                                                            onChange={(e) => handleChange(globalIndex, "abstract", e.target.value)}
+                                                                            onBlur={() => setEditingCell(null)}
+                                                                            autoFocus
+                                                                            rows={3}
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="flex-1 text-zinc-600 truncate">
+                                                                                {truncateText(r.abstract, 80) || "요약문 없음"}
+                                                                            </span>
+                                                                            {!isExpanded && (
+                                                                                <Edit3 className="w-4 h-4 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-sm">
+                                                                    <span className={`truncate block ${r.collection_name ? 'text-blue-600 font-medium' : 'text-zinc-400'}`}>
+                                                                        {truncateText(r.collection_name, 20) || "미지정"}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-center">
+                                                                    <button
+                                                                        onClick={() => toggleExpandRow(globalIndex)}
+                                                                        className="text-blue-600 hover:text-blue-800 transition-colors p-1 inline-flex items-center justify-center"
+                                                                    >
+                                                                        {isExpanded ? (
+                                                                            <ChevronUp className="w-5 h-5" />
+                                                                        ) : (
+                                                                            <ChevronDown className="w-5 h-5" />
+                                                                        )}
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                            {isExpanded && (
+                                                                <tr className="bg-blue-50 border-t border-zinc-200">
+                                                                    <td colSpan={6} className="px-4 py-4">
+                                                                        <div className="space-y-3 text-sm">
+                                                                            <div>
+                                                                                <strong className="text-zinc-700 block mb-1">특허명 (전체):</strong>
+                                                                                <p className="ml-2 text-zinc-900 leading-relaxed">{r.title}</p>
+                                                                            </div>
+                                                                            <div>
+                                                                                <strong className="text-zinc-700 block mb-1">요약문 (전체):</strong>
+                                                                                <p className="ml-2 text-zinc-600 leading-relaxed whitespace-pre-wrap">
+                                                                                    {r.abstract || "요약문이 없습니다."}
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            )}
+                                                        </>
                                                     );
                                                 })}
                                             </tbody>

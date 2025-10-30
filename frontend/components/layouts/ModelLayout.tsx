@@ -1,6 +1,6 @@
 import Stepper from "./ProjectStepper";
 
-const stepItems = ["기본정보", "데이터 소스", "매칭/미리보기", "라벨/클래스", "학습 설정"];
+const stepItems = ["기본정보", "데이터 소스", "매칭/미리보기", "콜렉션 통계", "학습 설정"];
 
 export default function ModelLayout({
   step,
@@ -10,7 +10,7 @@ export default function ModelLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mt-10 mx-auto w-full max-w-3xl">
+    <div className="mt-6 mx-auto w-full max-w-6xl px-4">
       {/* 제목 + 설명 */}
       <header>
         {/* <h1 className="text-2xl font-semibold text-zinc-900"> */}
@@ -24,7 +24,7 @@ export default function ModelLayout({
       </header>
 
       {/* Stepper */}
-      <div className="mt-4 mb-1">
+      <div className="mt-6 mb-6">
         <Stepper step={step} items={stepItems} />
       </div>
 

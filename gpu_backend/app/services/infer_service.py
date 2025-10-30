@@ -72,12 +72,14 @@ def infer_classification(config: dict):
         "run_type": "infer",
 
         "user_path": user_path,
-        "model_path": model_path,
+        "model_path": model_path + "/best_model",
         "infer_path": infer_path,
 
         "BACKEND_URL": BACKEND_URL,
         "DEFAULT_PATH": DEFAULT_PATH,
     }
+
+    print("infer config 1:", config)
 
     # 4) 데이터 적재
     data_pack, lengths = get_inference_classification_data(config)
@@ -90,11 +92,11 @@ def infer_classification(config: dict):
     results = trainer.infer(data_pack)
 
     # 6) 결과 저장
-    if not os.path.exists(infer_path):
-        os.makedirs(infer_path)
-    result_path = os.path.join(infer_path, f"result_{task_type}.json")
-    with open(result_path, "w", encoding="utf-8") as f:
-        json.dump(results, f, ensure_ascii=False, indent=2)
+    # if not os.path.exists(infer_path):
+    #     os.makedirs(infer_path)
+    # result_path = os.path.join(infer_path, f"result_{task_type}.json")
+    # with open(result_path, "w", encoding="utf-8") as f:
+    #     json.dump(results, f, ensure_ascii=False, indent=2)
     
     # 7) 완료 상태 알림
     # try:
@@ -109,7 +111,7 @@ def infer_classification(config: dict):
     
     gc.collect()
     print(f"[GPU BACKEND] Inference completed for file_id={file_id}")
-    return {"status": "ok", "file_id": file_id, "result_path": result_path, "count": len(results)}, 200
+    return {"status": "ok", "file_id": file_id}#, "result_path": result_path, "count": len(results)}, 200
     
 # ------------------------------------------------------------
 # 추천 모델 추론
@@ -167,6 +169,7 @@ def infer_recommendation(config: dict):
         "collection_num": collection_num,
         "user_path": user_path,
         "model_path": model_path,
+        "check_point_model": model_path + "/best_model",
         "BACKEND_URL": BACKEND_URL,
         "DEFAULT_PATH": DEFAULT_PATH,
         "progress_type": "infer"
@@ -186,12 +189,14 @@ def infer_recommendation(config: dict):
     # result_path = os.path.join(infer_path, "result.json")
     # with open(result_path, "w", encoding="utf-8") as f:
     #     json.dump(results, f, ensure_ascii=False, indent=2)
+
     connection, cursor = db_connect()
     try:
         query = """
-            UPDATE MODEL_INFO_TB SET model_status=1
+            UPDATE MODEL_INFO_TB SET model_status=0, progress=100
+            WHERE id=%s AND user_id=%s
         """
-        cursor.execute(query)
+        cursor.execute(query, (model_id, user_id))
     finally:
         try: cursor.close()
         except: pass
@@ -200,4 +205,4 @@ def infer_recommendation(config: dict):
 
     # print(f"[GPU BACKEND] Recommendation inference completed for model_id={model_id}, collection_id={collection_id}")
     # return {"status": "ok", "result_path": result_path, "count": len(results)}, 200
-    return {"status": "ok"}
+    return {"status": "ok", "model_id": model_id, "collection_id": collection_id}, 200

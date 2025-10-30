@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import ProjectLayout from "@/components/layouts/ProjectLayout";
 import { UploadCloud, FileSpreadsheet, Save, Loader2, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useSession } from "next-auth/react";
@@ -15,6 +16,7 @@ type Project = {
   project_description?: string;
   source_type: string;
   task_type: string;
+  project_status: number;
   created_datetime?: string;
 };
 
@@ -69,6 +71,8 @@ function ProjectUploadPage() {
     }
     loadProject();
   }, [project_id]);
+
+  console.log("upload- project:", project);
 
   // 파일 읽기 (프론트 메모리)
   async function handleFileUpload(f: File) {
@@ -171,6 +175,9 @@ function ProjectUploadPage() {
       if (!res.ok) throw new Error("저장 실패");
       alert(hasEdited ? "✅ 수정 후 저장 완료!" : "✅ 원본 파일 저장 완료!");
       setHasEdited(false);
+
+      router.push(`/project/preview/${project_id}`);
+
     } catch (e: any) {
       alert(e.message || "저장 실패");
     } finally {
@@ -188,6 +195,7 @@ function ProjectUploadPage() {
   }
 
   return (
+    <ProjectLayout step={2}>
     <div className="min-h-screen bg-white">
       <div className="max-w-5xl mx-auto p-8 space-y-8">
         {/* Header Section */}
@@ -258,6 +266,7 @@ function ProjectUploadPage() {
         {/* Editable Table */}
         {rows.length > 0 && (
           <div className="rounded-2xl overflow-hidden border border-zinc-100 shadow-lg">
+            
             <div className="bg-gradient-to-r from-blue-700 to-blue-900 px-8 py-6">
               <h2 className="text-xl font-semibold text-white">
                 데이터 미리보기 및 편집
@@ -352,29 +361,66 @@ function ProjectUploadPage() {
             </div>
 
             {/* Save Button */}
-            <div className="flex justify-end p-6 bg-zinc-50 border-t">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-2 px-6 py-2 bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-lg shadow-md disabled:opacity-50"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    저장 중...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    저장하기
-                  </>
+            <div className="flex justify-between items-center p-6 bg-zinc-50 border-t">
+              {/* 왼쪽: 상태 정보 (선택사항) */}
+              <div className="text-sm text-zinc-600">
+                {project && project.project_status !== undefined && (
+                  <span>
+                    프로젝트 상태: <strong>{project.project_status}</strong>
+                  </span>
                 )}
-              </button>
+              </div>
+
+              {/* 오른쪽: 버튼들 */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-6 py-2 bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-lg shadow-md disabled:opacity-50 transition-all"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      저장 중...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      {(project?.project_status ?? 0) > 2 ? "추가하기" : "저장하기"}
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
+
           </div>
         )}
+        
+        {/* Navigation Buttons - 테이블 바깥 */}
+        <div className="flex justify-between items-center">
+          {/* 왼쪽: 이전으로 */}
+          <button
+            onClick={() => router.push("/project/new")}
+            className="flex items-center gap-2 px-6 py-3 bg-zinc-200 hover:bg-zinc-300 text-zinc-700 font-medium rounded-lg shadow-md transition-all"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            이전으로
+          </button>
+
+          {/* 오른쪽: 다음으로 */}
+          <button
+            onClick={() => router.push(`/project/preview/${project?.id}`)}
+            disabled={!project || (project.project_status ?? 0) <= 2}
+            className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg shadow-md disabled:bg-zinc-300 disabled:cursor-not-allowed transition-all"
+          >
+            다음으로
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+        
       </div>
     </div >
+    </ProjectLayout>
   );
 }
 

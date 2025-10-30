@@ -5,7 +5,7 @@ import { create } from 'zustand';
 interface UserTaskState {
     isBusy: boolean
     progress: number
-    status: 'RUNNING' | 'AVAILABLE'
+    status: 'RUNNING' | 'INFERRING' | 'AVAILABLE'
     setState: (obj: Partial<UserTaskState>) => void
 }
 

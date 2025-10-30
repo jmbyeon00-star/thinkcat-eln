@@ -16,7 +16,17 @@ import {
   YAxis,
   Legend,
 } from "recharts";
-import { ArrowLeft, FileBarChart2, Play, Upload, Loader2 } from "lucide-react";
+import { 
+  ArrowLeft, 
+  FileBarChart2, 
+  Play, 
+  Upload, 
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  X
+} from "lucide-react";
 import Link from "next/link";
 import ModelLayout from "@/components/layouts/ModelLayout";
 import FilePreviewEditor from "@/components/FilePreviewEditor";
@@ -55,6 +65,10 @@ export default function ModelDetailPage() {
 
   const [model, setModel] = useState<ModelDetail | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // 클래스 매핑 페이지네이션
+  const [mappingPage, setMappingPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const { data: session, status } = useSession() as {
     data: (Session & { access_token?: string }) | null;
@@ -117,10 +131,24 @@ export default function ModelDetailPage() {
     }));
   }, [model]);
 
+  // 클래스 매핑 페이지네이션 계산
+  const mappingEntries = useMemo(() => {
+    if (!model?.mapping) return [];
+    return Object.entries(model.mapping);
+  }, [model?.mapping]);
+
+  const totalMappingPages = Math.ceil(mappingEntries.length / ITEMS_PER_PAGE);
+  const paginatedMapping = useMemo(() => {
+    const start = (mappingPage - 1) * ITEMS_PER_PAGE;
+    return mappingEntries.slice(start, start + ITEMS_PER_PAGE);
+  }, [mappingEntries, mappingPage]);
+
   // --- 파일 추론 관련 ---
   const [parsedData, setParsedData] = useState<any[]>([]);
   const [inferLoading, setInferLoading] = useState(false);
   const [inferResult, setInferResult] = useState<any>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [selectedRow, setSelectedRow] = useState<any>(null);
 
   // ✅ 업로드된 파일 내 한글 컬럼명 자동 복원
   useEffect(() => {
@@ -217,6 +245,26 @@ export default function ModelDetailPage() {
     }
   };
 
+  // 테이블 행 확장 토글
+  const toggleRowExpansion = (index: number) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  // 텍스트 자르기 함수
+  const truncateText = (text: string, maxLength: number = 50) => {
+    if (!text) return '';
+    const str = String(text);
+    return str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
+  };
+
   // --- 로딩 / 에러 표시 ---
   if (loading)
     return (
@@ -274,114 +322,327 @@ export default function ModelDetailPage() {
           </p>
         </div>
 
-        {/* 클래스 매핑 */}
+        {/* 클래스 매핑 - 개선된 디자인 + 페이지네이션 */}
         {model.mapping && (
-          <div className="rounded-xl border bg-white p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <FileBarChart2 className="h-5 w-5 text-zinc-700" />
-              <h2 className="text-lg font-semibold">클래스 매핑</h2>
+          <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-zinc-200">
+              <div className="flex items-center gap-2">
+                <FileBarChart2 className="h-5 w-5 text-blue-600" />
+                <h2 className="text-lg font-semibold text-zinc-800">클래스 매핑</h2>
+                <span className="ml-auto text-sm text-zinc-500">
+                  총 {mappingEntries.length}개 컬렉션
+                </span>
+              </div>
             </div>
-            <ul className="text-sm text-zinc-700 list-disc list-inside">
-              {Object.entries(model.mapping).map(([k, v]) => (
-                <li key={k}>
-                  {safeDecode(k)}: {safeDecode(v)}
-                </li>
-              ))}
-            </ul>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {paginatedMapping.map(([k, v], idx) => (
+                  <div 
+                    key={k}
+                    className="flex items-center gap-3 p-4 rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 transition-colors"
+                  >
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm">
+                      {(mappingPage - 1) * ITEMS_PER_PAGE + idx + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-zinc-500 mb-1">클래스</div>
+                      <div className="font-medium text-zinc-800 truncate">
+                        {safeDecode(k)}
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 px-3 py-1 rounded-full bg-blue-600 text-white text-xs font-medium">
+                      {safeDecode(v)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* 페이지네이션 */}
+              {totalMappingPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-zinc-200">
+                  <button
+                    onClick={() => setMappingPage(p => Math.max(1, p - 1))}
+                    disabled={mappingPage === 1}
+                    className="p-2 rounded-lg border border-zinc-300 hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalMappingPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setMappingPage(page)}
+                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                          page === mappingPage
+                            ? 'bg-blue-600 text-white'
+                            : 'hover:bg-zinc-100 text-zinc-700'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setMappingPage(p => Math.min(totalMappingPages, p + 1))}
+                    disabled={mappingPage === totalMappingPages}
+                    className="p-2 rounded-lg border border-zinc-300 hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        {/* 학습 결과 그래프 */}
+        {/* 학습 결과 그래프 - 개선된 디자인 (Accuracy와 Loss 분리) */}
         {lineData.length > 0 && (
-          <div className="rounded-xl border bg-white p-4">
-            <h2 className="text-lg font-semibold mb-2">학습 결과</h2>
-            <div className="h-72">
-              <ResponsiveContainer>
-                <LineChart data={lineData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="epoch" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="train_acc"
-                    stroke="#2563eb"
-                    name="Train Acc"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="valid_acc"
-                    stroke="#16a34a"
-                    name="Valid Acc"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="train_loss"
-                    stroke="#f97316"
-                    name="Train Loss"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="valid_loss"
-                    stroke="#dc2626"
-                    name="Valid Loss"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+          <div className="space-y-4">
+            {/* Accuracy 그래프 */}
+            <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-zinc-200">
+                <h2 className="text-lg font-semibold text-zinc-800">정확도 (Accuracy)</h2>
+              </div>
+              <div className="p-6">
+                <div className="h-72">
+                  <ResponsiveContainer>
+                    <LineChart data={lineData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis 
+                        dataKey="epoch" 
+                        label={{ value: 'Epoch', position: 'insideBottom', offset: -5 }}
+                        stroke="#6b7280"
+                      />
+                      <YAxis 
+                        label={{ value: 'Accuracy', angle: -90, position: 'insideLeft' }}
+                        stroke="#6b7280"
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                        }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="train_acc"
+                        stroke="#16a34a"
+                        strokeWidth={2}
+                        name="Train Accuracy"
+                        dot={{ fill: '#16a34a', r: 3 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="valid_acc"
+                        stroke="#0ea5e9"
+                        strokeWidth={2}
+                        name="Valid Accuracy"
+                        dot={{ fill: '#0ea5e9', r: 3 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Loss 그래프 */}
+            <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-zinc-200">
+                <h2 className="text-lg font-semibold text-zinc-800">손실 (Loss)</h2>
+              </div>
+              <div className="p-6">
+                <div className="h-72">
+                  <ResponsiveContainer>
+                    <LineChart data={lineData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis 
+                        dataKey="epoch" 
+                        label={{ value: 'Epoch', position: 'insideBottom', offset: -5 }}
+                        stroke="#6b7280"
+                      />
+                      <YAxis 
+                        label={{ value: 'Loss', angle: -90, position: 'insideLeft' }}
+                        stroke="#6b7280"
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                        }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="train_loss"
+                        stroke="#f97316"
+                        strokeWidth={2}
+                        name="Train Loss"
+                        dot={{ fill: '#f97316', r: 3 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="valid_loss"
+                        stroke="#dc2626"
+                        strokeWidth={2}
+                        name="Valid Loss"
+                        dot={{ fill: '#dc2626', r: 3 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* 파일 기반 추론 */}
-      <div className="rounded-xl border bg-white p-4 space-y-4 mb-5">
-        <div className="flex items-center gap-2 mb-2">
-          <Upload className="h-5 w-5 text-zinc-700" />
-          <h2 className="text-lg font-semibold">파일 기반 모델 추론</h2>
+      {/* 파일 기반 추론 - 개선된 테이블 디자인 */}
+      <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden mb-5">
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 px-6 py-4 border-b border-zinc-200">
+          <div className="flex items-center gap-2">
+            <Upload className="h-5 w-5 text-purple-600" />
+            <h2 className="text-lg font-semibold text-zinc-800">파일 기반 모델 추론</h2>
+          </div>
         </div>
 
-        <div className="flex items-start gap-2 text-sm text-zinc-600 bg-zinc-50 p-3 rounded-lg border">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 mt-[2px] text-blue-600 shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+        <div className="p-6 space-y-4">
+          <div className="flex items-start gap-2 text-sm text-zinc-600 bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 mt-[2px] text-blue-600 shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M12 18a9 9 0 100-18 9 9 0 000 18z"
+              />
+            </svg>
+            <p>
+              파일의 <b>첫 번째 행은 반드시 컬럼명(헤더)</b>으로 설정해주세요.
+              <br />
+              예시: <code className="bg-white px-2 py-0.5 rounded">문제, 정답</code> 또는 <code className="bg-white px-2 py-0.5 rounded">Question, Answer</code> 또는{" "}
+              <code className="bg-white px-2 py-0.5 rounded">Source, Target</code>
+              <br />
+              지원 형식: <b>.csv</b>, <b>.json</b>, <b>.xlsx</b>
+            </p>
+          </div>
+
+          <FilePreviewEditor onDataParsed={setParsedData} />
+
+          {/* 업로드된 데이터 테이블 */}
+          {/* {parsedData.length > 0 && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-zinc-700">업로드된 데이터 미리보기</h3>
+                <span className="text-xs text-zinc-500">{parsedData.length}개 행</span>
+              </div>
+              
+              <div className="border border-zinc-200 rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-zinc-50 border-b border-zinc-200">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider w-12">
+                          #
+                        </th>
+                        {parsedData[0] && Object.keys(parsedData[0]).map((key) => (
+                          <th
+                            key={key}
+                            className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider"
+                          >
+                            {key}
+                          </th>
+                        ))}
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-zinc-600 uppercase tracking-wider w-20">
+                          보기
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-zinc-200">
+                      {parsedData.map((row, idx) => (
+                        <>
+                          <tr key={idx} className="hover:bg-zinc-50 transition-colors">
+                            <td className="px-4 py-3 text-zinc-500 font-medium">
+                              {idx + 1}
+                            </td>
+                            {Object.entries(row).map(([key, value]) => (
+                              <td key={key} className="px-4 py-3 text-zinc-700">
+                                {expandedRows.has(idx) 
+                                  ? String(value)
+                                  : truncateText(String(value))
+                                }
+                              </td>
+                            ))}
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => toggleRowExpansion(idx)}
+                                className="p-1.5 rounded-md hover:bg-zinc-100 text-blue-600 transition-colors"
+                                title={expandedRows.has(idx) ? "접기" : "펼치기"}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </button>
+                            </td>
+                          </tr>
+                          {expandedRows.has(idx) && (
+                            <tr className="bg-blue-50">
+                              <td colSpan={Object.keys(row).length + 2} className="px-4 py-3">
+                                <div className="text-xs text-zinc-600 space-y-2">
+                                  {Object.entries(row).map(([key, value]) => (
+                                    <div key={key} className="flex gap-2">
+                                      <span className="font-semibold min-w-[100px]">{key}:</span>
+                                      <span className="flex-1">{String(value)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )} */}
+
+          <button
+            onClick={handleInferFile}
+            disabled={parsedData.length === 0 || inferLoading || !model?.data_scope}
+            className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M12 18a9 9 0 100-18 9 9 0 000 18z"
-            />
-          </svg>
-          <p>
-            파일의 <b>첫 번째 행은 반드시 컬럼명(헤더)</b>으로 설정해주세요.
-            <br />
-            예시: <code>문제, 정답</code> 또는 <code>Question, Answer</code> 또는{" "}
-            <code>Source, Target</code>
-            <br />
-            지원 형식: <b>.csv</b>, <b>.json</b>, <b>.xlsx</b>
-          </p>
+            {inferLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                분류 중...
+              </>
+            ) : parsedData.length === 0 ? (
+              "데이터를 추가하세요"
+            ) : !model?.data_scope ? (
+              <>
+                모델 준비중...
+                <Loader2 className="w-4 h-4 animate-spin" />
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4" />
+                분류하기
+              </>
+            )}
+          </button>
         </div>
-
-        <FilePreviewEditor onDataParsed={setParsedData} />
-
-        <button
-          onClick={handleInferFile}
-          disabled={parsedData.length === 0 || inferLoading || !model?.data_scope}
-          className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-md disabled:opacity-50"
-        >
-          {inferLoading ? "분류 중..."
-            : parsedData.length === 0 ? "데이터를 추가하세요"
-              : !model?.data_scope ? (
-                <>
-                  모델 준비중...
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                </>
-              ) : "분류하기"}
-        </button>
       </div>
     </ModelLayout>
   );

@@ -21,11 +21,11 @@ const taskMapper: Record<string, string> = {
 };
 
 const statusMapper: Record<number, { label: string; color: string }> = {
-  0: { label: "검색 중", color: "bg-blue-100 text-blue-700 border-blue-200" },
-  1: { label: "검색 완료", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
-  2: { label: "미리보기", color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
-  3: { label: "라벨링", color: "bg-purple-100 text-purple-700 border-purple-200" },
-  4: { label: "학습 중", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  0: { label: "1/5단계", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  1: { label: "2/5단계", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
+  2: { label: "3/5단계", color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
+  3: { label: "4/5단계", color: "bg-purple-100 text-purple-700 border-purple-200" },
+  4: { label: "생성완료", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
 };
 
 export default function ProjectListPage() {

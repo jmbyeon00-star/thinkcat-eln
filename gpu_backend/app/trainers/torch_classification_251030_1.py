@@ -62,7 +62,6 @@ class TorchTextClassifierTrainer(BaseTrainer):
         self.lengths = None
         self.total_steps = 0
         self.steps_completed = 0
-        self.label_map = {}  # 추가: 레이블 매핑 초기화
         self._build()
 
     def _build(self):
@@ -87,6 +86,16 @@ class TorchTextClassifierTrainer(BaseTrainer):
         self.model.to(self.device)
         self.optimizer = AdamW(self.model.parameters(), lr=self.learning_rate)
 
+    # def _status(self, json: dict):
+    #     """FastAPI 백엔드로 진행률 전송"""
+    #     try:
+    #         httpx.post(
+    #             f"{self.backend_url}/api/status/{self.run_type}/{self.user_id}",
+    #             json=json,
+    #             timeout=3.0,
+    #         )
+    #     except Exception:
+    #         pass
     async def _status(self, json: dict):
         """FastAPI 백엔드로 상태 전송 (비동기 안전 버전)"""
         try:
@@ -98,6 +107,18 @@ class TorchTextClassifierTrainer(BaseTrainer):
         except Exception:
             pass
 
+    # def _progress(self, json: dict):
+    #     """FastAPI 백엔드로 진행률 전송"""
+    #     try:
+    #         target_id = self.user_id
+    #         target_id = self.model_id if self.run_type == "train" else self.file_id
+    #         httpx.post(
+    #             f"{self.backend_url}/api/status/progress/{self.run_type}/{target_id}",
+    #             json=json,
+    #             timeout=3.0,
+    #         )
+    #     except Exception:
+    #         pass
     async def _progress(self, json: dict):
         """FastAPI 백엔드로 진행률 전송 (비동기 안전 버전)"""
         try:
@@ -266,12 +287,8 @@ class TorchTextClassifierTrainer(BaseTrainer):
             pass
         torch.cuda.empty_cache()
         gc.collect()
-
+    
     def infer(self, packaged: dict):
-        """
-        추론 및 평가를 수행합니다.
-        packaged["data"]에 'target' 컬럼이 있으면 정확도도 함께 계산합니다.
-        """
         self.model.eval()
         self.model.to(self.device)
 
@@ -283,131 +300,33 @@ class TorchTextClassifierTrainer(BaseTrainer):
         print(">>>>> tokenizer:", self.ckpt_tok)
         print(">>>>> model:", self.ckpt_model)
 
-        # label_map 로드 (숫자 레이블 -> 클래스 이름 매핑)
-        mapping_path = f"{self.model_path}/mapping.json"
-        print(f">>>>> Loading label_map from {mapping_path}")
-        if os.path.exists(mapping_path):
-            with open(mapping_path, "r") as f:
-                # JSON에서는 키가 문자열로 저장되므로 정수로 변환
-                label_map_str = json.load(f)
-                self.label_map = {int(k): v for k, v in label_map_str.items()}
-                print(f">>>>> Loaded label_map: {self.label_map}")
-        else:
-            self.label_map = {}
-            print(f">>>>> Warning: mapping.json not found at {mapping_path}")
+        safe_create_task(self._progress({"progress": 1, "status": "RUNNING", "remaining_time": None}))
+        results = []
 
-        # safe_create_task(self._progress({"progress": 1, "status": "RUNNING", "remaining_time": None}))
-        
-        # 데이터 준비
         texts = packaged["data"]["source"].astype(str).tolist()
         
-        # 실제 정답값이 있는지 확인
-        has_ground_truth = "target" in packaged["data"].columns
-        if has_ground_truth:
-            ground_truths = packaged["data"]["target"].astype(str).tolist()
-            print(f">>>>> Ground truth detected. Will calculate accuracy.")
-        
-        results = []
-        correct_count = 0
-        total_count = len(texts)
-        
-        # 배치 단위로 추론 수행
         for i in range(0, len(texts), self.batch_size):
-            batch_texts = texts[i:i+self.batch_size]
-            batch_gt = ground_truths[i:i+self.batch_size] if has_ground_truth else None
+            batch = texts[i:i+self.batch_size]
+            encoded = self.tokenizer(batch, padding=True, truncation=True, max_length=self.max_length, return_tensors="pt").to(self.device)
             
-            # 토크나이징
-            encoded = self.tokenizer(
-                batch_texts, 
-                padding=True, 
-                truncation=True, 
-                max_length=self.max_length, 
-                return_tensors="pt"
-            ).to(self.device)
-            
-            # 추론
             with torch.no_grad():
                 outputs = self.model(**encoded)
+                # probs = F.softmax(outputs.logits, dim=-1)
                 probs = torch.softmax(outputs.logits, dim=-1)
                 preds = torch.argmax(probs, dim=-1).cpu().tolist()
-            
-            # 결과 저장
-            for idx, (text, pred, prob_dist) in enumerate(zip(batch_texts, preds, probs.cpu().tolist())):
-                result = {
-                    "source": text,
-                    "label": int(pred),
-                    "prob": max(prob_dist)
-                }
-                
-                # 실제 정답이 있으면 추가 정보 저장
-                if has_ground_truth:
-                    gt = batch_gt[idx]
-                    result["ground_truth"] = gt
-                    
-                    # 정답 비교: 레이블 이름으로 비교 또는 레이블 인덱스로 비교
-                    predicted_label_name = self.label_map.get(pred, str(pred))
-                    result["is_correct"] = (predicted_label_name == gt) or (str(pred) == gt)
-                    
-                    if result["is_correct"]:
-                        correct_count += 1
-                
-                results.append(result)
-            
-            # 진행률 업데이트
-            progress = min(100, int((i + len(batch_texts)) / total_count * 100))
-            safe_create_task(self._progress({
-                "progress": progress, 
-                "status": "RUNNING", 
-                "remaining_time": None
-            }))
-        
-        # 평가 지표 계산 (정답이 있는 경우)
-        evaluation_metrics = None
-        if has_ground_truth:
-            accuracy = (correct_count / total_count) * 100
-            evaluation_metrics = {
-                "accuracy": accuracy,
-                "correct_count": correct_count,
-                "total_count": total_count,
-                "error_count": total_count - correct_count
-            }
-            print(f">>>>> Evaluation - Accuracy: {accuracy:.2f}% ({correct_count}/{total_count})")
 
-        # label_map을 문자열 키로 변환 (JSON 직렬화를 위해)
-        mapper_str = {str(k): v for k, v in self.label_map.items()}
-        
-        # 결과를 딕셔너리로 구성
-        output_data = {
-            "results": results,
-            "evaluation": evaluation_metrics,
-            "mapper": mapper_str
-        }
-        
-        # 결과를 JSON 파일로 저장
-        os.makedirs(self.result_path, exist_ok=True)
-        result_file_path = f"{self.result_path}/result_classification.json"
+            for t, p, pr in zip(batch, preds, probs.cpu().tolist()):
+                results.append({"source": t, "label": int(p), "prob": max(pr)})
 
-        try:
-            with open(result_file_path, "w", encoding="utf-8") as f:
-                json.dump(output_data, f, ensure_ascii=False, indent=2)
-            print(f">>>>> 결과 저장 완료: {result_file_path}")
-        except Exception as e:
-            print(f">>>>> 결과 저장 실패: {e}")
-        
-        # 완료 상태 업데이트
-        safe_create_task(self._progress({
-            "progress": 100, 
-            "status": "COMPLETED", 
-            "remaining_time": "0:00:00",
-            # "evaluation": evaluation_metrics  # 평가 지표 추가
-        }))
+            safe_create_task(self._progress({"progress": min(100, int(i/len(texts)*100)), "status": "RUNNING", "remaining_time": None}))
+
+        safe_create_task(self._progress({"progress": 100, "status": "COMPLETED", "remaining_time": "0:00:00" }))
         safe_create_task(self._status({"status": "COMPLETED"}))
         
-        # 메모리 정리
         gc.collect()
         torch.cuda.empty_cache()
-
-        return output_data
+        
+        return results
 
     def save(self, path: str) -> None:
         # 토치에서는 최종 best는 위에서 저장됨; 여기선 심플 아카이브(옵션)

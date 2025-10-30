@@ -1,14 +1,25 @@
-import Stepper from "./ProjectStepper";
+import Stepper from "./Stepper";
 
-const stepItems = ["기본정보", "데이터 소스", "매칭/미리보기", "라벨/클래스", "학습 설정"];
+const stepItems = ["기본정보", "데이터 소스", "매칭/미리보기", "콜렉션 통계", "학습 설정"];
 
 export default function ProjectLayout({
   step,
+  sourceType,
+  projectNo,
   children,
 }: {
   step: number;
+  sourceType?: string;
+  projectNo?: number;
   children: React.ReactNode;
 }) {
+  const stepItems = [
+    { label: "기본정보", href: "/project/new" },
+    { label: "데이터 소스", href: sourceType && projectNo ? `/project/${sourceType}/${projectNo}` : "#" },
+    { label: "매칭/미리보기", href: projectNo ? `/project/preview/${projectNo}` : "#" },
+    { label: "콜렉션/통계", href: projectNo ? `/project/stats/${projectNo}` : "#" },
+    { label: "학습 설정", href: projectNo ? `/project/train/${projectNo}` : "#" },
+  ];
   return (
     <div className="mt-10 mx-auto w-full max-w-6xl">
       {/* 제목 + 설명 */}

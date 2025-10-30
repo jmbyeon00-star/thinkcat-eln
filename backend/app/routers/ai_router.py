@@ -128,6 +128,7 @@ def get_rec_model_status(
     session: Session = Depends(get_session)
 ):
     user_id = get_current_user_from_request(request)
+    print("user_id:", user_id)
     return ai_service.get_model_status(session, user_id, target_code, 'rec')
 
 # ---- 추천 모델 학습 ----
@@ -160,6 +161,7 @@ async def infer_recommendation(
     try:
         body = await request.json()
         user_id = get_current_user_from_request(request)
+
         if ai_service.check_user_busy(session, user_id):
             raise HTTPException(status_code=400, detail="이미 학습/추론 작업이 진행 중입니다.")
 

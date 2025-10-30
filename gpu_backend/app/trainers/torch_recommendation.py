@@ -224,9 +224,17 @@ class TorchRecommendationTrainer(BaseTrainer):
     # INFERENCE
     # -------------------------------------------------------
     def infer(self, packaged):
+        print(">>>>> batch_size", self.batch_size)
+        print(">>>>> max_length", self.max_length)
+        print(">>>>> tokenizer:", self.ckpt_tok)
+        print(">>>>> model:", self.ckpt_model)
+
         data = packaged["data"]
         mapping = packaged.get("mapping", {})
         label_names = list(mapping.values()) or ["COUNTER", "POSITIVE"]
+
+        safe_create_task(self._progress({"progress": 1, "status": "RUNNING"}))
+        start = time.time()
 
         tokenizer = BertTokenizerFast.from_pretrained(f"{self.model_path}/best_model")
         model = BertForSequenceClassification.from_pretrained(f"{self.model_path}/best_model").to(self.device)
@@ -238,12 +246,26 @@ class TorchRecommendationTrainer(BaseTrainer):
         loader = DataLoader(dataset, batch_size=16, shuffle=False)
 
         all_scores = []
+        total_batches = len(loader)
+
         with torch.no_grad():
-            for batch in tqdm(loader, desc="Running inference"):
+            for batch_idx, batch in enumerate(tqdm(loader, desc="Running inference", total=len(loader))):
                 input_ids, attention_mask = [b.to(self.device) for b in batch]
                 outputs = model(input_ids=input_ids, attention_mask=attention_mask)
                 probs = torch.softmax(outputs.logits, dim=-1)
                 all_scores.append(probs.cpu().numpy())
+
+                # ✅ 진행률 업데이트
+                progress = int((batch_idx + 1) / total_batches * 100)
+                elapsed = time.time() - start
+                est_total = elapsed / max(1e-9, (batch_idx + 1) / total_batches)
+                remaining = str(timedelta(seconds=int(est_total - elapsed)))
+                
+                safe_create_task(self._progress({
+                    "progress": min(progress, 95),
+                    "status": "RUNNING",
+                    "remaining_time": remaining
+                }))
 
         scores = np.concatenate(all_scores, axis=0)
         pred_labels = np.argmax(scores, axis=1)
@@ -253,11 +275,19 @@ class TorchRecommendationTrainer(BaseTrainer):
         data["confidence"] = pred_probs
 
         topk = data.sort_values("confidence", ascending=False).head(50).reset_index(drop=True)
+
+        # ✅ 결과 저장
         result_path = f"{self.model_path}/inference_result.json"
         topk.to_json(result_path, orient="records", force_ascii=False, indent=2)
+
+        safe_create_task(self._progress({"progress": 100, "status": "COMPLETED", "remaining_time": "0:00:00"}))
         print(f"✅ 추천 결과 저장 완료 → {result_path}")
 
-        self._status({"status": "COMPLETED"})
+        gc.collect()
+        torch.cuda.empty_cache()
+
+        safe_create_task(self._status({"status": "COMPLETED"}))
+
         return topk.to_dict(orient="records")
 
     def save(self, path: str):

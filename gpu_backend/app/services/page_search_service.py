@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from app.utils.es_client import get_es
 from app.core.config import settings
-from app.crud.patent import (fetch_by_keys, fetch_patent_by_appnum, fetch_patent_by_regnum, fetch_by_applicant)
+from app.crud.patent import (fetch_by_keys, fetch_patent_by_regnum, fetch_by_applicant)
 from app.utils.embedding import get_embedding
 from app.utils.db_connecter import db_connect
 from pymysql.connections import Connection

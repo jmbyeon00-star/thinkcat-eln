@@ -12,6 +12,8 @@ from app.utils.common import *
 import os, json, requests
 import httpx
 import requests
+import traceback
+import asyncio
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -24,7 +26,6 @@ def check_user_busy(session: Session, user_id: int):
         ModelInfo.user_id == user_id,
         ModelInfo.progress_status.in_(["RUNNING", "TRAINING", "INFERING"])
     ).first()
-    
     return running is not None
 
 def get_model_status(session, user_id: int, target_code: str, task_type: str):
@@ -36,6 +37,7 @@ def get_model_status(session, user_id: int, target_code: str, task_type: str):
             ModelInfo.model_code == target_code
         )
         .first())
+    print(">>> model_info:", model_info.to_dict() if model_info else None)
     
     if model_info:
         return {"version": model_info.version, "model_info": model_info.to_dict()}
@@ -132,7 +134,13 @@ async def run_training(session, user_id: int, target_id: int, params: dict):
         "target_id": target_id, # project_id or collection_id
         "model_id": model_info.id,
         "model_code": model_code,
-        "target_code": target_code
+        "target_code": target_code,
+
+        "epoch": params.get('epoch', 10),
+        "batch_size": params.get('batch_size', 32),
+        "learning_rate": params.get('learning_rate', 0.00001),
+        "max_length": params.get('max_length', 512),
+        "shuffle": params.get('shuffle', True),
     }
 
     try:
@@ -167,34 +175,46 @@ async def run_inference_recommendation(session: Session, user_id: int, body: dic
     GPU 백엔드로 추천 추론 요청 (비동기 httpx 기반)
     """
     try:
-        # 요청 본문에 사용자 정보 추가
-        body = {**body, "user_id": user_id}
+        session.query(ModelInfo).filter(ModelInfo.id == body["model_id"], ModelInfo.user_id == user_id).update(
+            {
+                ModelInfo.model_status: 2,
+                ModelInfo.progress: 0,
+                ModelInfo.last_inference_at: datetime.now(),
+            }
+        )
+        session.commit()
+        # GPU 서버에 전달
+        payload = {**body, "user_id": user_id}
 
         # GPU 백엔드에 비동기로 POST 요청
+        # 방식 1 (응답을 기다림 (Blocking))
+        # async with httpx.AsyncClient(timeout=None) as client:
+        #     response = await client.post(
+        #         f"{GPU_BACKEND_URL}/gpu/infer/recommendation",
+        #         json=payload
+        #     )
+        # 방식 2: 응답을 기다리지 않음 (Fire-and-Forget)
         async with httpx.AsyncClient(timeout=None) as client:
-            response = await client.post(
-                f"{GPU_BACKEND_URL}/gpu/infer/recommendation",
-                json=body
+            response = await asyncio.create_task(
+                client.post(
+                    f"{GPU_BACKEND_URL}/gpu/infer/recommendation",
+                    json=payload
+                )
             )
 
         # 응답 검사
-        if response.status_code != 200:
-            raise HTTPException(status_code=500, detail=f"GPU 백엔드 오류: {response.status_code}")
-
-        result = response.json()
-
-        # (선택) FileInfo 등 결과 기록
-        file_info = session.query(FileInfo).filter_by(id=body.get("file_id")).first()
-        if file_info:
-            file_info.result = json.dumps(result, ensure_ascii=False)
-            session.commit()
-        
+        # if response.status_code != 200:
+        #     raise HTTPException(status_code=500, detail=f"GPU 백엔드 오류: {response.status_code}")
+        # result = response.json()
         return {
-            "message": "추론 요청이 GPU 백엔드로 전달되었습니다.",
-            "result": result
+            "message": "추론이 시작되었습니다.",
+            "task_id": payload["model_id"],
+            "status": "RUNNING",
+            "response_status": response.status_code,
         }
 
     except Exception as e:
+        print(str(e))
         session.rollback()
         raise HTTPException(status_code=500, detail=f"추론 중 오류 발생: {str(e)}")
 
@@ -220,8 +240,14 @@ def run_inference_classification(session: Session, user_id: int, model_id: int, 
 
         # 데이터 행 저장
         for row in data:
+            print(row)
             # r = {k.strip().lower().replace("\\r", ""): v.strip() for k, v in row.items()}
-            r = { str(k).strip().lower().replace("\r", "").replace("\n", ""): v.strip() for k, v in row.items() }
+            # r = { str(k).strip().lower().replace("\r", "").replace("\n", ""): v.strip() for k, v in row.items() }
+            r = {
+                str(k).strip().lower().replace("\r", "").replace("\n", ""):
+                v.strip() if isinstance(v, str) else str(v).strip() if v is not None else None
+                for k, v in row.items()
+            }
             source = r.get("문제") or r.get("question") or r.get("source")
             target = r.get("정답") or r.get("answer") or r.get("target")
 
@@ -248,6 +274,9 @@ def run_inference_classification(session: Session, user_id: int, model_id: int, 
 
         return {"message": "추론 완료", "file_id": file_info.id, "file_code": file_code, "result": result}
     except Exception as e:
+        print("tb111111:", str(e))
+        print("tb22222:", raceback.format_exc())
+        traceback.print_exc()
         session.rollback()
         raise HTTPException(status_code=500, detail=f"추론 중 오류 발생: {str(e)}")
 
@@ -300,9 +329,46 @@ async def load_inference_result(db: Session, file_id: int):
                 detail = res.text
             raise HTTPException(status_code=500, detail=f"GPU backend 오류: {detail}")
 
-        raw_results, mapper = res.json()  # GPU에서 받은 리스트
-        print("✅ GPU 응답 데이터 수:", len(raw_results))
-        print(mapper)
+        response_data = res.json()
+        
+        # 디버깅: GPU 응답 구조 확인
+        print("=" * 80)
+        print("🔍 GPU 응답 타입:", type(response_data))
+        print("🔍 GPU 응답 내용 (처음 500자):", str(response_data)[:500])
+        
+        # GPU 응답 구조 파싱
+        if isinstance(response_data, dict):
+            # 새로운 구조: {"results": [...], "evaluation": {...}, "mapper": {...}}
+            raw_results = response_data.get("results", [])
+            mapper = response_data.get("mapper", {})
+            evaluation = response_data.get("evaluation")
+            
+            print(f"✅ 새로운 구조로 파싱됨")
+            print(f"   - results 개수: {len(raw_results)}")
+            print(f"   - results[0] 타입: {type(raw_results[0]) if raw_results else 'N/A'}")
+            if raw_results:
+                print(f"   - results[0] 샘플: {raw_results[0]}")
+            print(f"   - mapper: {mapper}")
+            print(f"   - evaluation: {evaluation}")
+            
+        elif isinstance(response_data, list) and len(response_data) >= 2:
+            # 이전 구조: [results_list, mapper_dict] 또는 [results_list, mapper_dict, evaluation_dict]
+            raw_results = response_data[0]
+            mapper = response_data[1]
+            evaluation = response_data[2] if len(response_data) > 2 else None
+            
+            print(f"✅ 이전 구조로 파싱됨 (리스트)")
+            print(f"   - results 개수: {len(raw_results)}")
+            print(f"   - results[0] 타입: {type(raw_results[0]) if raw_results else 'N/A'}")
+            if raw_results:
+                print(f"   - results[0] 샘플: {raw_results[0]}")
+            print(f"   - mapper: {mapper}")
+            print(f"   - evaluation: {evaluation}")
+        else:
+            print(f"❌ 예상치 못한 응답 구조")
+            raise ValueError(f"예상치 못한 GPU 응답 구조: type={type(response_data)}, len={len(response_data) if isinstance(response_data, list) else 'N/A'}")
+
+        print("=" * 80)
 
     except httpx.ConnectError:
         raise HTTPException(status_code=502, detail="GPU backend 연결 실패")
@@ -311,56 +377,42 @@ async def load_inference_result(db: Session, file_id: int):
     except httpx.HTTPError as e:
         raise HTTPException(status_code=500, detail=f"GPU backend 요청 오류: {e}")
     except Exception as e:
+        import traceback
+        print("❌ 예외 발생:")
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"예기치 못한 오류: {e}")
 
-    # 4️⃣ 변환 및 요약 생성
-    # total_rows = len(raw_results)
-    # positives = sum(1 for r in raw_results if r["prob"] >= 0.5)
-    # negatives = total_rows - positives
+    # 4️⃣ raw_results 검증
+    if not isinstance(raw_results, list):
+        raise HTTPException(status_code=500, detail=f"raw_results가 리스트가 아닙니다: {type(raw_results)}")
+    
+    if raw_results and not isinstance(raw_results[0], dict):
+        raise HTTPException(status_code=500, detail=f"raw_results[0]이 딕셔너리가 아닙니다: {type(raw_results[0])}, 값: {raw_results[0]}")
 
-    # formatted_results = [
-    #     {
-    #         "source": r["source"],
-    #         "predicted_target": str(r.get("label", "")),  # label → 문자열로 변환
-    #         "score": round(r["prob"], 4),
-    #     }
-    #     for r in raw_results
-    # ]
-
-    # # 5️⃣ 최종 반환 구조
-    # data = {
-    #     "file_id": file_id,
-    #     "file_name": file.file_name,
-    #     "model_name": model.model_name,
-    #     "task_type": model.task_type,
-    #     "created_datetime": (
-    #         file.created_datetime.isoformat() if file.created_datetime else None
-    #     ),
-    #     "status": "COMPLETED",
-    #     "total_rows": total_rows,
-    #     "used_collections": [],  # 나중에 collection 연결 시 채워줌
-    #     "summary": {"positive": positives, "negative": negatives},
-    #     "results": formatted_results,
-    # }
-
-    # return data
-
-    # 4️⃣ 변환 및 요약 생성
+    # 5️⃣ 변환 및 요약 생성
     total_rows = len(raw_results)
-    positives = sum(1 for r in raw_results if r["prob"] >= 0.5)
+    positives = sum(1 for r in raw_results if r.get("prob", 0) >= 0.5)
     negatives = total_rows - positives
 
     formatted_results = []
     for r in raw_results:
-        label_str = str(r.get("label"))
+        label_str = str(r.get("label", ""))
         label_name = mapper.get(label_str, f"label_{label_str}")
-        formatted_results.append({
-            "source": r["source"],
+        
+        result_item = {
+            "source": r.get("source", ""),
             "predicted_target": label_name,
-            "score": round(r["prob"], 4),
-        })
+            "score": round(r.get("prob", 0), 4),
+        }
+        
+        # ground_truth가 있으면 추가
+        if "ground_truth" in r:
+            result_item["ground_truth"] = r["ground_truth"]
+            result_item["is_correct"] = r.get("is_correct", False)
+        
+        formatted_results.append(result_item)
 
-    # 5️⃣ 최종 반환 데이터
+    # 6️⃣ 최종 반환 데이터
     data = {
         "file_id": file_id,
         "file_name": file.file_name,
@@ -371,12 +423,17 @@ async def load_inference_result(db: Session, file_id: int):
         ),
         "status": "COMPLETED",
         "total_rows": total_rows,
-        "used_collections": list(mapper.values()),  # 매핑된 클래스 코드 전체
+        "used_collections": list(mapper.values()) if mapper else [],  # 매핑된 클래스 이름 전체
         "summary": {"positive": positives, "negative": negatives},
         "results": formatted_results,
     }
+    
+    # 평가 지표가 있으면 추가
+    if evaluation:
+        data["evaluation"] = evaluation
 
     return data
+
 
 def get_recommendation_result(session: Session, user_id: int, model_id: int):
     """

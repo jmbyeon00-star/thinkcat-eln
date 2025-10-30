@@ -14,14 +14,24 @@ export default function useStatusListener(targetId: number | string | null) {
             try {
                 const data = JSON.parse(event.data)
                 const raw = (data.status ?? '').toUpperCase()
-                const status = raw === 'RUNNING' ? 'RUNNING' : 'AVAILABLE'
+                // const status = raw === 'RUNNING' ? 'RUNNING' : 'AVAILABLE'
+                let status: 'RUNNING' | 'INFERRING' | 'AVAILABLE' = 'AVAILABLE'
+                
+                if (raw === 'RUNNING') {
+                    status = 'RUNNING'
+                } else if (raw === 'INFERRING') {
+                    status = 'INFERRING'
+                } else {
+                    status = 'AVAILABLE'
+                }
 
                 setState({
                     status,
-                    isBusy: status === 'RUNNING',
+                    isBusy: status === 'RUNNING' || status === 'INFERRING'
                 })
 
-                console.log('[SSE:status]', status)
+                // console.log('[SSE:status]', status)
+                console.log('[SSE:status]', status, '(isBusy:', status !== 'AVAILABLE', ')')
             } catch (e) {
                 console.warn('SSE JSON parse error', e)
             }
