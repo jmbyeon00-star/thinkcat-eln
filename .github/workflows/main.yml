@@ -116,9 +116,14 @@ jobs:
             # ====== Docker 배포 ======
             cd "${DEPLOY_PATH}/${REPO_DIR}"
 
-            echo ">>> Docker compose up -d --build"
-            docker compose up -d --build
+            if [ ! -f docker-compose.prod.yml ]; then
+              echo "ERROR: docker-compose.prod.yml not found in repo"
+              exit 1
+            fi
+
+            echo ">>> Docker compose up (prod)"
             docker compose \
+              -f docker-compose.yml \
               -f docker-compose.prod.yml \
               up -d --build
 
