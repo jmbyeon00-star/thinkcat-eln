@@ -8,7 +8,7 @@ WORKDIR /app
 
 # 종속성 설치 package.json / lock 파일 복사 (캐시 효율 향상)
 COPY ./frontend/package*.json ./
-COPY ../.env ./.env
+# COPY ../.env ./.env
 
 # 의존성 설치 (개발 환경에선 npm install, 배포 시 npm ci 권장)
 RUN npm install
