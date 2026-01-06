@@ -12,7 +12,7 @@ export const authOptions: AuthOptions = {
                 password: { label: "비밀번호", type: "password" },
             },
             async authorize(credentials) {
-                const API_BASE = process.env.BACKEND_URL || "https://ipforce.co.kr";
+                const API_BASE = process.env.BACKEND_URL;
                 const res = await fetch(`${API_BASE}/api/user/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -26,7 +26,7 @@ export const authOptions: AuthOptions = {
                 if (!res.ok || !data?.ok) return null;
 
                 return {
-                    id: data.user.id,
+                    id: data.user.id,//.toString().,
                     name: data.user.name,
                     email: data.user.email,
                     token: data.access_token,
@@ -35,7 +35,7 @@ export const authOptions: AuthOptions = {
         }),
     ],
 
-    session: { 
+    session: {
         strategy: "jwt",
         maxAge: 7 * 24 * 60 * 60, // 7일 (백엔드와 동일하게)
     },

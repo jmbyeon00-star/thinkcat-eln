@@ -1,0 +1,406 @@
+enum Step {
+    DATA_SELECTION = 1,
+    TRAINING_CONFIG = 2,
+    REVIEW_AND_START = 3,
+}
+const MAX_STEP = 3;
+
+// ----------------------------------------------------
+// 좌측 사이드바 (Step Sidebar) 컴포넌트
+// ----------------------------------------------------
+interface StepSidebarProps {
+    currentStep: Step;
+    setCurrentStep: (step: Step) => void;
+    totalSteps: number;
+}
+
+const StepSidebar: React.FC<StepSidebarProps> = ({ currentStep, setCurrentStep, totalSteps }) => {
+    const steps = [
+        { id: Step.DATA_SELECTION, name: "데이터 선택", icon: Database },
+        { id: Step.TRAINING_CONFIG, name: "학습 설정", icon: Settings },
+        { id: Step.REVIEW_AND_START, name: "검토 및 시작", icon: Play },
+    ];
+
+    // 모바일 환경에서의 진행률 표시
+    const progress = Math.round(((currentStep - 1) / (totalSteps - 1)) * 100);
+    return (
+        <div className="lg:w-1/4 w-full bg-white lg:bg-gray-50 lg:p-0 p-4 rounded-xl lg:rounded-none lg:border-r lg:shadow-none shadow-lg mb-6 lg:mb-0">
+            <div className="hidden lg:block p-6 border-b border-gray-200">
+                {/* <h2 className="text-xl font-bold text-gray-900">새 학습 작업 설정</h2> */}
+                {/* 데스크톱 진행률 바 */}
+                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                    <div
+                        className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500"
+                        style={{ width: `${progress}%` }}
+                    />
+                </div>
+            </div>
+
+            {/* 모바일 진행률 표시 (PC에서는 숨김) */}
+            <div className="lg:hidden w-full mb-4">
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">Step {currentStep}/{totalSteps}: {steps.find(s => s.id === currentStep)?.name}</h3>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                        className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${progress}%` }}
+                    />
+                </div>
+            </div>
+
+            {/* 단계 목록 */}
+            <ol className="space-y-1 lg:space-y-2 p-0 lg:p-6">
+                {steps.map((step) => {
+                    const isCurrent = step.id === currentStep;
+                    const isCompleted = step.id < currentStep;
+
+                    // 완료되거나 현재 단계는 클릭 가능하도록 설정
+                    const isClickable = step.id <= currentStep;
+
+                    return (
+                        <li key={step.id}>
+                            <button
+                                onClick={() => isClickable && setCurrentStep(step.id)}
+                                disabled={!isClickable}
+                                className={`flex items-center w-full py-2 px-3 rounded-lg text-left transition-colors font-medium ${isCurrent
+                                    ? 'bg-indigo-600 text-white shadow-md'
+                                    : isCompleted
+                                        ? 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
+                                        : 'text-gray-400 cursor-default'
+                                    }`}
+                            >
+                                <span className={`text-sm mr-3 font-bold ${isCurrent ? 'text-white' : isCompleted ? 'text-indigo-600' : 'text-gray-400'}`}>
+                                    {step.id}
+                                </span>
+                                <span className={`${isCurrent ? 'text-white' : 'text-inherit'}`}>
+                                    {step.name}
+                                </span>
+                                {isCompleted && (
+                                    <CheckCircle className={`w-4 h-4 ml-auto ${isCurrent ? 'text-white' : 'text-indigo-600'}`} />
+                                )}
+                            </button>
+                        </li>
+                    );
+                })}
+            </ol>
+        </div>
+    );
+};
+
+// ----------------------------------------------------
+// Step 1: 데이터 선택 컴포넌트
+// ----------------------------------------------------
+const Step1Content: React.FC<{ projectData: ProjectInfo, onSelect: (data: DataSummary) => void, onNext: () => void, canProceed: boolean }> = ({ projectData, onSelect, onNext, canProceed }) => {
+    const [selectedOption, setSelectedOption] = useState<'existing' | 'new'>('existing');
+    const [dragActive, setDragActive] = useState(false);
+    const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+    
+    // 파일 선택/드래그앤드롭 후 DataSummary 업데이트
+    const updateDataSummary = useCallback((option: 'existing' | 'new', file: File | null = null) => {
+        let summary: DataSummary;
+        if (option === 'existing') {
+            summary = {
+                source: '기존 데이터 (AI특허 컬렉션)',
+                count: projectData.labeled_documents,
+                fileName: undefined,
+                isValid: true,
+            };
+        } else {
+            summary = {
+                source: file ? `새 파일 업로드 (${file.name})` : '새 데이터 추가',
+                count: file ? Math.floor(Math.random() * 100) + 1 : 0,
+                fileName: file ? file.name : undefined,
+                isValid: !!file,
+            };
+        }
+        onSelect(summary);
+        return summary;
+    }, [projectData, onSelect]);
+
+    // 초기 로드 또는 옵션 변경 시 DataSummary 업데이트
+    useEffect(() => {
+        updateDataSummary(selectedOption, uploadedFile);
+    }, [selectedOption, uploadedFile, updateDataSummary]);
+
+    // 새로운 데이터 카드 선택 핸들러
+    const handleOptionClick = (option: 'existing' | 'new') => {
+        setSelectedOption(option);
+        if (option === 'existing') {
+            setUploadedFile(null); // 기존 데이터 선택 시 파일 정보 초기화
+        }
+    };
+
+    // 파일 변경 핸들러 (Input)
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files ? e.target.files[0] : null;
+        if (file) {
+            setUploadedFile(file);
+        }
+    };
+
+    // 드래그 이벤트 핸들러
+    const handleDrag = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.type === "dragenter" || e.type === "dragover") {
+            setDragActive(true);
+        } else if (e.type === "dragleave") {
+            setDragActive(false);
+        }
+    };
+
+    // 드롭 이벤트 핸들러
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragActive(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            setUploadedFile(e.dataTransfer.files[0]);
+            setSelectedOption('new'); // 드롭 시 자동 선택
+        }
+    };
+
+    const formatBytes = (bytes: number, decimals = 2) => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+    
+    return (
+        <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-800">데이터 소스 선택</h3>
+            <p className="text-gray-500">학습에 사용할 데이터를 선택하세요.</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 기존 데이터 사용 카드 */}
+                <button
+                    onClick={() => handleOptionClick('existing')}
+                    className={`p-4 border-2 rounded-lg text-left transition-all hover:shadow-lg focus:outline-none ${selectedOption === 'existing' ? 'border-indigo-500 ring-4 ring-indigo-100 bg-indigo-50' : 'border-gray-200 hover:border-gray-400'
+                        }`}
+                >
+                    <div className="flex justify-between items-start">
+                        <h4 className="font-bold text-lg text-gray-800 flex items-center">
+                            <Database className="w-5 h-5 mr-2 text-indigo-600" /> 기존 데이터 ({projectData.labeled_documents}개)
+                        </h4>
+                        {selectedOption === 'existing' && <CheckCircle className="w-5 h-5 text-indigo-600" />}
+                    </div>
+                    <p className="mt-1 text-sm text-gray-600">최근 수정일: {setDatetimeToDate(projectData.updated_datetime)}</p>
+                </button>
+
+                {/* 새로운 데이터 추가 카드 */}
+                <button
+                    onClick={() => handleOptionClick('new')}
+                    className={`p-4 border-2 rounded-lg text-left transition-all hover:shadow-lg focus:outline-none ${selectedOption === 'new' ? 'border-indigo-500 ring-4 ring-indigo-100 bg-indigo-50' : 'border-gray-200 hover:border-gray-400'
+                        }`}
+                >
+                    <div className="flex justify-between items-start">
+                        <h4 className="font-bold text-lg text-gray-800 flex items-center">
+                            <Upload className="w-5 h-5 mr-2 text-indigo-600" /> 새 데이터 추가
+                        </h4>
+                        {selectedOption === 'new' && <CheckCircle className="w-5 h-5 text-indigo-600" />}
+                    </div>
+                    <p className="mt-1 text-sm text-gray-600">CSV, JSON 파일 직접 업로드</p>
+                </button>
+            </div>
+
+            {/* 드래그 앤 드롭 영역 (새 데이터 추가 선택 시 표시) */}
+            {selectedOption === 'new' && (
+                <div
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    className={`relative p-8 rounded-lg transition-colors border-2 ${dragActive
+                        ? 'border-indigo-500 bg-indigo-50 border-dashed'
+                        : 'border-gray-300 bg-gray-50 border-dashed'
+                        }`}
+                >
+                    {uploadedFile ? (
+                        // 파일 정보 표시
+                        <div className="flex items-center justify-between p-3 bg-white border border-green-300 rounded-lg shadow-sm">
+                            <div className="flex items-center">
+                                <FileText className="w-6 h-6 mr-3 text-green-500" />
+                                <div>
+                                    <p className="font-medium text-gray-900 text-sm">{uploadedFile.name}</p>
+                                    <p className="text-xs text-gray-500">{formatBytes(uploadedFile.size)}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setUploadedFile(null)} className="text-red-500 hover:text-red-700">
+                                <XCircle className="w-5 h-5" />
+                            </button>
+                        </div>
+                    ) : (
+                        // 드래그 앤 드롭 메시지
+                        <div className="text-center space-y-2">
+                            <Upload className="w-8 h-8 text-gray-400 mx-auto" />
+                            <p className="text-gray-600 font-medium">
+                                파일을 드래그하여 놓거나, 아래 버튼을 클릭하세요.
+                            </p>
+                            <label
+                                htmlFor="file-upload"
+                                className="inline-flex cursor-pointer px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm"
+                            >
+                                파일 선택
+                            </label>
+                            <input
+                                id="file-upload"
+                                type="file"
+                                className="hidden"
+                                onChange={handleFileChange}
+                                accept=".csv, .json, .txt"
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
+
+
+            {/* 모바일용 '다음' 버튼 (데스크톱에서는 메인 레이아웃에서 처리) */}
+            <div className="lg:hidden pt-6 border-t">
+                <button
+                    onClick={onNext}
+                    disabled={!canProceed}
+                    className={`w-full px-6 py-2 text-white font-bold rounded-lg shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-600 hover:bg-indigo-700`}
+                >
+                    다음 단계 →
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// ----------------------------------------------------
+// Step 2: 학습 설정 컴포넌트
+// ----------------------------------------------------
+const Step2Content: React.FC<{ dataSummary: DataSummary, onConfigChange: (config: TrainingConfig) => void, onNext: () => void, onBack: () => void, canProceed: boolean }> = ({ dataSummary, onConfigChange, onNext, onBack, canProceed }) => {
+
+    // TrainingConfig 타입을 사용하여 상태 정의
+    const [config, setConfig] = useState<TrainingConfig>({
+        modelName: 'BERT-Patent-v1',
+        epoch: 10,
+        batchSize: 32,
+        learningRate: 1e-5,
+    });
+
+    // 설정 변경 시 즉시 상위 컴포넌트로 전달
+    useEffect(() => {
+        onConfigChange(config);
+    }, [config, onConfigChange]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target;
+        setConfig(c => ({
+            ...c,
+            [id]: id === 'modelName' ? value : parseInt(value) || 1,
+        }));
+    };
+
+    return (
+        <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-800">모델 및 파라미터 정의</h3>
+            <p className="text-gray-500">학습에 사용할 모델 이름과 하이퍼파라미터를 설정하세요.</p>
+
+            {/* 1단계 요약 */}
+            <div className="bg-gray-100 p-3 rounded-lg text-sm border border-gray-200">
+                <p className="font-semibold text-gray-700">선택 데이터: <span className="font-medium text-gray-900">{dataSummary.source}</span> ({dataSummary.count}개)</p>
+            </div>
+
+            {/* 설정 폼 */}
+            <div className="space-y-4">
+                <div>
+                    <label htmlFor="modelName" className="block text-sm font-medium text-gray-700">모델 이름</label>
+                    <input
+                        id="modelName"
+                        type="text"
+                        value={config.modelName}
+                        onChange={handleInputChange}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                </div>
+                <div>
+                    <label htmlFor="epoch" className="block text-sm font-medium text-gray-700">Epoch 수</label>
+                    <input
+                        id="epoch"
+                        type="number"
+                        min="1"
+                        value={config.epoch}
+                        onChange={handleInputChange}
+                        className="mt-1 block w-1/3 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                </div>
+            </div>
+
+            {/* 모바일용 버튼 */}
+            <div className="lg:hidden pt-6 border-t flex justify-between">
+                <button
+                    onClick={onBack}
+                    className="px-6 py-2 border border-gray-300 text-gray-700 font-semibold rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
+                >
+                    ← 이전
+                </button>
+                <button
+                    onClick={onNext}
+                    disabled={!canProceed}
+                    className={`px-6 py-2 text-white font-bold rounded-lg shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-600 hover:bg-indigo-700`}
+                >
+                    다음 단계 →
+                </button>
+            </div>
+        </div>
+    );
+};
+
+
+// ----------------------------------------------------
+// Step 3: 검토 및 시작 컴포넌트
+// ----------------------------------------------------
+const Step3Content: React.FC<{ dataSummary: DataSummary, config: TrainingConfig, onStart: () => void, onBack: () => void, canProceed: boolean }> = ({ dataSummary, config, onStart, onBack, canProceed }) => {
+    return (
+        <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-800">최종 설정 검토</h3>
+            <p className="text-gray-500">모든 설정을 확인한 후 학습을 시작해 주세요.</p>
+
+            <div className="space-y-4">
+                {/* 데이터 요약 */}
+                <div className="p-4 rounded-lg bg-indigo-50 border border-indigo-200">
+                    <h4 className="font-bold text-lg text-indigo-700 mb-2">데이터 설정</h4>
+                    <div className="ml-2 space-y-1 text-sm text-indigo-800">
+                        <p>• 소스: {dataSummary.source}</p>
+                        <p>• 항목 수: {dataSummary.count}개</p>
+                        {dataSummary.fileName && <p>• 파일명: {dataSummary.fileName}</p>}
+                    </div>
+                </div>
+
+                {/* 설정 요약 */}
+                <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+                    <h4 className="font-bold text-lg text-green-700 mb-2">모델 파라미터</h4>
+                    <div className="ml-2 space-y-1 text-sm text-green-800">
+                        <p>• 모델 이름: {config.modelName}</p>
+                        <p>• Epoch 수: {config.epoch}</p>
+                        <p>• 배치 크기: {config.batchSize}</p>
+                        <p>• 학습률: {config.learningRate}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* 모바일용 버튼 */}
+            <div className="lg:hidden pt-6 border-t flex justify-between">
+                <button
+                    onClick={onBack}
+                    className="px-6 py-2 border border-gray-300 text-gray-700 font-semibold rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
+                >
+                    ← 이전
+                </button>
+                <button
+                    onClick={onStart}
+                    disabled={!canProceed}
+                    className={`px-6 py-3 text-white font-bold rounded-lg shadow-xl hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-green-600`}
+                >
+                    <Play className="w-5 h-5 mr-2 inline-block" /> 학습 시작하기
+                </button>
+            </div>
+        </div>
+    );
+};

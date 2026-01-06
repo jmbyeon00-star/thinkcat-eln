@@ -1,11 +1,10 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { CircleDashed, CircleCheckBig, AlertCircle, Search, LayoutGrid, Table, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { useSession } from "next-auth/react";
 import type { Session, getServerSession } from "next-auth";
 import { useRouter } from "next/router";
 import ModelProgressSSE from "@/components/ModelProgressSSE";
+import { useUserTaskStore } from '@/lib/store/useUserTaskStore';
 
 type Model = {
     id: number;
@@ -19,8 +18,8 @@ type Model = {
 };
 
 const taskMapper: Record<string, string> = {
-    classification: "이진분류",
-    "multi-label": "다중분류",
+    classification: "분류",
+    "multi-label": "분류",
     regression: "회귀",
     etc: "기타",
 };
@@ -52,39 +51,10 @@ const statusConfig = {
     },
 };
 
-// 간단한 진행률 표시 컴포넌트
-const ProgressBar = ({ progress, status }: { progress: number; status: string }) => {
-    const getColorClass = () => {
-        if (status === "FAILED") return "bg-red-500";
-        if (progress === 100) return "bg-emerald-500";
-        return "bg-blue-500";
-    };
-
-    const getTextColor = () => {
-        if (progress < 50) return "text-zinc-700";
-        return "text-white";
-    };
-
-    return (
-        <div className="mt-4">
-            <div className="relative w-full bg-zinc-200 rounded-full h-6 overflow-hidden">
-                <div
-                    className={`h-6 rounded-full transition-all duration-500 ${getColorClass()}`}
-                    style={{ width: `${progress}%` }}
-                />
-                <span
-                    className={`absolute inset-0 text-xs font-semibold flex items-center justify-center ${getTextColor()}`}
-                >
-                    {progress}%
-                </span>
-            </div>
-        </div>
-    );
-};
-
 export default function AIModelListPage() {
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
-    
+    const { status: storeStatus } = useUserTaskStore();
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
     const [models, setModels] = useState<Model[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [query, setQuery] = useState("");
@@ -100,10 +70,9 @@ export default function AIModelListPage() {
     };
     const token = session?.access_token;
     const user = session?.user;
-    
+
     useEffect(() => {
         if (!token) return;
-
         async function loadModels() {
             try {
                 setIsLoading(true);
@@ -115,6 +84,7 @@ export default function AIModelListPage() {
                     },
                     credentials: "include"
                 });
+
                 const data = await res.json();
                 console.log(">>> models:", data)
                 setModels(data.items || []);
@@ -127,7 +97,7 @@ export default function AIModelListPage() {
         }
         const debounce = setTimeout(loadModels, 300);
         return () => clearTimeout(debounce);
-    }, [token, query, page, limit]);
+    }, [token, query, page, limit, storeStatus]);
 
     const totalPages = Math.ceil(total / limit);
 
@@ -342,15 +312,13 @@ export default function AIModelListPage() {
                                                 {/* Progress Bar */}
                                                 {m.progress_status === "RUNNING" && (
                                                     <>
-                                                        {/* <ProgressBar progress={m.progress} status={m.progress_status} /> */}
-                                                        {/* <ModelProgressSSE targetId={m.id} initialProgress={m.progress} /> */}
                                                         <ModelProgressSSE targetId={m.id} initialProgress={m.progress} />
                                                     </>
                                                 )}
                                             </div>
                                         </a>
                                     );
-                            })}
+                                })}
                         </div>
                     </>
                 ) : (
@@ -408,7 +376,7 @@ export default function AIModelListPage() {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        {m.progress_status === "RUNNING" ? (
+                                                        {m.progress_status !== "COMPLETED" ? (
                                                             <div className="relative w-32 bg-zinc-200 rounded-full h-5">
                                                                 <div
                                                                     className={`h-5 rounded-full transition-all duration-500 ${m.progress === 100 ? "bg-emerald-500" : "bg-blue-500"
@@ -442,7 +410,7 @@ export default function AIModelListPage() {
                                                     </td>
                                                 </tr>
                                             );
-                                    })}
+                                        })}
                                 </tbody>
                             </table>
                         </div>

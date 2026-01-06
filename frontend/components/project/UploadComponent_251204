@@ -1,0 +1,114 @@
+// /components/project/UploadComponent.tsx
+
+import React, { useState, useCallback } from "react";
+import { Upload, FileText, Loader2, XCircle } from 'lucide-react';
+import { DataSourceInfo } from "@/types/project"; // DataSourceInfo 타입 임포트 가정
+
+// ProjectData는 TrainingDataItems에 들어갈 실제 데이터 항목 타입입니다.
+// 현재는 any[]로 가정하겠습니다.
+type ProjectDataItem = any;
+
+interface UploadComponentProps {
+    // onDataUpdate는 Step1Content의 handleDataAddition과 동일한 시그니처를 가집니다.
+    onDataUpdate: (newItems: ProjectDataItem[], sourceInfo: DataSourceInfo) => void;
+}
+
+export default function UploadComponent({ onDataUpdate }: UploadComponentProps) {
+    const [file, setFile] = useState<File | null>(null);
+    const [uploading, setUploading] = useState(false);
+
+    // 🎯 [핵심] 파일 파싱 및 데이터 생성 (이 부분에 실제 파일 처리 로직이 들어갑니다)
+    const handleFileUpload = useCallback(async (uploadedFile: File) => {
+        setUploading(true);
+        // [TODO] 실제 파일 파싱 로직 구현 필요 (JSON, CSV 등)
+
+        // --- 임시 데이터 생성 (로직 시뮬레이션) ---
+        await new Promise(resolve => setTimeout(resolve, 1500)); // 로딩 시뮬레이션
+        const mockDataItems: ProjectDataItem[] = Array.from({ length: 50 }, (_, i) => ({
+            id: `upload_${uploadedFile.name}_${i}`,
+            title: `업로드 항목 ${i}`,
+            abstract: `파일 ${uploadedFile.name}에서 추출된 데이터입니다.`,
+            collection_name: uploadedFile.name.split('.')[0] || '업로드_데이터',
+        }));
+        // ----------------------------------------
+
+        const sourceInfo: DataSourceInfo = {
+            name: uploadedFile.name,
+            count: mockDataItems.length,
+            type: 'upload', // 👈 'upload' 타입 명시
+            sourceId: uploadedFile.name,
+        };
+
+        // 🎯 1. 상위 컴포넌트로 데이터 항목과 소스 정보 전달
+        onDataUpdate(mockDataItems, sourceInfo);
+
+        setFile(uploadedFile); // 파일 정보 저장 (UI 표시용)
+        setUploading(false);
+    }, [onDataUpdate]);
+
+    // 드래그앤드롭 핸들러
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFileUpload(e.dataTransfer.files[0]);
+        }
+    };
+
+    // 파일 선택 핸들러
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            handleFileUpload(e.target.files[0]);
+        }
+    };
+
+    // 파일 제거 핸들러 (이 함수도 onDataUpdate를 통해 제거 로직을 호출해야 하지만, 
+    // 현재는 Step1Content의 handleRemoveFile이 외부에서 처리한다고 가정하고 로컬 상태만 초기화합니다.)
+    const handleRemove = () => {
+        setFile(null);
+        // [TODO] TrainingDataItems에서 제거하는 로직은 Step1Content의 handleRemoveFile에 위임
+    }
+
+
+    return (
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center bg-gray-50">
+            {uploading ? (
+                <div className="flex flex-col items-center justify-center h-24">
+                    <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                    <p className="mt-2 text-indigo-600 font-medium">파일을 파싱하고 있습니다...</p>
+                </div>
+            ) : file ? (
+                <div className="flex items-center justify-between bg-white border border-indigo-200 rounded-lg p-3 shadow-md">
+                    <div className="flex items-center">
+                        <FileText className="w-5 h-5 text-indigo-500 mr-3" />
+                        <div>
+                            <p className="text-sm font-medium text-gray-800 truncate">{file.name}</p>
+                            <p className="text-xs text-gray-500">{formatBytes(file.size)} - {mockDataItems.length} 항목 추가됨</p>
+                        </div>
+                    </div>
+                    {/* [TODO] 제거 버튼 클릭 시 상위 컴포넌트의 handleRemoveFile 호출 필요 */}
+                    <button onClick={handleRemove} className="text-red-500 hover:text-red-700 ml-4">
+                        <XCircle className="w-5 h-5" />
+                    </button>
+                </div>
+            ) : (
+                <div
+                    onDragOver={(e) => { e.preventDefault(); /* dragActive 상태 업데이트 로직 */ }}
+                    onDrop={handleDrop}
+                    className="cursor-pointer"
+                    onClick={() => document.getElementById('file-input')?.click()}
+                >
+                    <Upload className="w-8 h-8 mx-auto text-gray-400" />
+                    <p className="mt-2 text-sm text-gray-600">파일을 드래그하거나 클릭하여 선택하세요.</p>
+                    <p className="text-xs text-gray-400">(XLSX, CSV, JSON 지원)</p>
+                    <input
+                        id="file-input"
+                        type="file"
+                        accept=".xlsx,.csv,.json"
+                        className="hidden"
+                        onChange={handleFileSelect}
+                    />
+                </div>
+            )}
+        </div>
+    );
+}

@@ -9,6 +9,7 @@ from app.core.db import Base
 
 class ProgressStatusType(PyEnum):
     RUNNING = "RUNNING"
+    INFERRING = "INFERRING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
 

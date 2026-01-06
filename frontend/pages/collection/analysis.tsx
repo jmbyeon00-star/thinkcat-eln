@@ -1,11 +1,13 @@
-"use client";
-
 import { useEffect, useState, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+// import { useRouter, useSearchParams } from "next/navigation"; // app router
+import { useRouter } from "next/router"; // page router
 import { Session } from "next-auth";
 import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 import { Loader2 } from "lucide-react";
+
+import { withMessages } from '@/lib/i18n/withMessages';
+export const getServerSideProps = withMessages();
 
 // ✅ UmapVisualization 컴포넌트 동적 import
 const UmapVisualization = dynamic(
@@ -24,10 +26,21 @@ const UmapVisualization = dynamic(
 );
 
 export default function CollectionAnalysisPage() {
+  // app router
+  // const searchParams = useSearchParams();
+  // const codes = searchParams?.get('codes')?.split(',') || [];
+
+  // page router
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const codes = searchParams?.get('codes')?.split(',') || [];
-  
+  if (!router.isReady) return null;
+  const rawCodes = router.query.codes;
+  const codes = Array.isArray(rawCodes)
+    ? rawCodes
+    : typeof rawCodes === "string"
+      ? rawCodes.split(",")
+      : [];
+
+
   const { data: session } = useSession() as {
     data: (Session & { access_token?: string }) | null;
   };
@@ -42,7 +55,7 @@ export default function CollectionAnalysisPage() {
         console.log("토큰 없음");
         return;
       }
-      
+
       if (codes.length === 0) {
         console.log("codes 없음, 목록으로 이동");
         router.push('/collection');
@@ -51,20 +64,20 @@ export default function CollectionAnalysisPage() {
 
       try {
         setLoading(true);
-        
+
         // ✅ 컬렉션 이름 매핑 생성 (각 컬렉션 정보 조회)
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
         const nameMap: { [key: string]: string } = {};
-        
+
         // 각 컬렉션 코드에 대한 이름 조회 (필요시)
         // 또는 codes를 그대로 사용
         codes.forEach((code, idx) => {
           nameMap[code] = code; // 기본적으로 코드를 이름으로 사용
         });
-        
+
         setCollectionNames(nameMap);
         setLoading(false);
-        
+
       } catch (error) {
         console.error("컬렉션 정보 로드 오류:", error);
         router.push('/collection');
@@ -93,7 +106,7 @@ export default function CollectionAnalysisPage() {
 
   // ✅ UmapVisualization 컴포넌트 렌더링
   return (
-    <UmapVisualization 
+    <UmapVisualization
       collectionCodes={codes}
       collectionNames={collectionNames}
       onClose={handleCloseAnalysis}

@@ -1,7 +1,5 @@
-"use client";
-
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/router";
 import { AlertCircle, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 
 type NpeItem = {
@@ -27,7 +25,7 @@ export default function PatLitigation({ applicationNumber }: PatLitigationProps)
     if (!applicationNumber) return;
     setIsLoading(true);
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
     fetch(`${API_BASE}/api/patent/npecheck?appNumber=${applicationNumber}`)
       .then((res) => res.json())
       .then((data) => setNpeData(Array.isArray(data) ? data : []))
@@ -65,81 +63,80 @@ export default function PatLitigation({ applicationNumber }: PatLitigationProps)
     return { color: "#28a745", icon: <CheckCircle className={`${baseStyle}`} color="#28a745" /> };
   };
 
-    return (
-        <section className="max-w-5xl mx-auto bg-white border border-zinc-200 rounded-xl shadow-sm p-8 mt-6">
-            <h1 className="text-xl font-semibold text-zinc-900 mb-6 border-b border-zinc-200 pb-3">
-                권리자 이전
-            </h1>
-            <div className="w-full">
-                {isLoading ? (
-                    <div className="flex justify-center items-center h-60 text-zinc-500">
-                        <div className="animate-spin border-4 border-t-blue-500 border-gray-300 rounded-full h-8 w-8"></div>
-                        <span className="ml-3">데이터 불러오는 중...</span>
-                    </div>
-                ) : npeData.length > 0 ? (
-                    <div className="overflow-x-auto border rounded-lg shadow-sm">
-                    <table className="min-w-full text-sm text-center border-collapse">
-                        <thead className="bg-gray-100 text-gray-700 font-semibold">
-                        <tr>
-                            <th className="p-2 border">이전번호</th>
-                            <th className="p-2 border">권리자번호</th>
-                            <th className="p-2 border">출원번호</th>
-                            <th className="p-2 border">등록번호</th>
-                            <th className="p-2 border">권리자이름</th>
-                            <th className="p-2 border">권리자코드</th>
-                            <th className="p-2 border">NPE예측</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {groupedData.map((group, gIdx) =>
-                            group.map((item, iIdx) => {
-                            const key = `${gIdx}-${iIdx}`;
-                            const colorData = getColor(item.npe_prob);
-                            return (
-                                <tr
-                                key={key}
-                                className={`${
-                                    hoveredRow === key ? "bg-gray-100" : gIdx % 2 === 0 ? "bg-white" : "bg-gray-50"
-                                } hover:bg-gray-200 transition`}
-                                onMouseEnter={() => setHoveredRow(key)}
-                                onMouseLeave={() => setHoveredRow(null)}
-                                >
-                                {iIdx === 0 && (
-                                    <td
-                                    rowSpan={group.length}
-                                    className="p-2 border cursor-pointer text-blue-600 hover:underline"
-                                    onClick={() => handleClick(item.RGTR_CD)}
-                                    >
-                                    {item.RGT_TRNSF_SEQ}
-                                    </td>
-                                )}
-                                <td
-                                    className="p-2 border cursor-pointer text-blue-600 hover:underline"
-                                    onClick={() => handleClick(item.RGTR_CD)}
-                                >
-                                    {item.RGTR_SEQ}
-                                </td>
-                                <td className="p-2 border">{applicationNumber}</td>
-                                <td className="p-2 border">{item.RGSTNO}</td>
-                                <td className="p-2 border">{item.RGTR_NM}</td>
-                                <td
-                                    className="p-2 border cursor-pointer text-blue-600 hover:underline"
-                                    onClick={() => handleClick(item.RGTR_CD)}
-                                >
-                                    {item.RGTR_CD || "N/A"}
-                                </td>
-                                <td className="p-2 border">{colorData.icon}</td>
-                                </tr>
-                            );
-                            })
+  return (
+    <section className="max-w-5xl mx-auto bg-white border border-zinc-200 rounded-xl shadow-sm p-8 mt-6">
+      <h1 className="text-xl font-semibold text-zinc-900 mb-6 border-b border-zinc-200 pb-3">
+        권리자 이전
+      </h1>
+      <div className="w-full">
+        {isLoading ? (
+          <div className="flex justify-center items-center h-60 text-zinc-500">
+            <div className="animate-spin border-4 border-t-blue-500 border-gray-300 rounded-full h-8 w-8"></div>
+            <span className="ml-3">데이터 불러오는 중...</span>
+          </div>
+        ) : npeData.length > 0 ? (
+          <div className="overflow-x-auto border rounded-lg shadow-sm">
+            <table className="min-w-full text-sm text-center border-collapse">
+              <thead className="bg-gray-100 text-gray-700 font-semibold">
+                <tr>
+                  <th className="p-2 border">이전번호</th>
+                  <th className="p-2 border">권리자번호</th>
+                  <th className="p-2 border">출원번호</th>
+                  <th className="p-2 border">등록번호</th>
+                  <th className="p-2 border">권리자이름</th>
+                  <th className="p-2 border">권리자코드</th>
+                  <th className="p-2 border">NPE예측</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groupedData.map((group, gIdx) =>
+                  group.map((item, iIdx) => {
+                    const key = `${gIdx}-${iIdx}`;
+                    const colorData = getColor(item.npe_prob);
+                    return (
+                      <tr
+                        key={key}
+                        className={`${hoveredRow === key ? "bg-gray-100" : gIdx % 2 === 0 ? "bg-white" : "bg-gray-50"
+                          } hover:bg-gray-200 transition`}
+                        onMouseEnter={() => setHoveredRow(key)}
+                        onMouseLeave={() => setHoveredRow(null)}
+                      >
+                        {iIdx === 0 && (
+                          <td
+                            rowSpan={group.length}
+                            className="p-2 border cursor-pointer text-blue-600 hover:underline"
+                            onClick={() => handleClick(item.RGTR_CD)}
+                          >
+                            {item.RGT_TRNSF_SEQ}
+                          </td>
                         )}
-                        </tbody>
-                    </table>
-                    </div>
-                ) : (
-                    <p className="text-center text-gray-500 py-8">권리자 이전 데이터가 없습니다.</p>
+                        <td
+                          className="p-2 border cursor-pointer text-blue-600 hover:underline"
+                          onClick={() => handleClick(item.RGTR_CD)}
+                        >
+                          {item.RGTR_SEQ}
+                        </td>
+                        <td className="p-2 border">{applicationNumber}</td>
+                        <td className="p-2 border">{item.RGSTNO}</td>
+                        <td className="p-2 border">{item.RGTR_NM}</td>
+                        <td
+                          className="p-2 border cursor-pointer text-blue-600 hover:underline"
+                          onClick={() => handleClick(item.RGTR_CD)}
+                        >
+                          {item.RGTR_CD || "N/A"}
+                        </td>
+                        <td className="p-2 border">{colorData.icon}</td>
+                      </tr>
+                    );
+                  })
                 )}
-            </div>
-        </section>
-    );
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-center text-gray-500 py-8">권리자 이전 데이터가 없습니다.</p>
+        )}
+      </div>
+    </section>
+  );
 }

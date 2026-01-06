@@ -1,0 +1,383 @@
+import { useRouter } from "next/router";
+import { useEffect, useMemo, useState } from "react";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, PieLabelRenderProps, Legend } from "recharts";
+import { BarChart3, FileText, XCircle, Loader2, PieChartIcon, BarChart2, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Session } from "next-auth";
+
+import AddCollectionModal from "@/components/collection/AddCollectionModal";
+import ProjectLayout from "@/components/layouts/ProjectLayout";
+
+type CollectionInfo = {
+    id: number;
+    collection_name: string;
+    collection_data_num: number;
+    // 백엔드에서 계산된 비율을 담는 필드를 추가하거나 기존 필드 사용
+    collection_data_ratio: number; // 기존 필드 (DB)
+    calculated_ratio?: number;     // 백엔드에서 실시간 계산된 필드
+    collection_category: number;
+};
+
+// 백엔드 응답 전체 타입을 정의합니다.
+type ApiCollectionsResponse = {
+    collections: CollectionInfo[];
+    total_collections: number;
+    total_data_num: number; // 새로 추가된 전체 데이터 수
+    page: number;
+    limit: number;
+};
+export default function CollectionSettingPage() {
+    const router = useRouter();
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const { project_id } = router.query;
+
+    const { data: session, status: sessionStatus } = useSession() as {
+        data: (Session & { access_token?: string }) | null;
+        status: "loading" | "authenticated" | "unauthenticated";
+    };
+    const token = session?.access_token;
+
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [collections, setCollections] = useState<CollectionInfo | []>([]);
+    const [loading, setLoading] = useState(true);
+
+    const [query, setQuery] = useState("");
+    const [page, setPage] = useState(1);
+    const [limit] = useState(10);
+    const [total, setTotal] = useState(0);
+
+    const [totalDataNum, setTotalDataNum] = useState(0);
+
+    useEffect(() => {
+        if (!project_id || !token) return;
+
+        // async function loadCollections() {
+        //     try {
+
+        //         setLoading(true);
+        //         const res = await fetch(`${API_BASE}/api/project/${project_id}/collection?page=${page}&limit=${limit}&q=${encodeURIComponent(query)}`, {
+        //             headers: { Authorization: `Bearer ${token}` },
+        //         })
+        //         if (res.ok) {
+        //             const data = await res.json();
+        //             console.log(">>>", data)
+        //             setCollections(data.collections || []);
+        //             setTotal(data.total || 0);
+        //         }
+        //     } catch (e) {
+
+        async function loadCollections() {
+            try {
+                setLoading(true);
+                const res = await fetch(`${API_BASE}/api/project/${project_id}/collection?page=${page}&limit=${limit}&q=${encodeURIComponent(query)}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                })
+                if (res.ok) {
+                    // 응답 타입을 ApiCollectionsResponse로 지정하여 사용
+                    const data: ApiCollectionsResponse = await res.json();
+
+                    setCollections(data.collections || []);
+                    setTotal(data.total_collections || 0); // 전체 컬렉션 개수
+                    setTotalDataNum(data.total_data_num || 0); // ⭐ 전체 데이터 수 저장
+
+                }
+            } catch (e) {
+                alert("컬렉션 목록을 불러오지 못했습니다.");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        const debounce = setTimeout(loadCollections, 300);
+        return () => clearTimeout(debounce);
+    }, [token, project_id, page, query]);
+
+    const handleAddCollection = async (collectionName: string, category: number) => {
+        if (!token) return;
+
+        try {
+            setLoading(true);
+            const res = await fetch(`${API_BASE}/api/project/${project_id}/collection`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    collection_name: collectionName,
+                    // collection_category: category,
+                }),
+            });
+
+            if (res.ok) {
+                alert(`컬렉션 '${collectionName}'이 성공적으로 추가되었습니다.`);
+                setIsAddModalOpen(false); // 모달 닫기
+                // 데이터 목록과 통계를 다시 로드하여 최신화
+                // page, limit, query 상태가 바뀌지 않으면 loadCollections가 다시 실행
+                // 강제 로드를 위해 page state를 업데이트하거나, loadCollections를 직접 호출
+                // setPage(1); // 1페이지로 돌아가기
+                // loadCollections(); // 직접 호출
+            } else {
+                const errorData = await res.json();
+                throw new Error(errorData.detail || "컬렉션 추가에 실패했습니다.");
+            }
+        } catch (error) {
+            console.error("컬렉션 추가 에러:", error);
+            alert(`컬렉션 추가 에러: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 파이 차트 색상 정의
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF19A6', '#19FFD1'];
+    const RADIAN = Math.PI / 180;
+
+    // 파이 차트의 라벨 렌더링 함수
+    const renderCustomizedLabel: React.FC<PieLabelRenderProps> = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }) => {
+        if (!cx || !cy || !innerRadius || !outerRadius || !percent) return null;
+
+        const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+        const x = cx + radius * Math.cos(-midAngle * RADIAN);
+        const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+        return (
+            <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central">
+                {`${name} (${(percent * 100).toFixed(0)}%)`}
+            </text>
+        );
+    };
+
+    // 데이터를 useMemo로 차트용 데이터로 변환 (optional: 성능 최적화)
+    const chartData = useMemo(() => {
+        if (!Array.isArray(collections)) return [];
+
+        // collection_data_num 기준으로 필터링 및 정렬하여 상위 N개만 표시 가능
+        return collections.map(col => ({
+            name: col.collection_name,
+            value: col.collection_data_num,
+            ratio: col.calculated_ratio ?? col.collection_data_ratio,
+        }));
+    }, [collections]);
+
+    if (loading) {
+        return (
+            <ProjectLayout step={4}>
+                <div className="flex min-h-screen items-center justify-center bg-white">
+                    <div className="flex items-center gap-3">
+                        <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                        <span className="text-zinc-600">통계 불러오는 중...</span>
+                    </div>
+                </div>
+            </ProjectLayout>
+        );
+    }
+
+    if (!collections) {
+        return (
+            <ProjectLayout step={4}>
+                <div className="min-h-screen bg-white p-8">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+                            <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                            <p className="text-red-700 font-semibold">통계를 불러오지 못했습니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </ProjectLayout>
+        );
+    }
+
+    return (
+        <ProjectLayout projectNo={project_id} token={token} API_BASE={API_BASE}>
+            <div className="min-h-screen bg-white p-8">
+                <div className="mb-6">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="w-1 h-8 bg-gradient-to-b from-blue-700 to-blue-900 rounded-full" />
+                        <h1 className="text-3xl font-bold text-zinc-900">컬렉션 통계 및 설정</h1>
+                    </div>
+                    <p className="text-zinc-600 ml-4">
+                        프로젝트에 저장된 데이터의 컬렉션별 통계 정보와 목록을 확인합니다.
+                    </p>
+                </div>
+
+                <div className="min-h-screen bg-white p-8">
+
+                    {/* 1. 제목 섹션 */}
+                    <div className="mb-6">
+                        {/* ... (기존 제목 및 설명 그대로) ... */}
+                    </div>
+
+                    {/* 2. 통계 섹션 (이전 답변 코드와 동일) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                        {/* ... (통계 카드 및 파이 차트 그대로) ... */}
+                    </div>
+
+                    {/* 3. 컬렉션 목록 테이블 섹션 */}
+                    <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-lg">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-semibold flex items-center gap-2 text-zinc-800">
+                                <BarChart2 className="w-5 h-5 text-blue-600" /> 컬렉션 목록 ({total}개)
+                            </h2>
+                            {/* 새 컬렉션 추가 버튼 */}
+                            <button
+                                onClick={() => setIsAddModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-150"
+                            >
+                                <Plus className="w-5 h-5" /> 새 컬렉션 추가
+                            </button>
+                        </div>
+
+                        {/* 검색 입력 필드 */}
+                        <div className="mb-4">
+                            {/* ... (검색 필드 그대로) ... */}
+                        </div>
+
+                        {/* 컬렉션 목록 테이블 및 페이지네이션 */}
+                        {/* ... (테이블 및 페이지네이션 로직은 이전 답변 코드 그대로 유지) ... */}
+                    </div>
+                </div>
+
+                {/* 4. 새 컬렉션 추가 모달 컴포넌트 (하단에 추가) */}
+                {isAddModalOpen && (
+                    <AddCollectionModal
+                        project_id={project_id as string}
+                        onClose={() => setIsAddModalOpen(false)}
+                        onSave={handleAddCollection}
+                    />
+                )}
+
+                {/* 1. 통계 요약 및 차트 섹션 */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    {/* 전체 데이터 수 카드 */}
+                    <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded-lg shadow-sm flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-blue-600">총 컬렉션 수</p>
+                            <p className="text-3xl font-bold text-zinc-900">{total}개</p>
+                        </div>
+                        <BarChart3 className="w-10 h-10 text-blue-400 opacity-50" />
+                    </div>
+
+                    {/* 전체 데이터 수 카드 */}
+                    <div className="bg-indigo-50 border-l-4 border-indigo-600 p-4 rounded-lg shadow-sm flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-indigo-600">총 데이터 수</p>
+                            <p className="text-3xl font-bold text-zinc-900">{totalDataNum.toLocaleString()}건</p>
+                        </div>
+                        <FileText className="w-10 h-10 text-indigo-400 opacity-50" />
+                    </div>
+
+                    {/* 차트 영역 (파이 차트) */}
+                    <div className="lg:col-span-3 bg-white border border-zinc-200 p-6 rounded-xl shadow-lg">
+                        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-zinc-800">
+                            <PieChartIcon className="w-5 h-5 text-blue-600" /> 컬렉션 데이터 비율 (Top 10)
+                        </h2>
+                        {chartData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={400}>
+                                <PieChart>
+                                    <Pie
+                                        data={chartData.slice(0, 10)} // 상위 10개만 차트에 표시
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%"
+                                        cy="50%"
+                                        outerRadius={120}
+                                        fill="#8884d8"
+                                        labelLine={false}
+                                        label={renderCustomizedLabel}
+                                    >
+                                        {chartData.slice(0, 10).map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(value: number) => [value.toLocaleString() + '건', '데이터 수']} />
+                                    <Legend layout="vertical" align="right" verticalAlign="middle" />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="text-center py-10 text-zinc-500">
+                                표시할 데이터가 없습니다.
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 2. 컬렉션 목록 테이블 섹션 */}
+                <div className="bg-white border border-zinc-200 p-6 rounded-xl shadow-lg">
+                    <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-zinc-800">
+                        <BarChart2 className="w-5 h-5 text-blue-600" /> 컬렉션 목록 ({total}개)
+                    </h2>
+
+                    {/* 검색 입력 필드 */}
+                    <div className="mb-4">
+                        <input
+                            type="text"
+                            placeholder="컬렉션 이름 또는 모델 코드로 검색"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            className="w-full md:w-1/3 p-2 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+
+                    {/* 컬렉션 목록 테이블 */}
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-zinc-200">
+                            <thead>
+                                <tr className="bg-zinc-50">
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">ID</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">컬렉션 이름</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 uppercase tracking-wider">데이터 수 (건)</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 uppercase tracking-wider">비율 (%)</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">카테고리</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-zinc-200">
+                                {Array.isArray(collections) && collections.map((col) => (
+                                    <tr key={col.id} className="hover:bg-zinc-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-zinc-900">{col.id}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-700">{col.collection_name}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-700 text-right">{col.collection_data_num.toLocaleString()}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-blue-600 text-right">
+                                            {(col.calculated_ratio ?? col.collection_data_ratio)?.toFixed(2)}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-700">{col.collection_category}</td>
+                                    </tr>
+                                ))}
+                                {Array.isArray(collections) && collections.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="px-6 py-4 text-center text-zinc-500">
+                                            검색 결과가 없습니다.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* 페이지네이션 (기존 로직 사용) */}
+                    <div className="flex justify-between items-center mt-4">
+                        <p className="text-sm text-zinc-600">총 {total}개의 컬렉션</p>
+                        {/* 간단한 페이지네이션 버튼 (기존 로직 가정) */}
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="p-2 border rounded-lg disabled:opacity-50"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <span className="p-2 text-sm text-zinc-700">{page}</span>
+                            <button
+                                onClick={() => setPage(p => p + 1)}
+                                disabled={page * limit >= total}
+                                className="p-2 border rounded-lg disabled:opacity-50"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </ProjectLayout>
+    );
+}

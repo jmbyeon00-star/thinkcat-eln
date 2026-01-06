@@ -28,7 +28,7 @@ class ModelInfo(Base):
         default="RUNNING",
         nullable=False
     )
-    version: Mapped[int] = mapped_column(Integer)
+    model_version: Mapped[str] = mapped_column(String(50))
     collection_num: Mapped[int] = mapped_column(Integer)
     n_unique: Mapped[int] = mapped_column(Integer, nullable=False)
     epoch: Mapped[int] = mapped_column(Integer, nullable=False)

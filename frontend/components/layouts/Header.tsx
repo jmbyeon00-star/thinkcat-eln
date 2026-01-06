@@ -1,37 +1,72 @@
-"use client";
+// frontend/components/layouts/Header.tsx
 import Link from "next/link";
 import { useState } from "react";
 import { User, LogOut, Menu, X } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 
+// import { usePathname } from "next/navigation"; // App Router 방식
+import { useRouter } from "next/router"; // Page Router 방식
+import { useTranslations } from "next-intl";
 import { useUserTaskStore } from '@/lib/store/useUserTaskStore';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 export default function Header() {
-    const { isBusy, status: taskStatus } = useUserTaskStore()
+    const translator = useTranslations();
+
+    // app router
+    // const currentPath = usePathname(); 
+
+    // page router
+    const router = useRouter();
+    const currentPath = router.asPath.replace(/^\/(en|ko)/, "");
+
+    const { isBusy, progress, status: taskStatus, task, targetId } = useUserTaskStore()
     const { data: session, status: authStatus } = useSession();
+
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
 
-    const user = session?.user; // ✅ 세션에서 사용자 정보 가져오기
+    const user = session?.user;
 
     const handleLogout = async () => {
-        await signOut({ redirect: true, callbackUrl: "/" }); // ✅ 쿠키 삭제 + 리다이렉트
+        // await signOut({ redirect: true, callbackUrl: `/${router.locale}` });
+        await signOut({ redirect: false });
+        router.push(`/${router.locale}`);
     };
 
     const navLinks = [
-        { href: "/about", label: "서비스 소개" },
-        { href: "/project/new", label: "프로젝트 생성" },
-        { href: "/project", label: "프로젝트 관리" },
-        { href: "/collection", label: "컬렉션 관리" },
-        { href: "/ai", label: "모델 관리" },
-        { href: "/file", label: "파일 관리" },
-        { href: "/search", label: "검색" },
+        { href: "/about", key: "header.about" },
+        { href: "/project/new", key: "header.projectNew" },
+        { href: "/project", key: "header.projects" },
+        { href: "/collection", key: "header.collections" },
+        { href: "/search", key: "header.search" },
     ];
+
+    // ✅ 활성화 클래스를 계산 함수
+    const getLinkClasses = (href: string, isMobile: boolean = false) => {
+        const cleanPath = currentPath.split("?")[0].split("#")[0];
+        const isActive = cleanPath === href;
+
+        // 데스크톱 스타일 (언더바 적용)
+        if (!isMobile) {
+            return `px-3 py-2 text-sm font-medium transition-all duration-200 ${isActive
+                ? 'text-blue-600 border-b-2 border-blue-600' // 활성 상태: 파란색 텍스트, 파란색 밑줄
+                : 'text-zinc-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg' // 비활성 상태
+                }`;
+        }
+
+        // 모바일 스타일 (배경색으로 활성화 표시)
+        return `block px-4 py-3 text-sm font-medium transition-all duration-200 ${isActive
+            ? 'text-blue-600 bg-blue-50 rounded-lg' // 활성 상태: 파란색 텍스트, 파란색 배경
+            : 'text-zinc-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg'
+            }`;
+    };
 
     return (
         <header className="sticky top-0 z-50 bg-white border-b border-zinc-200 shadow-sm">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
+
                     {/* Logo */}
                     <div className="flex-shrink-0">
                         <Link href="/" className="flex items-center gap-2">
@@ -39,21 +74,25 @@ export default function Header() {
                         </Link>
                     </div>
 
-                    {/* Desktop Navigation */}
+                    {/* Desktop Nav */}
                     <nav className="hidden lg:flex items-center gap-1">
                         {navLinks.map((link) => (
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                className="px-3 py-2 text-sm font-medium text-zinc-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                                // className="px-3 py-2 text-sm font-medium text-zinc-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                                className={getLinkClasses(link.href)}
                             >
-                                {link.label}
+                                {translator(link.key)}
                             </Link>
                         ))}
                     </nav>
 
-                    {/* Auth Buttons */}
-                    <div className="hidden lg:flex items-center gap-2">
+                    {/* Auth */}
+                    <div className="hidden lg:flex items-center gap-4">
+                        {/* 언어 스위처를 인증 영역 왼쪽에 배치 */}
+                        <LanguageSwitcher />
+
                         {authStatus === "loading" ? (
                             <p className="text-sm text-zinc-500">로딩 중...</p>
                         ) : !user ? (
@@ -87,7 +126,6 @@ export default function Header() {
                                     <LogOut size={16} />
                                     로그아웃
                                 </button> */}
-                                {/* ✅ 동그란 아이콘 */}
                                 <div className="relative">
                                     <button
                                         onClick={() => setMenuOpen(!menuOpen)}
@@ -120,7 +158,7 @@ export default function Header() {
                                         />
                                     </button>
 
-                                    {/* ✅ 드롭다운 메뉴 */}
+                                    {/* 드롭다운 메뉴 */}
                                     {menuOpen && (
                                         <div className="absolute right-0 mt-2 w-40 bg-white border border-zinc-200 rounded-lg shadow-lg py-2 z-50">
                                             <Link
@@ -146,7 +184,7 @@ export default function Header() {
                         )}
                     </div>
 
-                    {/* Mobile menu button */}
+                    {/* Mobile button */}
                     <button
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                         className="lg:hidden p-2 text-zinc-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
@@ -156,7 +194,7 @@ export default function Header() {
                 </div>
             </div>
 
-            {/* Mobile Navigation */}
+            {/* Mobile Nav */}
             {mobileMenuOpen && (
                 <div className="lg:hidden border-t border-zinc-200 bg-white">
                     <div className="px-4 py-4 space-y-1">
@@ -164,10 +202,11 @@ export default function Header() {
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                className="block px-4 py-3 text-sm font-medium text-zinc-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                                // className="block px-4 py-3 text-sm font-medium text-zinc-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                                className={getLinkClasses(link.href, true)}
                                 onClick={() => setMobileMenuOpen(false)}
                             >
-                                {link.label}
+                                {link.key}
                             </Link>
                         ))}
 
@@ -212,6 +251,7 @@ export default function Header() {
                                 </>
                             )}
                         </div>
+
                     </div>
                 </div>
             )}

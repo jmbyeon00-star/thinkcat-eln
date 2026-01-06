@@ -1,0 +1,307 @@
+import React, { useState } from 'react';
+import { Database, Plus, ChevronRight, Package, UploadCloud, Link, FileText } from 'lucide-react';
+import GroupDataViewer from './GroupDataViewer';
+
+interface DataGroupInfo {
+    group_code: string;
+    group_name: string;
+    count: number;
+    last_updated: string;
+}
+
+interface ExistingDataSummary {
+    total_count: number;
+    group_count: number;
+    groups: DataGroupInfo[];
+    last_updated: string;
+}
+
+interface DataSourceSelectorProps {
+    hasExistingData: boolean;
+    existingDataSummary: ExistingDataSummary | null;
+    onSelectExisting: (groups?: any) => void;
+    onSelectNew: () => void;
+    projectId: string | string[];
+    token: string | undefined;
+}
+
+const NewDataCreator = ({ onComplete, onCancel }: { onComplete: () => void; onCancel: () => void }) => (
+    <div className="p-4 space-y-4">
+        <p className="text-zinc-600">
+            여기에 새 데이터를 수집하고 추가하는 상세 UI (파일 업로드, URL 입력 등)가 표시됩니다.
+        </p>
+        <div className="flex justify-end gap-2">
+            <button
+                onClick={onCancel}
+                className="px-4 py-2 text-sm font-medium text-zinc-700 bg-zinc-100 rounded-lg hover:bg-zinc-200 transition"
+            >
+                취소
+            </button>
+            <button
+                onClick={onComplete}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition"
+            >
+                다음 단계 (임시 완료)
+            </button>
+        </div>
+    </div>
+);
+
+export default function DataSourceSelector({
+    hasExistingData,
+    existingDataSummary,
+    onSelectExisting,
+    onSelectNew,
+    projectId,
+    token,
+}: DataSourceSelectorProps) {
+    // 상태 관리: 두 옵션 중 하나만 활성화되도록 상호 배타적 관리
+    const [activeView, setActiveView] = useState<'none' | 'existing' | 'new'>('none');
+
+    const isExistingActive = activeView === 'existing';
+    const isNewActive = activeView === 'new';
+
+    // 기존 데이터 사용 버튼 클릭 핸들러
+    const handleExistingClick = () => {
+        setActiveView('existing');
+    };
+
+    // 새 데이터 추가 버튼 클릭 핸들러
+    const handleNewClick = () => {
+        setActiveView('new');
+        // onSelectNew는 다음 단계(new.tsx)로 이동할 때 호출되므로, 
+        // 여기서는 임시 뷰를 보여주기 위해 상태만 변경합니다.
+    };
+
+    // GroupDataViewer에서 그룹 선택이 완료되었을 때의 핸들러
+    const handleGroupSelectionComplete = (selectedGroups: DataGroupInfo[]) => {
+        onSelectExisting(selectedGroups);
+        setActiveView('none');
+    };
+
+    // 새 데이터 추가 뷰에서 완료/취소 핸들러
+    const handleNewDataComplete = () => {
+        onSelectNew(); // 실제 다음 단계로 이동하는 로직을 여기서 호출
+        setActiveView('none');
+    };
+
+    // 새 데이터 소스 선택 완료 핸들러 (선택 후 다음 단계로 이동)
+    const handleNewDataSelect = (sourceType: string) => {
+        console.log("Selected Source Type:", sourceType);
+        onSelectNew(); // 다음 단계 (new.tsx)로 이동
+        setActiveView('none');
+    };
+
+    // 취소 핸들러
+    const handleCancel = () => {
+        setActiveView('none');
+    };
+
+    const handleNewDataCancel = () => {
+        setActiveView('none');
+    };
+
+    // --- 스타일링 함수 ---
+
+    // 공통 버튼 스타일 함수: 애니메이션, 희미하게 처리 로직 포함
+    const getButtonClass = (isActive: boolean, hoverColor: string) => {
+        const baseClass = `w-full bg-white rounded-2xl shadow-lg border-2 p-6 text-left group transition-all duration-300 ease-in-out transform`;
+
+        // 다른 뷰가 활성화된 경우 희미하게 처리
+        if (activeView !== 'none' && !isActive) {
+            return `${baseClass} opacity-50 border-zinc-200 pointer-events-none`;
+        }
+
+        // 기본 활성 상태 (다른 뷰가 없을 때)
+        return `${baseClass} border-zinc-200 hover:border-${hoverColor} hover:shadow-xl active:scale-[0.99]`;
+    };
+
+    // 활성화된 뷰 컨테이너 스타일 함수 (강조)
+    const getActiveViewBoxClass = (color: string) => `
+        relative p-6 rounded-2xl shadow-xl transition-all duration-300 ease-in-out
+        border-4 border-${color}-500 bg-${color}-50/70
+    `;
+
+    // 데이터 소스 옵션 버튼 컴포넌트 (내부 재사용을 위해 정의)
+    const SourceOption: React.FC<{ Icon: React.ElementType, title: string, description: string, onClick: () => void }> = ({ Icon, title, description, onClick }) => {
+        return (
+            <button
+                onClick={onClick}
+                className="w-full bg-white p-4 rounded-lg border border-zinc-200 hover:border-blue-400 hover:shadow-md transition-all duration-200 text-left active:scale-[0.99] group"
+                disabled={title !== "파일 업로드 (CSV, JSON, TXT)"}
+            >
+                <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
+                        <Icon className="w-5 h-5 text-blue-600" />
+                    </div>
+
+                    <div className="flex-1">
+                        <h4 className="text-base font-semibold text-zinc-900">{title}</h4>
+                        <p className="text-sm text-zinc-500">{description}</p>
+                    </div>
+                </div>
+            </button>
+        );
+    };
+
+    return (
+        <div className="space-y-4">
+
+            {/* 1. 기존 데이터 사용 옵션 */}
+            {hasExistingData && existingDataSummary && (
+                <>
+                    {/* A. Group Viewer가 닫혀있을 때 (버튼 표시) */}
+                    {!isExistingActive ? (
+                        <button
+                            onClick={handleExistingClick}
+                            className={getButtonClass(isExistingActive, 'emerald-500')}
+                            disabled={activeView !== 'none'}
+                        >
+                            <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                                            <Database className="w-6 h-6 text-white" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-bold text-zinc-900">
+                                                기존 데이터 사용 (그룹 목록 보기)
+                                            </h3>
+                                            <p className="text-sm text-zinc-500">
+                                                이미 추가된 데이터 그룹 목록을 확인하고 학습 시작
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {/* 요약 정보 */}
+                                    <div className="ml-[60px] space-y-2">
+                                        <div className="flex items-center gap-2 text-sm text-zinc-600">
+                                            <Package className="w-4 h-4 text-emerald-600" />
+                                            <span>
+                                                <strong className="text-zinc-900">
+                                                    {existingDataSummary.total_count.toLocaleString()}개
+                                                </strong>{' '}
+                                                항목
+                                            </span>
+                                            <span className="text-zinc-400">•</span>
+                                            <span>
+                                                <strong className="text-zinc-900">
+                                                    {existingDataSummary.group_count}개
+                                                </strong>{' '}
+                                                그룹
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <ChevronRight className="w-6 h-6 text-zinc-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all duration-300" />
+                            </div>
+                        </button>
+                    ) : (
+                        // B. Group Viewer가 열려있을 때 (강조된 박스 렌더링)
+                        <div className={getActiveViewBoxClass('emerald')}>
+                            <h3 className="text-lg font-bold text-emerald-800 mb-4 flex items-center gap-2">
+                                <Database className="w-5 h-5" />
+                                ✅ 기존 데이터 그룹 선택
+                            </h3>
+                            <GroupDataViewer
+                                projectId={projectId}
+                                token={token}
+                                onGroupsSelected={handleGroupSelectionComplete}
+                                onCancel={handleCancel}
+                            />
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* 2. 새 데이터 추가 옵션 */}
+            {!isNewActive ? (
+                // A. New Data Creator가 닫혀있을 때 (버튼 표시)
+                <button
+                    onClick={handleNewClick}
+                    className={getButtonClass(isNewActive, 'blue-500')}
+                    disabled={activeView !== 'none'}
+                >
+                    <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                                    <Plus className="w-6 h-6 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-zinc-900">
+                                        새로운 데이터 추가
+                                    </h3>
+                                    <p className="text-sm text-zinc-500">
+                                        {hasExistingData ? '추가 데이터를 수집하여 학습' : '데이터를 수집하여 학습 시작'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="ml-[60px] text-sm text-zinc-600">
+                                검색 또는 파일 업로드를 통해 데이터 추가
+                            </div>
+                        </div>
+
+                        <ChevronRight className="w-6 h-6 text-zinc-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all duration-300" />
+                    </div>
+                </button>
+            ) : (
+                // B. New Data Creator가 열려있을 때 (강조된 박스 렌더링)
+                <div className={getActiveViewBoxClass('blue')}>
+                    <h3 className="text-lg font-bold text-blue-800 mb-4 flex items-center gap-2">
+                        <Plus className="w-5 h-5" />
+                        🆕 새로운 데이터 추가 소스 선택
+                    </h3>
+
+                    {/* New Data Creator 내부 내용 시작 */}
+                    <div className="space-y-4">
+                        <p className="text-zinc-600 text-sm">
+                            새로 학습에 사용할 데이터의 소스를 선택해주세요.
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <SourceOption
+                                Icon={UploadCloud}
+                                title="파일 업로드 (CSV, JSON, TXT)"
+                                description="로컬 파일을 드래그 앤 드롭하여 데이터를 추가합니다."
+                                onClick={() => handleNewDataSelect('upload')}
+                            />
+
+                            <SourceOption
+                                Icon={Link}
+                                title="웹 크롤링 / URL 입력"
+                                description="특정 웹 페이지 또는 문서에서 데이터를 수집합니다."
+                                onClick={() => handleNewDataSelect('crawl')}
+                            />
+
+                            <SourceOption
+                                Icon={FileText}
+                                title="수동 데이터 입력"
+                                description="간단한 텍스트를 직접 입력하거나 복사 붙여넣기로 추가합니다."
+                                onClick={() => handleNewDataSelect('manual')}
+                            />
+
+                            <SourceOption
+                                Icon={Database}
+                                title="API 연동 (Beta)"
+                                description="외부 서비스의 API를 통해 데이터를 실시간으로 가져옵니다."
+                                onClick={() => handleNewDataSelect('api')}
+                            />
+                        </div>
+
+                        {/* 취소 버튼 영역 */}
+                        <div className="flex justify-end pt-2">
+                            <button
+                                onClick={handleCancel}
+                                className="px-4 py-2 text-sm font-medium text-zinc-700 bg-zinc-100 rounded-lg hover:bg-zinc-200 transition"
+                            >
+                                취소 (선택창 닫기)
+                            </button>
+                        </div>
+                    </div>
+                    {/* New Data Creator 내부 내용 끝 */}
+                </div>
+            )}
+        </div>
+    );
+}

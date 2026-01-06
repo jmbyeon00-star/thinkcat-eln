@@ -1,0 +1,80 @@
+.wrap {
+    min-height: calc(100vh - 72px);
+    display: grid;
+    place-items: center;
+    padding: 2rem 1rem;
+    background: #f6f7fb;
+  }
+  .card {
+    width: 100%;
+    max-width: 420px;
+    background: #fff;
+    border: 1px solid #e6e8ef;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 6px 20px rgba(20, 20, 20, 0.06);
+  }
+  .brand {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+  }
+  .brand img { height: 40px; }
+  .title {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+  }
+  .subtitle {
+    text-align: center;
+    margin-bottom: 1.25rem;
+    color: #6b7280;
+  }
+  .alert {
+    background: #fff3f3;
+    border: 1px solid #ffd2d2;
+    color: #c62828;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+  }
+  .form { display: grid; gap: 0.9rem; }
+  .label { display: grid; gap: 0.4rem; font-weight: 600; }
+  .input {
+    height: 44px;
+    border: 1px solid #d6dae3;
+    border-radius: 10px;
+    padding: 0 0.9rem;
+    font-size: 0.95rem;
+  }
+  .input:focus {
+    border-color: #1e5aa8;
+    box-shadow: 0 0 0 3px rgba(30, 90, 168, 0.15);
+  }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .checkbox {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    font-size: 0.92rem;
+  }
+  .link { color: #1e5aa8; }
+  .submit {
+    height: 46px;
+    border: none;
+    border-radius: 10px;
+    background: #1e5aa8;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .footer {
+    margin-top: 1rem;
+    text-align: center;
+    font-size: 0.95rem;
+  }
+  

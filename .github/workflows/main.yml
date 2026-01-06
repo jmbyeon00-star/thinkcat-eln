@@ -2,69 +2,103 @@ name: CI/CD - IPFORCE
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-  # ✅ 1단계: 코드 검사 (CI)
+  # 1) CI
   test:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # ---------- Frontend ----------
       - name: Setup Node for frontend
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install and Build(no Lint) (frontend)
+      - name: Install and Build (frontend)
         working-directory: ./frontend
         run: |
           npm ci
-          # npm run lint
           npm run build
 
+      # ---------- Backend ----------
       - name: Setup Python for backend
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+          cache: pip
 
       - name: Install dependencies (backend)
         working-directory: ./backend
         run: |
           pip install -r requirements.txt
-          pytest || echo "⚠️ 테스트 실패 (나중에 개선 가능)"
 
-  # ✅ 2단계: 배포 (CD)
+      # 테스트가 아직 불안정하면 아래 중 택1:
+      # (선호1) continue-on-error로 명확하게
+      - name: Run tests (backend)
+        working-directory: ./backend
+        continue-on-error: true
+        run: |
+          pytest
+
+  # 2) CD
   deploy:
     runs-on: ubuntu-latest
-    needs: test   # ← test job이 성공해야 deploy 실행됨
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    needs: test
 
+    steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          # port 쓰면 추가:
+          # port: ${{ secrets.SSH_PORT }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH }}
+            set -e
 
-            echo "🔄 최신 코드 가져오는 중..."
-            if [ ! -d "ipforce_next/.git" ]; then
-              git clone git@github.com:2pterons/ipforce_next.git
+            # ====== 설정 ======
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"   # 예: /srv/ipforce
+            REPO_URL="${{ secrets.REPO_URL }}"         # 예: git@github.com:ORG/REPO.git
+            REPO_DIR="ipforce"                          # 레포 디렉토리 이름(원하면 변경)
+            BRANCH="main"
+
+            echo ">>> DEPLOY_PATH=${DEPLOY_PATH}"
+            echo ">>> REPO_DIR=${REPO_DIR}"
+            echo ">>> BRANCH=${BRANCH}"
+
+            # ====== 폴더 준비 ======
+            mkdir -p "${DEPLOY_PATH}"
+            cd "${DEPLOY_PATH}"
+
+            # ====== 최초 clone / 이후 강제 동기화 ======
+            if [ ! -d "${REPO_DIR}/.git" ]; then
+              echo ">>> 최초 배포: git clone"
+              rm -rf "${REPO_DIR}"
+              git clone -b "${BRANCH}" "${REPO_URL}" "${REPO_DIR}"
             else
-              git fetch origin main
-              git reset --hard origin/main
+              echo ">>> 기존 배포: fetch + reset --hard"
+              cd "${REPO_DIR}"
+              git fetch origin
+              git reset --hard "origin/${BRANCH}"
+              git clean -fd
+              cd ..
             fi
 
-            echo "🚀 Docker 빌드 및 실행..."
-            docker compose -f /home/ipforce/ipforce_next/docker-compose.prod.yml down || true
-            docker compose -f /home/ipforce/ipforce_next/docker-compose.prod.yml build --no-cache
-            docker compose -f /home/ipforce/ipforce_next/docker-compose.prod.yml up -d
-            docker system prune -f
+            # ====== Docker 배포 ======
+            cd "${DEPLOY_PATH}/${REPO_DIR}"
 
-            echo "✅ 배포 완료!"
+            echo ">>> Docker compose up -d --build"
+            docker compose up -d --build
+
+            echo ">>> (선택) 미사용 이미지 정리"
+            docker image prune -f
+
+            echo ">>> 배포 완료!"

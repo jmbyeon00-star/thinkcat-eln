@@ -1,0 +1,318 @@
+// models/new.tsx
+
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
+import { useSession } from "next-auth/react";
+import { Session } from "next-auth";
+import { CheckCircle, Database, Settings, Play, Upload, FileText, XCircle } from 'lucide-react';
+
+import ProjectLayout from "@/components/layouts/ProjectLayout";
+import { useUserTaskStore } from '@/lib/store/useUserTaskStore';
+import { ProjectInfo, ProjectDataGroups, ProjectGroupItems, DataSummary, TrainingConfig, TrainingDataItems } from "@/types/project";
+import { setDatetimeToDate } from "@/utils/common";
+import { Step, StepSidebar, Step1Content, Step2Content, Step3Content } from "@/components/project/train/TrainingSettings";
+
+export const MAX_STEP = 3;
+
+// ----------------------------------------------------
+// 메인 페이지 컴포넌트
+// ----------------------------------------------------
+export default function ProjectTrainPage() {
+    const router = useRouter();
+    const { project_id, collection_num, task_type, source_type } = router.query;
+    const projectIdString = Array.isArray(project_id) ? project_id[0] : (project_id as string || '');
+
+    const { setState } = useUserTaskStore();
+
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const { data: session } = useSession() as {
+        data: (Session & { access_token?: string }) | null;
+        status: "loading" | "authenticated" | "unauthenticated";
+    };
+    const token = session?.access_token;
+
+    const [limit] = useState(5);
+    const [page, setPage] = useState(1);
+    const [query, setQuery] = useState("");
+    const [totalCount, setTotalCount] = useState(0);
+
+    const [isLoading, setIsLoading] = useState(false);
+    const [projectInfo, setProjectInfo] = useState<ProjectInfo[] | []>([]);
+    const [projectDataGroups, setProjectDataGroups] = useState([]);
+    const [trainingDataItems, setTrainingDataItems] = useState<TrainingDataItems>([]);
+    console.log(">>> trainingDataItems:", trainingDataItems)
+
+    // ----------------------------------------------------
+    // 학습 플로우 상태 관리
+    const [currentStep, setCurrentStep] = useState<Step>(Step.DATA_SELECTION);
+    const [dataSummary, setDataSummary] = useState<DataSummary | null>(null);
+    const [trainingConfig, setTrainingConfig] = useState<TrainingConfig | null>(null);
+    // ----------------------------------------------------
+
+    useEffect(() => {
+        if (!project_id || !router.isReady || !token) return;
+
+        async function loadProjectDataGroup() {
+            try {
+                const response = await fetch(`${API_BASE}/api/project/${project_id}/data/groups?page=${page}&limit=${limit}`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    credentials: "include",
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const apiResponse = await response.json(); // API 응답 전체
+                const dataProject = apiResponse.project_info; // 프로젝트 정보 부분
+                const dataGroups = apiResponse.project_data_groups; // 그룹 데이터 부분
+
+                setProjectInfo(dataProject);
+                setTrainingConfig({ modelName: 'BERT-Patent-v1', epoch: 10, batchSize: 32, learningRate: 1e-5 });
+
+                const groupCodes = Object.keys(dataGroups);
+                if (groupCodes.length === 0) {
+                    return;
+                }
+
+                const groups: ProjectGroupItems[] = groupCodes.map((groupCode) => {
+                    const groupData = dataGroups[groupCode];
+                    const groupItems = dataGroups[groupCode].data;
+                    // const id = groupData.index;
+                    const id = (page - 1) * limit + groupData.index;
+                    const count = groupData.count;
+                    const dataList = groupData.data || [];
+                    const lastItem = dataList[dataList.length - 1]; // 데이터 리스트의 마지막 항목 사용
+
+                    return {
+                        group_code: groupCode,
+                        // group_name은 ProjectData 객체의 collection_name 필드를 사용 (임시)
+                        group_name: dataList[0]?.collection_name || groupCode,
+                        group_items: groupItems,
+                        count: count,
+                        id: id,
+                        last_updated: lastItem?.created_at || new Date().toISOString(),
+                    };
+                });
+
+                // 기존 데이터 요약 정보 (API 응답에서 total_count와 group_count 사용)
+                const totalCount = apiResponse.total_count; // 백엔드에서 받은 total_count 사용
+                const groupCount = apiResponse.project_data_groups.length; // 이 페이지의 그룹 개수
+                setTotalCount(totalCount);
+
+                // 전체 그룹의 최종 업데이트 날짜 계산 (기존 로직 유지)
+                const lastUpdated = groups.reduce((latest, group) => {
+                    const groupDate = new Date(group.last_updated);
+                    const latestDate = new Date(latest);
+                    return groupDate > latestDate ? group.last_updated : latest;
+                }, groups[0].last_updated);
+
+                setProjectDataGroups({
+                    total_count: totalCount,
+                    group_count: apiResponse.total_count, // 전체 그룹 개수를 사용
+                    groups: groups,
+                    last_updated: lastUpdated,
+                });
+
+
+            } catch (error) {
+                console.error("프로젝트 정보 및 데이터 그룹 불러오기 실패:", error);
+                alert("프로젝트 정보 및 데이터 그룹을 불러오지 못했습니다.");
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        loadProjectDataGroup();
+    }, [project_id, router.isReady, token, collection_num, page]);
+
+    // ----------------------------------------------------
+    // 위저드 네비게이션 로직
+    // ----------------------------------------------------
+    // ----------------------------------------------------
+    // 위저드 네비게이션 로직
+    // ----------------------------------------------------
+
+    const goToNextStep = useCallback(() => {
+        setCurrentStep(prev => Math.min(MAX_STEP, prev + 1));
+    }, []);
+
+    const goToPreviousStep = useCallback(() => {
+        setCurrentStep(prev => Math.max(Step.DATA_SELECTION, prev - 1));
+    }, []);
+
+    const handleStep1Select = useCallback((summary: DataSummary) => {
+        setDataSummary(summary);
+    }, []);
+
+    const handleStep2ConfigChange = useCallback((config: TrainingConfig) => {
+        setTrainingConfig(config);
+    }, []);
+
+    const handleStartTraining = useCallback(() => {
+        if (dataSummary && trainingConfig) {
+            console.log('Final Training Start Payload:', { dataSummary, trainingConfig });
+        }
+    }, [dataSummary, trainingConfig]);
+
+
+    // ----------------------------------------------------
+    // 현재 단계 렌더링
+    // ----------------------------------------------------
+    const { title, content, canProceed, nextButtonText } = useMemo(() => {
+        if (!projectInfo || isLoading) {
+            return { title: "로딩 중...", content: <div className="text-center p-10">프로젝트 데이터를 불러오는 중입니다...</div>, canProceed: false, nextButtonText: "다음" };
+        }
+
+        const isFinalStep = currentStep === MAX_STEP;
+        let contentToRender;
+        let stepCanProceed = false;
+        let stepTitle = "";
+        let buttonText = isFinalStep ? "학습 시작하기" : "다음 단계 →";
+
+        switch (currentStep) {
+            case Step.DATA_SELECTION:
+                stepTitle = "데이터 선택";
+                stepCanProceed = !!dataSummary && dataSummary.isValid;
+                contentToRender = <Step1Content
+                    projectInfo={projectInfo}
+                    onSelect={handleStep1Select}
+                    onNext={goToNextStep}
+                    canProceed={stepCanProceed}
+                    projectDataGroups={projectDataGroups}
+                    // ProjectGroupItems={projectDataGroups.groups}
+                    totalCount={totalCount}
+                    perPage={limit}
+                    currentPage={page}
+                    onPageChange={setPage}
+                    onDataSelect={setTrainingDataItems}
+                />;
+                break;
+            case Step.TRAINING_CONFIG:
+                stepTitle = "학습 파라미터 설정";
+                stepCanProceed = !!trainingConfig && trainingConfig.epoch >= 1;
+                contentToRender = dataSummary ? <Step2Content
+                    dataSummary={dataSummary}
+                    onConfigChange={handleStep2ConfigChange}
+                    onNext={goToNextStep}
+                    onBack={goToPreviousStep}
+                    canProceed={stepCanProceed}
+                /> : null;
+                break;
+            case Step.REVIEW_AND_START:
+                stepTitle = "최종 검토 및 시작";
+                stepCanProceed = !!dataSummary && !!trainingConfig;
+                contentToRender = dataSummary && trainingConfig ? <Step3Content
+                    dataSummary={dataSummary}
+                    config={trainingConfig}
+                    onStart={handleStartTraining}
+                    onBack={goToPreviousStep}
+                    canProceed={stepCanProceed}
+                /> : null;
+                break;
+            default:
+                stepTitle = "오류";
+                stepCanProceed = false;
+                contentToRender = <p>잘못된 단계입니다.</p>;
+        }
+
+        return {
+            title: stepTitle,
+            content: contentToRender,
+            canProceed: stepCanProceed,
+            nextButtonText: buttonText
+        };
+    }, [currentStep, projectInfo, isLoading, dataSummary, trainingConfig, handleStep1Select, handleStep2ConfigChange, goToNextStep, goToPreviousStep, handleStartTraining]);
+
+    if (!projectInfo) {
+        return (
+            <ProjectLayout
+                projectNo={projectInfo.id}
+                projectName={projectInfo.project_name}
+                projectDesc={projectInfo.project_description}
+                sourceType={projectInfo.source_type}
+            >
+                <div className="text-center p-10">프로젝트 데이터를 불러오는 중입니다...</div>
+            </ProjectLayout>
+        );
+    }
+
+    // 프로젝트 정보가 로드된 후
+    const project = projectInfo;
+    const isFinalStep = currentStep === MAX_STEP;
+    const nextButtonColor = isFinalStep ? "bg-green-600 hover:bg-green-700" : "bg-indigo-600 hover:bg-indigo-700";
+
+    return (
+        <ProjectLayout
+            projectNo={projectInfo.id}
+            projectName={projectInfo.project_name}
+            projectDesc={projectInfo.project_description}
+            sourceType={projectInfo.source_type}
+        >
+            <div className="min-h-screen bg-white p-8">
+
+                {/* 페이지 헤더 */}
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="w-1 h-8 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
+                    <h1 className="text-3xl font-bold text-zinc-900">학습 설정</h1>
+                </div>
+                <p className="text-zinc-600 ml-4">
+                    데이터를 수집하고 모델 학습 파라미터를 설정하세요
+                </p>
+
+                <div className="min-h-[calc(100vh-80px)] bg-white lg:bg-gray-50 rounded-xl lg:shadow-none shadow-2xl">
+
+                    {/* 메인 컨테이너: 데스크톱 (lg:)에서는 2단 그리드, 모바일에서는 단일 컬럼 */}
+                    <div className="lg:flex lg:min-h-[calc(100vh-80px)]">
+
+                        {/* 1. 좌측 진행 단계 사이드바 (데스크톱에서는 항상 보임, 모바일에서는 상단에 작게) */}
+                        <StepSidebar
+                            currentStep={currentStep}
+                            setCurrentStep={setCurrentStep}
+                            totalSteps={MAX_STEP}
+                        />
+
+                        {/* 2. 우측 진행 콘텐츠 영역 */}
+                        <div className="lg:w-3/4 w-full p-4 sm:p-6 lg:p-10 bg-white rounded-r-xl">
+
+                            {/* 헤더 (이미지 참고: '추가할 사업체 정보를 입력하세요' 부분) */}
+                            <div className="border-b pb-4 mb-6 flex justify-between items-center">
+                                <h2 className="text-3xl font-extrabold text-gray-900">{title}</h2>
+                                {/* 데스크톱에서는 닫기 버튼 대신 단계 전환 버튼을 하단에 배치할 수 있습니다. */}
+                            </div>
+
+                            {/* 현재 단계의 실제 콘텐츠 */}
+                            <div className="mb-10">
+                                {content}
+                            </div>
+
+                            {/* 데스크톱용 네비게이션 버튼 (모바일에서는 각 Step Content에서 처리) */}
+                            <div className="hidden lg:flex justify-end pt-4 border-t mt-auto">
+                                <button
+                                    onClick={goToPreviousStep}
+                                    disabled={currentStep === 1}
+                                    className="px-6 py-2 border border-gray-300 text-gray-700 font-semibold rounded-lg shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mr-3"
+                                >
+                                    ← 이전
+                                </button>
+                                <button
+                                    onClick={isFinalStep ? handleStartTraining : goToNextStep}
+                                    disabled={!canProceed}
+                                    className={`px-6 py-2 text-white font-bold rounded-lg shadow-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${nextButtonColor}`}
+                                >
+                                    {nextButtonText}
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </ProjectLayout >
+    );
+}

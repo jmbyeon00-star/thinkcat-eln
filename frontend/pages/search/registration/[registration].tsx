@@ -1,7 +1,8 @@
-"use client";
-
 import { useState } from "react";
 import { fetchAPI } from "@lib/api";
+
+import { withMessages } from '@/lib/i18n/withMessages';
+export const getServerSideProps = withMessages();
 
 export default function RegistrationSearchPage() {
   const [regNo, setRegNo] = useState("");

@@ -1,0 +1,49 @@
+# ────────────────────────────────
+# 1. 베이스 이미지
+# ────────────────────────────────
+FROM python:3.11-slim
+
+# ────────────────────────────────
+# 2. 작업 디렉토리
+# ────────────────────────────────
+WORKDIR /app
+
+# ────────────────────────────────
+# 3. 필수 패키지 설치 (개발 중 reload/watchfiles 등에 필요)
+# ────────────────────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# ────────────────────────────────
+# 4. requirements.txt 복사 및 의존성 설치
+# ────────────────────────────────
+
+COPY ./backend/requirements.txt ./requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# ────────────────────────────────
+# 5. 앱 소스 복사
+# ────────────────────────────────
+COPY ./backend/app /app
+
+# ────────────────────────────────
+# 6. 환경변수 설정 (개발모드)
+# ────────────────────────────────
+ENV PYTHONUNBUFFERED=1 \
+    TZ=Asia/Seoul \
+    ENV=dev
+
+# ────────────────────────────────
+# 7. 포트 오픈
+# ────────────────────────────────
+EXPOSE 8000
+
+# ────────────────────────────────
+# 8. 기본 실행 명령 (개발용: reload 활성화)
+# ────────────────────────────────
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app"]
+# uvicorn 종료 시 열린 연결 로그 확인
+# uvicorn app.main:app --timeout-keep-alive 5

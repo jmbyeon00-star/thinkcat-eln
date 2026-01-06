@@ -1,27 +1,42 @@
-"use client";
-
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+// import { useParams } from "next/navigation"; // app router
+import { useRouter } from "next/router"; // page router
+
 import SearchLayout from "@/components/layouts/SearchLayout";
 import PatentEvaluationResult from "@/components/patent/PatentEvaluationResult";
 import ZipPredict from "@/components/patent/ZipPredict";
 import PatNavigation from "@/components/patent/PatNavigation";
 import PatLitigation from "@/components/patent/PatLitigation";
 
+import { withMessages } from '@/lib/i18n/withMessages';
+export const getServerSideProps = withMessages();
+
 /**
  * 등록번호 상세 페이지
  * 예시 URL: /search/detail/1012345678900
  */
 export default function RegisterNumberDetailPage() {
-  const params = useParams();
-  const registerNumber = params?.registerNumber as string | undefined;
+  // app router
+  // const params = useParams();
+  // const registerNumber = params?.registerNumber as string | undefined;
+
+  // page router
+  const router = useRouter();
+  const { registerNumber } = router.query;
+  const regNo =
+    typeof registerNumber === "string"
+      ? decodeURIComponent(registerNumber)
+      : null;
+
   const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!registerNumber) return;
+    if (!router.isReady || !regNo) return;
 
     const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.1.20:8000";
+
+    setIsLoading(true);
     fetch(`${base}/api/search/reg/${registerNumber}`)
       .then((res) => {
         if (!res.ok) throw new Error("등록번호 조회 실패");
@@ -32,21 +47,30 @@ export default function RegisterNumberDetailPage() {
         console.error("❌ 등록번호 상세 조회 오류:", err);
         setData(null);
       })
-      .finally(() => setLoading(false));
-  }, [registerNumber]);
+      .finally(() => setIsLoading(false));
+  }, [router.isReady, regNo]);
 
-  if (!registerNumber)
-    return <p className="text-center text-zinc-500 mt-10">경로를 불러오는 중...</p>;
-  if (loading)
-    return <p className="text-center text-zinc-500 mt-10">데이터 불러오는 중...</p>;
-  if (!data)
+  if (!router.isReady) {
     return (
-      <p className="text-center text-zinc-400 mt-10">
-        등록번호 {registerNumber} 에 대한 데이터를 찾을 수 없습니다.
+      <p className="text-center text-zinc-500 mt-10">
+        경로를 불러오는 중...
       </p>
     );
-
-  console.log("등록번호 상세:", data);
+  }
+  if (isLoading) {
+    return (
+      <p className="text-center text-zinc-500 mt-10">
+        데이터 불러오는 중...
+      </p>
+    );
+  }
+  if (!data) {
+    return (
+      <p className="text-center text-zinc-400 mt-10">
+        등록번호 {regNo} 에 대한 데이터를 찾을 수 없습니다.
+      </p>
+    );
+  }
 
   return (
     <SearchLayout step={3} keyword={"#등록번호"}>

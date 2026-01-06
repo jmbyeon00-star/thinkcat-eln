@@ -1,4 +1,3 @@
-"use client";
 import { useState } from "react";
 
 const CPC_SECTIONS = [
@@ -53,9 +52,8 @@ export function SearchBar({ loading, onSearch }: Props) {
       <button
         type="submit"
         disabled={loading}
-        className={`flex items-center justify-center px-4 py-2 rounded-lg text-white font-semibold min-w-[90px] ${
-          loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
-        }`}
+        className={`flex items-center justify-center px-4 py-2 rounded-lg text-white font-semibold min-w-[90px] ${loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+          }`}
       >
         {loading ? (
           <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>

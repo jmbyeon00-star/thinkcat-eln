@@ -4,6 +4,9 @@ import { searchByApplicant } from "@/lib/api";
 import CompanyInfo from "@/components/patent/PatCompanyInfo";  // ← 추가
 import PatentTable from "@/components/patent/PatCompanyTable";
 
+import { withMessages } from '@/lib/i18n/withMessages';
+export const getServerSideProps = withMessages();
+
 type CompanyData = {
     name: string;
     estb_dt: string;
@@ -53,15 +56,15 @@ export default function CompanyDetailPage() {
             .finally(() => setLoading(false));
     }, [router.isReady, applicantcode]);
 
-      // ✅ 로딩 상태 개선
-    if (!router.isReady ||loading) {
+    // ✅ 로딩 상태 개선
+    if (!router.isReady || loading) {
         return (
-        <div className="flex items-center justify-center min-h-screen">
-            <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-zinc-600 text-lg font-medium">데이터를 불러오는 중...</p>
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-zinc-600 text-lg font-medium">데이터를 불러오는 중...</p>
+                </div>
             </div>
-        </div>
         );
     }
 

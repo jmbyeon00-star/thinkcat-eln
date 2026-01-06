@@ -1,0 +1,313 @@
+// /components/project/UploadComponent.tsx
+
+import React, { useState, useCallback } from "react";
+import { Upload, FileText, Loader2, XCircle, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { DataSourceInfo, ProjectData } from "@/types/project";
+
+import * as XLSX from 'xlsx'; // 엑셀 파싱 라이브러리 임포트
+
+// --- 테이블 컴포넌트 정의 (UploadComponent 내부에 구현) ---
+interface UploadTableProps {
+    data: ProjectData[];
+    setData: React.Dispatch<React.SetStateAction<ProjectData[]>>;
+}
+
+const UploadDataTable: React.FC<UploadTableProps> = ({ data, setData }) => {
+
+    // 데이터 편집 핸들러
+    const handleEdit = (index: number, field: keyof ProjectData, value: string) => {
+        setData(prev => prev.map((item, i) =>
+            i === index ? { ...item, [field]: value } : item
+        ));
+    };
+
+    // 데이터 제거 핸들러
+    const handleRemove = (index: number) => {
+        setData(prev => prev.filter((_, i) => i !== index));
+    };
+
+    return (
+        <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-md mt-4">
+            <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                    <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Abstract</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Label</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"></th>
+                    </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                    {data.slice(0, 10).map((item, index) => ( // 10개만 미리보기
+                        <tr key={item.id || index} className="hover:bg-indigo-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
+
+                            {/* Title 필드 편집 */}
+                            <td className="px-6 py-4 text-sm text-gray-900 w-1/4">
+                                <input
+                                    type="text"
+                                    value={item.title || ''}
+                                    onChange={(e) => handleEdit(index, 'title', e.target.value)}
+                                    className="w-full border rounded p-1 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                            </td>
+
+                            {/* Abstract 필드 편집 */}
+                            <td className="px-6 py-4 text-sm text-gray-900 w-1/4">
+                                <input
+                                    type="text"
+                                    value={item.abstract || ''}
+                                    onChange={(e) => handleEdit(index, 'abstract', e.target.value)}
+                                    className="w-full border rounded p-1 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                            </td>
+
+                            {/* Label 필드 편집 */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 w-1/5">
+                                <input
+                                    type="text"
+                                    value={item.label || ''}
+                                    onChange={(e) => handleEdit(index, 'label', e.target.value)}
+                                    className="w-full border rounded p-1 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                            </td>
+
+                            {/* 삭제 버튼 */}
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button
+                                    onClick={() => handleRemove(index)}
+                                    className="text-red-600 hover:text-red-900 transition-colors"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+            {data.length > 10 && (
+                <div className="text-center p-3 text-sm text-gray-500 bg-gray-50 border-t">
+                    ... 총 {data.length}개 항목 중 10개만 미리보기 중입니다.
+                </div>
+            )}
+        </div>
+    );
+};
+// --- 테이블 컴포넌트 끝 ---
+
+interface UploadComponentProps {
+    // onDataUpdate는 Step1Content의 handleDataAddition과 동일한 시그니처를 가집니다.
+    onDataUpdate: (newItems: ProjectData[], sourceInfo: DataSourceInfo) => void;
+}
+export default function UploadComponent({ onDataUpdate }: UploadComponentProps) {
+    const [parsedData, setParsedData] = useState<ProjectData[]>([]);
+    const [file, setFile] = useState<File | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const [itemCount, setItemCount] = useState(0);
+
+    // 🎯 [핵심] 파일 파싱 및 데이터 생성 (이 부분에 실제 파일 처리 로직이 들어갑니다)
+    const handleFileUpload = useCallback(async (uploadedFile: File) => {
+        setUploading(true);
+        setItemCount(0);
+
+        try {
+            const reader = new FileReader();
+
+            // 파일 읽기가 완료된 후 실행될 로직
+            reader.onload = (e) => {
+                const data = e.target?.result;
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+
+                // 시트를 JSON 배열로 변환 (헤더는 첫 번째 행 사용)
+                const rawJson: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+                // 🎯 1. 데이터 추출 및 ProjectDataItem 구조로 변환
+                const fileCollectionName = uploadedFile.name.split('.')[0] || '업로드_데이터';
+                const extractedItems: ProjectData[] = rawJson.map((row, index) => {
+                    // key가 소문자로 추출될 수 있으므로, 대소문자를 확인하거나 일치시켜야 합니다.
+                    const title = row.title || row.Title || '';
+                    const abstract = row.abstract || row.Abstract || '';
+                    const label = row.label || row.Label || '';
+
+                    if (!title || !abstract || !label) {
+                        // 필수 컬럼 누락 시 경고 처리
+                        console.warn(`Row ${index + 1} skipped: Missing required columns.`);
+                    }
+
+                    return {
+                        id: `${uploadedFile.name}_${index}_${Date.now()}`, // 고유 ID 생성
+                        title: title,
+                        abstract: abstract,
+                        label: label,
+                        collection_name: fileCollectionName,
+                    };
+                }).filter(item => item.title && item.abstract && item.label); // 필수 항목 있는 것만 필터링
+
+                if (extractedItems.length === 0) {
+                    alert("파일에서 유효한 [title, abstract, label] 데이터를 추출하지 못했습니다.");
+                    setUploading(false);
+                    return;
+                }
+
+                // 🎯 2. 소스 정보 구성
+                const sourceInfo: DataSourceInfo = {
+                    name: uploadedFile.name,
+                    count: extractedItems.length,
+                    type: 'upload',
+                    sourceId: uploadedFile.name,
+                };
+
+                // 🎯 [수정] onDataUpdate 호출 대신, parsedData 상태에 저장
+                setParsedData(extractedItems);
+                setFile(uploadedFile);
+                setItemCount(extractedItems.length);
+                setUploading(false);
+                // 💡 여기서 onDataUpdate를 호출하지 않고, 아래 "등록 버튼"에서 호출
+                // 🎯 3. 상위 컴포넌트로 데이터 항목과 소스 정보 전달
+                // onDataUpdate(extractedItems, sourceInfo);
+
+            };
+
+            // 파일 읽기 시작
+            reader.readAsArrayBuffer(uploadedFile);
+
+        } catch (error) {
+            console.error("파일 처리 중 오류 발생:", error);
+            alert("파일을 처리하는 중 오류가 발생했습니다. 형식을 확인해 주세요.");
+            setUploading(false);
+        }
+        // }, [onDataUpdate]); // 의존성 제거; onDataUpdate는 등록버튼에서 사용(수정)
+    }, []);
+
+    // 🎯 [추가] 최종 등록 버튼 핸들러
+    const handleFinalUpload = () => {
+        if (parsedData.length === 0) {
+            alert("편집할 데이터가 없습니다.");
+            return;
+        }
+
+        // 1. 소스 정보 구성 (최종 개수를 사용)
+        const sourceInfo: DataSourceInfo = {
+            name: file!.name,
+            count: parsedData.length, // 현재 편집된 데이터의 개수
+            type: 'upload',
+            sourceId: file!.name,
+        };
+
+        // 2. 상위 컴포넌트로 최종 데이터 전달
+        onDataUpdate(parsedData, sourceInfo);
+
+        // 3. 로컬 상태 초기화 (선택적)
+        setFile(null);
+        setParsedData([]);
+        setItemCount(0);
+        alert(`총 ${sourceInfo.count}개 항목이 학습 데이터에 추가되었습니다.`);
+    }
+
+    // 파일 제거 핸들러 수정
+    const handleRemove = () => {
+        if (window.confirm("현재 업로드된 파일과 편집된 데이터를 모두 삭제하시겠습니까?")) {
+            setFile(null);
+            setParsedData([]);
+            setItemCount(0);
+            // 💡 [TODO] 상위 컴포넌트의 TrainingDataItems에서 제거하는 로직은 Step1Content의 handleRemoveFile이 필요합니다.
+        }
+    }
+
+    // 드래그앤드롭 핸들러
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFileUpload(e.dataTransfer.files[0]);
+        }
+    };
+
+    // 파일 선택 핸들러
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            handleFileUpload(e.target.files[0]);
+        }
+    };
+
+    // 파일 제거 핸들러 (TrainingDataItems에서 제거하는 로직은 Step1Content의 handleRemoveFile에 위임되어야 합니다.)
+    // const handleRemove = () => {
+    //     // [TODO] Step1Content의 handleRemoveFile 함수 호출 로직 추가 (필요 시)
+    //     // 현재는 onDataUpdate를 통해 직접 제거할 방법이 없으므로, onRemove 콜백이 필요합니다.
+    //     setFile(null);
+    //     setItemCount(0);
+    // }
+
+
+    return (
+        <div className="space-y-4">
+            {/* 1. 파일 선택 및 드래그앤드롭 영역 */}
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center bg-gray-50">
+                {uploading ? (
+                    // 로딩 UI
+                    <div className="flex flex-col items-center justify-center h-24">
+                        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                        <p className="mt-2 text-indigo-600 font-medium">파일을 파싱하고 있습니다...</p>
+                    </div>
+                ) : parsedData.length === 0 ? (
+                    // 드래그앤드롭 UI (파일이 없을 때)
+                    <div
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={handleDrop}
+                        className="cursor-pointer"
+                        onClick={() => document.getElementById('file-input')?.click()}
+                    >
+                        <Upload className="w-8 h-8 mx-auto text-gray-400" />
+                        <p className="mt-2 text-sm text-gray-600">파일을 드래그하거나 클릭하여 선택하세요.</p>
+                        <p className="text-xs text-gray-400">(XLSX, CSV, JSON 지원)</p>
+                        <input
+                            id="file-input"
+                            type="file"
+                            accept=".xlsx,.csv,.json"
+                            className="hidden"
+                            onChange={handleFileSelect}
+                        />
+                    </div>
+                ) : (
+                    // 파일 정보 요약 (데이터가 있을 때)
+                    <div className="flex items-center justify-between bg-white border border-indigo-200 rounded-lg p-3 shadow-md">
+                        <div className="flex items-center">
+                            <FileText className="w-5 h-5 text-indigo-500 mr-3" />
+                            <div>
+                                <p className="text-sm font-medium text-gray-800 truncate">{file!.name}</p>
+                                <p className="text-xs text-gray-500">{formatBytes(file!.size)} - 현재 **{parsedData.length}** 항목 편집 중</p>
+                            </div>
+                        </div>
+                        <button onClick={handleRemove} className="text-red-500 hover:text-red-700 ml-4">
+                            <XCircle className="w-5 h-5" />
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* 2. 모니터링 및 편집 테이블 */}
+            {parsedData.length > 0 && (
+                <>
+                    <p className="text-sm text-gray-600">
+                        데이터를 확인 및 수정하고, 등록 버튼을 눌러 학습 데이터에 추가하세요.
+                    </p>
+                    {/* 🎯 테이블 컴포넌트 렌더링 */}
+                    <UploadDataTable data={parsedData} setData={setParsedData} />
+
+                    {/* 3. 최종 등록 버튼 */}
+                    <div className="flex justify-end mt-4">
+                        <button
+                            onClick={handleFinalUpload}
+                            className="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                            disabled={parsedData.length === 0}
+                        >
+                            <Upload size={20} className="mr-2 inline-block" /> {parsedData.length} 항목 등록하기
+                        </button>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}

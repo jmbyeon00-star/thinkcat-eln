@@ -1,0 +1,41 @@
+# 서버
+fastapi>=0.115.0,<1.0.0
+uvicorn[standard]==0.30.6
+python-dotenv
+email-validator>=2.1.0.post1
+pydantic[email]
+pydantic_settings
+passlib
+httpx
+peft>=0.6.0
+
+# 데이터 처리
+elasticsearch==7.17.9
+pymilvus==2.5.4
+FlagEmbedding==1.3.4
+numpy==1.24.4
+pandas==2.2.3
+beautifulsoup4==4.13.3
+scikit-learn==1.6.1
+pymysql== 1.1.1
+sqlalchemy
+tqdm
+matplotlib
+requests
+python-multipart
+
+# PyTorch 생태계 (CUDA 12.1용)
+torch==2.3.0+cu121
+torchvision==0.18.0+cu121
+torchaudio==2.3.0+cu121
+--extra-index-url https://download.pytorch.org/whl/cu121
+
+# NLP/모델 관련 (선택: HuggingFace)
+transformers==4.49.0
+datasets==2.21.0
+safetensors
+fastmcp
+
+
+#######
+statsmodels==0.14.5

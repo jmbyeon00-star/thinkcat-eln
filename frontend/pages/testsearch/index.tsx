@@ -1,9 +1,12 @@
 import Head from "next/head";
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Search, ShoppingCart, Trash2, Save, Loader2, ChevronDown, ChevronUp, Package, Settings } from "lucide-react";
 
+import { withMessages } from '@/lib/i18n/withMessages';
+export const getServerSideProps = withMessages();
+
 export default function TestSearchPage() {
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
     const [apiUrl, setApiUrl] = useState(`${API_BASE}/api/search/keyword`);
     const [section, setSection] = useState("");
@@ -43,7 +46,7 @@ export default function TestSearchPage() {
             );
             if (!res.ok) throw new Error("검색 실패");
             const data = await res.json();
-            
+
             setResults(data.data || []);
             setTotal(data.data?.length || 0);
             setTotalHits(data.total_hits || 0);
@@ -217,7 +220,7 @@ export default function TestSearchPage() {
                                     {totalHits > 0 && (
                                         <div className="bg-blue-50 rounded-lg p-4 border-2 border-blue-200">
                                             <p className="text-sm text-blue-900">
-                                                총 <strong className="text-blue-600">{totalHits.toLocaleString()}</strong>건 매칭 
+                                                총 <strong className="text-blue-600">{totalHits.toLocaleString()}</strong>건 매칭
                                                 (최대 <strong className="text-blue-600">{maxSize.toLocaleString()}</strong>건 검색 가능)
                                                 <span className="mx-2">|</span>
                                                 페이지: <strong className="text-blue-600">{page}</strong> / {totalPages}
@@ -366,11 +369,10 @@ export default function TestSearchPage() {
                                                     <button
                                                         key={pageNum}
                                                         onClick={() => doSearch(pageNum)}
-                                                        className={`px-3 py-2 border-2 rounded-lg transition-all ${
-                                                            page === pageNum
-                                                                ? 'bg-blue-600 text-white border-blue-600'
-                                                                : 'border-zinc-200 hover:bg-zinc-50'
-                                                        }`}
+                                                        className={`px-3 py-2 border-2 rounded-lg transition-all ${page === pageNum
+                                                            ? 'bg-blue-600 text-white border-blue-600'
+                                                            : 'border-zinc-200 hover:bg-zinc-50'
+                                                            }`}
                                                     >
                                                         {pageNum}
                                                     </button>

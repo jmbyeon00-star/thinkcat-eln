@@ -8,6 +8,9 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { Mail, Lock, LogIn, Loader2, AlertCircle } from 'lucide-react';
 
+import { withMessages } from '@/lib/i18n/withMessages';
+export const getServerSideProps = withMessages();
+
 export default function LoginPage() {
     const router = useRouter();
     const { data: session, status } = useSession();
@@ -18,12 +21,12 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState<string | null>(null);
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
-    
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
     useEffect(() => {
         if (status === 'authenticated') {
-        const callbackUrl = (router.query.callbackUrl as string) || '/';
-        router.push(callbackUrl);
+            const callbackUrl = (router.query.callbackUrl as string) || '/';
+            router.push(callbackUrl);
         }
     }, [status, router]);
 
@@ -65,7 +68,7 @@ export default function LoginPage() {
                 // ✅ 방법 1: 완전한 페이지 새로고침 (가장 안정적)
                 const callbackUrl = (router.query.callbackUrl as string) || '/';
                 window.location.href = callbackUrl;
-                
+
                 // ✅ 방법 2: router.reload() 후 router.push()
                 // await router.reload();
                 // router.push(callbackUrl);

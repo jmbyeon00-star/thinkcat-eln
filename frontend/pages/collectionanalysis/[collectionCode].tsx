@@ -16,6 +16,9 @@ import {
   Cell
 } from 'recharts';
 
+import { withMessages } from '@/lib/i18n/withMessages';
+export const getServerSideProps = withMessages();
+
 // Pie 차트 색상
 const COLORS = [
   '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8',
@@ -148,26 +151,26 @@ const CollectionAnalysisDetail = () => {
                 <ResponsiveContainer width="100%" height={400}>
                   <BarChart data={yearChartData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="year" 
+                    <XAxis
+                      dataKey="year"
                       tick={{ fill: '#6B7280' }}
                     />
-                    <YAxis 
+                    <YAxis
                       tick={{ fill: '#6B7280' }}
                       label={{ value: '출원 건수', angle: -90, position: 'insideLeft' }}
                     />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#fff', 
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#fff',
                         border: '1px solid #E5E7EB',
                         borderRadius: '8px'
                       }}
                       formatter={(value: any) => [`${value}건`, '출원 건수']}
                     />
                     <Legend />
-                    <Bar 
-                      dataKey="count" 
-                      fill="#3B82F6" 
+                    <Bar
+                      dataKey="count"
+                      fill="#3B82F6"
                       name="출원 건수"
                       radius={[8, 8, 0, 0]}
                     />
@@ -202,16 +205,16 @@ const CollectionAnalysisDetail = () => {
                         style={{ cursor: 'pointer' }}
                       >
                         {companyChartData.map((_entry: any, index: number) => (
-                          <Cell 
-                            key={`cell-${index}`} 
+                          <Cell
+                            key={`cell-${index}`}
                             fill={COLORS[index % COLORS.length]}
                             style={{ cursor: 'pointer' }}
                           />
                         ))}
                       </Pie>
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#fff', 
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#fff',
                           border: '1px solid #E5E7EB',
                           borderRadius: '8px'
                         }}

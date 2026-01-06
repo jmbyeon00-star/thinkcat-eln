@@ -1,5 +1,3 @@
-"use client";
-
 /* File: pages/file/index.tsx */
 import Head from "next/head";
 import Link from "next/link";
@@ -8,6 +6,10 @@ import { FileText, Loader2, CheckCircle2, XCircle, Search, LayoutGrid, Table as 
 import ModelProgressSSE from "@/components/ModelProgressSSE";
 import { useSession } from "next-auth/react";
 import { Session } from "next-auth";
+import { useUserTaskStore } from "@/lib/store/useUserTaskStore";
+
+import { withMessages } from '@/lib/i18n/withMessages';
+export const getServerSideProps = withMessages();
 
 type FileItem = {
   id: number;
@@ -20,7 +22,8 @@ type FileItem = {
 };
 
 export default function FileListPage() {
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://ipforce.co.kr";
+  const { status: storeStatus } = useUserTaskStore();
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
   const { data: session, status: sessionStatus } = useSession() as {
     data: (Session & { access_token?: string }) | null;
     status: "loading" | "authenticated" | "unauthenticated";
@@ -59,7 +62,7 @@ export default function FileListPage() {
 
     const debounce = setTimeout(loadFiles, 300);
     return () => clearTimeout(debounce);
-  }, [query, page, limit]);
+  }, [query, page, limit, storeStatus]);
 
   const totalPages = Math.ceil(total / limit);
 

@@ -16,7 +16,7 @@ export type Row = {
     filing_date?: string | null;
     grant_date?: string | null;
 };
-  
+
 export type SearchItem = {
     application_number: string;
     title: string;
@@ -40,21 +40,21 @@ export interface CollectionDetail {
     collection_code: string;
     source_type: string;
     project_names?: string[];
-  }
-  
+}
+
 export interface ModelInfo {
-  id: number;
-  progress: number;
-  version: number;
+    id: number;
+    progress: number;
+    model_version: number;
 }
 
 export interface TrainingParams {
-  epoch: number;
-  batch_size: number;
-  learning_rate: number;
-  max_length: number;
+    epoch: number;
+    batch_size: number;
+    learning_rate: number;
+    max_length: number;
 }
-  
+
 // es 검색 페이지네이션
 export type PaginationHit = {
     application_number: string;

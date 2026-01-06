@@ -1,0 +1,104 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.frontend
+    container_name: ipforce_frontend
+    env_file:
+      - ./.env
+    environment:
+      NODE_ENV: development
+      WATCHPACK_POLLING: "true"
+      NEXTAUTH_SECRET: "ipforce_secret"
+      NEXTAUTH_URL: "http://192.168.1.20:3000"
+      NEXT_PUBLIC_ENV: "dev"
+      NEXT_PUBLIC_API_BASE_URL: "http://192.168.1.20:8000"
+      BACKEND_URL: "http://backend:8000"
+    ports:
+      - "3000:3000"
+    working_dir: /app/frontend
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules
+    command: sh -c "npm install && npm run dev"
+    # command: sh -c "npm install && npm run dev -- -p 3000 -H 0.0.0.0"
+    depends_on:
+      - backend
+
+  backend:
+    tty: true
+    stdin_open: true
+    build:
+      context: .
+      dockerfile: ./Dockerfile.backend
+    container_name: ipforce_backend
+    env_file:
+      - ./.env
+    environment:
+      ENV: "dev"
+      API_BASE_URL: "http://backend:8000"
+      GPU_BACKEND_URL: "http://gpu_backend_dev:8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0 --port 8000
+      --reload --reload-dir /app 
+      --log-level debug
+    depends_on:
+      # - db
+      - gpu_backend_dev
+
+  gpu_backend_dev:
+    tty: true
+    stdin_open: true
+    build:
+      context: .
+      dockerfile: ./Dockerfile.gpu_backend
+    container_name: ipforce_gpu_backend_dev
+    env_file:
+      - ./.env
+    environment:
+      ENV: "dev"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    ports:
+      - "8001:8000" # 외부 8001 → 내부 8000
+    volumes:
+      - ./gpu_backend:/app
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0 --port 8000
+      --reload --reload-dir /app 
+      --log-level debug
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+  # db:
+  #   image: mariadb:11
+  #   container_name: ipforce_db
+  #   restart: always
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: root
+  #     MYSQL_DATABASE: ipforce
+  #     MYSQL_USER: ipforce_user
+  #     MYSQL_PASSWORD: ipforce_pass
+  #   ports:
+  #     - "3307:3306"
+  #   volumes:
+  #     - db_data:/var/lib/mysql
+
+# volumes:
+#   db_data:
+
+# networks:
+#   default:
+#     name: ipforce_network
+#     driver: bridge
+

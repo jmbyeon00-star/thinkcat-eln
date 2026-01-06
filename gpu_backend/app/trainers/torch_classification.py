@@ -48,7 +48,8 @@ class TorchTextClassifierTrainer(BaseTrainer):
 
         self.num_labels = self.config.get("collection_num", None)
         self.ckpt_tok = self.config.get("check_point_tokenizer", f"{self.default_path}/models/bert-base-multilingual-trained")
-        self.ckpt_model = self.config.get("model_path", f"{self.default_path}/models/PI_v1.0")
+        # self.ckpt_model = self.config.get("model_path", f"{self.default_path}/models/PI_v1.0")
+        self.ckpt_model = self.config.get("model_path", None) + "/best_model" if self.run_type == "retrain" or self.run_type == "infer" else f"{self.default_path}/models/PI_v1.0"
         self.progress_type = self.config.get("progress_type", "train")
 
         self.user_path = f"{self.default_path}/users/{self.user_id}"
@@ -89,10 +90,11 @@ class TorchTextClassifierTrainer(BaseTrainer):
 
     async def _status(self, json: dict):
         """FastAPI 백엔드로 상태 전송 (비동기 안전 버전)"""
+        run_type = "train" if self.run_type == "retrain" else self.run_type
         try:
             async with httpx.AsyncClient(timeout=3.0) as client:
                 await client.post(
-                    f"{self.backend_url}/api/status/{self.run_type}/{self.user_id}",
+                    f"{self.backend_url}/api/status/{run_type}/{self.user_id}",
                     json=json,
                 )
         except Exception:
@@ -101,14 +103,22 @@ class TorchTextClassifierTrainer(BaseTrainer):
     async def _progress(self, json: dict):
         """FastAPI 백엔드로 진행률 전송 (비동기 안전 버전)"""
         try:
-            target_id = self.model_id if self.run_type == "train" else self.file_id
+            run_type = "train" if self.run_type == "retrain" else self.run_type
+            target_id = self.model_id if run_type == "train" else self.file_id
             async with httpx.AsyncClient(timeout=3.0) as client:
                 await client.post(
-                    f"{self.backend_url}/api/status/progress/{self.run_type}/{target_id}",
+                    f"{self.backend_url}/api/status/progress/{run_type}/{target_id}",
                     json=json,
                 )
         except Exception:
             pass
+
+    def _load_or_init_history(self):
+        path = f"{self.model_path}/histories.json"
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                return json.load(f)
+        return { "segments": [] }
 
     def _save_histories(self, history):
         print(self.model_path)
@@ -138,19 +148,32 @@ class TorchTextClassifierTrainer(BaseTrainer):
 
     def _resize_classifier_if_needed(self, num_labels: int):
         in_f, out_f, accessor = self._get_classifier_in_out()
-        if out_f != num_labels:
-            # 분류기만 교체 (전체 모델 재로딩 없이)
+        
+        # 라벨 수가 다르거나, 모델 설정의 num_labels와 다를 때 업데이트
+        if out_f != num_labels or self.model.config.num_labels != num_labels:
+            print(f">>>>> Resizing classifier: {out_f} -> {num_labels}")
+            
+            # 1. 모델 설정값 업데이트 (이게 중요합니다)
+            self.model.config.num_labels = num_labels
+            
+            # 2. 새로운 선형 레이어 생성
             new_head = torch.nn.Linear(in_f, num_labels)
+            
+            # 3. 레이어 교체
             if accessor == "out_proj":
-                # roberta-style head
                 self.model.classifier.out_proj = new_head.to(self.device)
             else:
-                # bert-style head
                 self.model.classifier = new_head.to(self.device)
-            # 옵티마이저도 갱신
+                
+            # 4. BERT 내부의 loss_fct가 num_labels를 참조하므로 모델을 다시 device로 보냄
+            # (일부 모델은 헤드 교체 시 loss 관련 모듈이 갱신되지 않을 수 있음)
+            self.model.to(self.device)
+            
+            # 5. 옵티마이저 갱신
             self.optimizer = AdamW(self.model.parameters(), lr=self.learning_rate)
 
     def train(self, data: Any) -> None:
+        train_start = time.perf_counter()
         """
         data: {"train": list[dict], "valid": list[dict]} 혹은 {"raw": list[dict]}
         또는 train_service에서 raw_data만 넣었다면 self.params로 처리.
@@ -161,7 +184,8 @@ class TorchTextClassifierTrainer(BaseTrainer):
         print("최대 사이즈:", self.max_length)
         print("배치 사이즈:", self.batch_size)
         print("셔플:", self.shuffle)
-        start = time.time()
+        print("num_labels:", self.num_labels)
+        
         enc = labels = out = None  # 정리 시 안전
 
         # 1) DF 준비
@@ -177,6 +201,7 @@ class TorchTextClassifierTrainer(BaseTrainer):
         # 2) 라벨 수에 맞게 분류기 헤드 크기 조정
         num_labels = len(mapping)
         self._resize_classifier_if_needed(num_labels)
+        self.model.config.num_labels = num_labels
 
         # 3) 매핑 저장
         with open(f"{self.model_path}/mapping.json", "w") as f:
@@ -186,26 +211,41 @@ class TorchTextClassifierTrainer(BaseTrainer):
         self.loaders = build_dataloaders(df_train, df_valid, self.tokenizer, self.max_length, self.batch_size, self.shuffle)
 
         # 5) 학습 루프
-        history = {"train_loss": [], "train_acc": [], "valid_loss": [], "valid_acc": []}
+        history = self._load_or_init_history()
+        current_segment = {
+            "train_loss": [],
+            "train_acc": [],
+            "valid_loss": [],
+            "valid_acc": [],
+            "epochs": self.n_epochs
+        }
         train_steps_per_epoch = max(1, (self.lengths['train'] // self.batch_size + (1 if self.lengths['train'] % self.batch_size else 0)))
         self.total_steps = self.n_epochs * train_steps_per_epoch
         self.steps_completed = 0
         best_acc = -1.0
 
-        safe_create_task(self._progress({"progress": 1, "status": "RUNNING", "remaining_time": None}))
+        # safe_create_task(self._progress({"progress": 0, "status": "RUNNING", "remaining_time": None}))
+        safe_create_task(self._status({"model_id": self.model_id, "progress": 1, "task": "classification", "status": "RUNNING", "remaining_time": "0:00:00"}))
+        
+        start = time.time()
         for epoch in range(self.n_epochs):
             # train
             self.model.train()
             t_loss = 0.0; t_correct = 0; t_count = 0
+
             for enc, labels in self.loaders['train']:
                 self.optimizer.zero_grad()
                 enc = {k: v.to(self.device) for k, v in enc.items()}
                 labels = labels.to(self.device)
+
                 out = self.model(**enc, labels=labels)
                 loss = out.loss
                 logits = out.logits
                 loss.backward()
                 self.optimizer.step()
+
+                # print("DEBUG logits.shape:", logits.shape, "numel:", logits.numel())
+                # print("DEBUG labels.shape:", labels.shape, "unique labels:", labels.unique()[:20])
 
                 pred = torch.argmax(F.softmax(logits, dim=1), dim=1)
                 t_correct += (pred == labels).sum().item()
@@ -217,14 +257,16 @@ class TorchTextClassifierTrainer(BaseTrainer):
                 elapsed = time.time() - start
                 est_total = elapsed / max(1e-9, self.steps_completed / max(1, self.total_steps))
                 remaining = str(timedelta(seconds=int(est_total - elapsed)))
+
                 safe_create_task(self._progress({"progress": min(prog, 95), "status": "RUNNING", "remaining_time": remaining }))
 
             train_loss = t_loss / max(1, t_count)
             train_acc = t_correct / max(1, t_count)
 
-            # valid
+            # --- validation ---
             self.model.eval()
             v_loss = 0.0; v_correct = 0; v_count = 0
+            
             with torch.no_grad():
                 for enc, labels in self.loaders['valid']:
                     enc = {k: v.to(self.device) for k, v in enc.items()}
@@ -232,8 +274,8 @@ class TorchTextClassifierTrainer(BaseTrainer):
                     out = self.model(**enc, labels=labels)
                     loss = out.loss
                     logits = out.logits
-                    pred = torch.argmax(F.softmax(logits, dim=1), dim=1)
 
+                    pred = torch.argmax(F.softmax(logits, dim=1), dim=1)
                     v_correct += (pred == labels).sum().item()
                     v_count += labels.size(0)
                     v_loss += loss.item() * labels.size(0)
@@ -241,12 +283,12 @@ class TorchTextClassifierTrainer(BaseTrainer):
             valid_loss = v_loss / max(1, v_count)
             valid_acc = v_correct / max(1, v_count)
 
-            history["train_loss"].append(train_loss)
-            history["train_acc"].append(train_acc)
-            history["valid_loss"].append(valid_loss)
-            history["valid_acc"].append(valid_acc)
-            self._save_histories(history)
-
+            # --- append to current segment only ---
+            current_segment["train_loss"].append(train_loss)
+            current_segment["train_acc"].append(train_acc)
+            current_segment["valid_loss"].append(valid_loss)
+            current_segment["valid_acc"].append(valid_acc)
+            
             # best save
             if valid_acc > best_acc:
                 best_acc = valid_acc
@@ -255,8 +297,10 @@ class TorchTextClassifierTrainer(BaseTrainer):
                 self.model.save_pretrained(save_dir)
 
         # cleanup
-        safe_create_task(self._progress({"progress": 100, "status": "COMPLETED", "remaining_time": "0:00:00"}))
-        safe_create_task(self._status({"status": "COMPLETED"}))
+        safe_create_task(self._progress({"progress": 100, "status": "RUNNING", "remaining_time": "0:00:03"}))
+
+        history["segments"].append(current_segment)
+        self._save_histories(history)
 
         try:
             if enc is not None: del enc
@@ -267,6 +311,16 @@ class TorchTextClassifierTrainer(BaseTrainer):
         torch.cuda.empty_cache()
         gc.collect()
 
+        train_end = time.perf_counter()
+        elapsed = train_end - train_start
+        hours = int(elapsed // 3600)
+        minutes = int((elapsed % 3600) // 60)
+        seconds = elapsed % 60
+        print(f"학습에 걸린 시간: {hours:02d}:{minutes:02d}:{seconds:06.3f}")
+
+        safe_create_task(self._progress({"progress": -1, "status": "COMPLETED", "remaining_time": "0:00:00", "accuracy": valid_acc}))
+        safe_create_task(self._status({"model_id": self.model_id, "progress": -1, "task": "classification", "status": "COMPLETED", "remaining_time": "0:00:00"}))
+        
     def infer(self, packaged: dict):
         """
         추론 및 평가를 수행합니다.
@@ -295,8 +349,6 @@ class TorchTextClassifierTrainer(BaseTrainer):
         else:
             self.label_map = {}
             print(f">>>>> Warning: mapping.json not found at {mapping_path}")
-
-        # safe_create_task(self._progress({"progress": 1, "status": "RUNNING", "remaining_time": None}))
         
         # 데이터 준비
         texts = packaged["data"]["source"].astype(str).tolist()
@@ -310,6 +362,9 @@ class TorchTextClassifierTrainer(BaseTrainer):
         results = []
         correct_count = 0
         total_count = len(texts)
+
+        # safe_create_task(self._progress({"progress": 1, "status": "INFERRING", "remaining_time": None}))
+        safe_create_task(self._status({"model_id": self.model_id, "progress": 1, "task": "classification", "status": "INFERRING", "remaining_time": "0:00:00"}))
         
         # 배치 단위로 추론 수행
         for i in range(0, len(texts), self.batch_size):
@@ -329,14 +384,22 @@ class TorchTextClassifierTrainer(BaseTrainer):
             with torch.no_grad():
                 outputs = self.model(**encoded)
                 probs = torch.softmax(outputs.logits, dim=-1)
-                preds = torch.argmax(probs, dim=-1).cpu().tolist()
+                # preds = torch.argmax(probs, dim=-1).cpu().tolist() # 상위 1개 클래스
+                topk_probs, topk_indices = torch.topk(probs, k=3, dim=-1)  # 상위 k개 클래스
             
             # 결과 저장
-            for idx, (text, pred, prob_dist) in enumerate(zip(batch_texts, preds, probs.cpu().tolist())):
+            # for idx, (text, pred, prob_dist) in enumerate(zip(batch_texts, preds, probs.cpu().tolist())): # 상위 1개 클래스
+            for idx, (text, top_probs, top_indices) in enumerate(zip(batch_texts, topk_probs.cpu().tolist(), topk_indices.cpu().tolist())): # 상위 3개 클래스
                 result = {
-                    "source": text,
-                    "label": int(pred),
-                    "prob": max(prob_dist)
+                    "input_text": text,
+                    # "label": int(pred),
+                    # "prob": max(prob_dist), # 상위 3개 클래스
+                    "predicted_label": int(top_indices[0]), # 상위 3개 클래스 # 가장 높은 확률의 클래스 (기존 label)
+                    "confidence": float(top_probs[0]), # 상위 3개 클래스 # 그 확률
+                    
+                    "predicted_labels": [int(label) for label in top_indices],
+                    "probability": [float(p) for p in top_probs], # 상위 3개 클래스 # 각 클래스의 확률
+                    
                 }
                 
                 # 실제 정답이 있으면 추가 정보 저장
@@ -345,8 +408,8 @@ class TorchTextClassifierTrainer(BaseTrainer):
                     result["ground_truth"] = gt
                     
                     # 정답 비교: 레이블 이름으로 비교 또는 레이블 인덱스로 비교
-                    predicted_label_name = self.label_map.get(pred, str(pred))
-                    result["is_correct"] = (predicted_label_name == gt) or (str(pred) == gt)
+                    predicted_label_name = self.label_map.get(top_indices[0], str(top_indices[0]))
+                    result["is_correct"] = (predicted_label_name == gt) or (str(top_indices[0]) == gt)
                     
                     if result["is_correct"]:
                         correct_count += 1
@@ -357,7 +420,7 @@ class TorchTextClassifierTrainer(BaseTrainer):
             progress = min(100, int((i + len(batch_texts)) / total_count * 100))
             safe_create_task(self._progress({
                 "progress": progress, 
-                "status": "RUNNING", 
+                "status": "INFERRING", 
                 "remaining_time": None
             }))
         
@@ -378,6 +441,7 @@ class TorchTextClassifierTrainer(BaseTrainer):
         
         # 결과를 딕셔너리로 구성
         output_data = {
+            "has_ground_truth": has_ground_truth,
             "results": results,
             "evaluation": evaluation_metrics,
             "mapper": mapper_str
@@ -386,14 +450,14 @@ class TorchTextClassifierTrainer(BaseTrainer):
         # 결과를 JSON 파일로 저장
         os.makedirs(self.result_path, exist_ok=True)
         result_file_path = f"{self.result_path}/result_classification.json"
-
+        
         try:
             with open(result_file_path, "w", encoding="utf-8") as f:
                 json.dump(output_data, f, ensure_ascii=False, indent=2)
             print(f">>>>> 결과 저장 완료: {result_file_path}")
         except Exception as e:
             print(f">>>>> 결과 저장 실패: {e}")
-        
+
         # 완료 상태 업데이트
         safe_create_task(self._progress({
             "progress": 100, 
@@ -401,7 +465,7 @@ class TorchTextClassifierTrainer(BaseTrainer):
             "remaining_time": "0:00:00",
             # "evaluation": evaluation_metrics  # 평가 지표 추가
         }))
-        safe_create_task(self._status({"status": "COMPLETED"}))
+        safe_create_task(self._status({"model_id": self.model_id, "progress": -1, "task": "classification", "status": "COMPLETED", "remaining_time": "0:00:00"}))
         
         # 메모리 정리
         gc.collect()

@@ -7,7 +7,6 @@ pydantic[email]
 pydantic_settings
 passlib
 httpx
-peft>=0.6.0
 
 # 데이터 처리
 elasticsearch==7.17.9
@@ -31,9 +30,15 @@ torchaudio==2.3.0+cu121
 --extra-index-url https://download.pytorch.org/whl/cu121
 
 # NLP/모델 관련 (선택: HuggingFace)
-transformers==4.49.0
+transformers==4.44.2
 datasets==2.21.0
 safetensors
+fastmcp
+langchain-core
+langchain-openai
+pydantic
+openai
+peft==0.8.2
 
 
 #######

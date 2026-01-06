@@ -1,4 +1,3 @@
-"use client";
 import { useEffect, useState } from "react";
 import {
   Radar,
@@ -32,21 +31,21 @@ export default function PatentEvaluationResult({
 
   useEffect(() => {
     if (!appNumber) return;
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
     setLoading(true);
     setError(null);
 
     fetch(`${API_BASE}/api/patent/price`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ app_number: appNumber }),
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ app_number: appNumber }),
     })
       .then(async (res) => {
-            if (!res.ok) throw new Error("응답 실패");
-            const d = await res.json();
-            setData(d);
+        if (!res.ok) throw new Error("응답 실패");
+        const d = await res.json();
+        setData(d);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));

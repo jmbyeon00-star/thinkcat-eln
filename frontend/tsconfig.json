@@ -1,44 +1,87 @@
 {
-    "compilerOptions": {
-      "baseUrl": ".",
-      "paths": {
-        "@/*": ["./*"],
-        "@lib/*": ["lib/*"],
-        "@components/*": ["components/*"],
-        "@context/*": ["context/*"]
-      },
-      "target": "ES2022",
-      "lib": ["ES2022", "DOM", "DOM.Iterable"],
-      "allowJs": false,
-      "skipLibCheck": true,
-      "strict": true,
-      "noEmit": true,
-      "module": "ESNext",
-      "moduleResolution": "Bundler",
-      "resolveJsonModule": true,
-      "isolatedModules": true,
-  
-      "jsx": "preserve",
-      /* preserve 쓸 땐 jsxImportSource 불필요. 제거 */
-      // "jsxImportSource": "react",
-  
-      /* ← 여기만 중요: 중복을 제거하고 React 타입을 포함 */
-      "types": ["node", "react", "react-dom"],
-  
-      "incremental": true,
-      "esModuleInterop": true,
-  
-      "plugins": [{ "name": "next" }]
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@lib/*": [
+        "lib/*"
+      ],
+      "@components/*": [
+        "components/*"
+      ],
+      "@context/*": [
+        "context/*"
+      ]
     },
-    "include": [
-        "next-env.d.ts",
-        "**/*.ts",
-        "**/*.tsx",
-        ".next/types/**/*.ts",
-        "pages/about/index.tsx", 
-        // "pages/page.tsx", "pages/layout.tsx"
-        "pages/index.tsx", "pages/_app.tsx", 
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
     ],
-    "exclude": ["node_modules"]
+    "allowJs": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    /* preserve 쓸 땐 jsxImportSource 불필요. 제거 */
+    // "jsxImportSource": "react",
+    /* ← 여기만 중요: 중복을 제거하고 React 타입을 포함 */
+    "types": [
+      "node",
+      "react",
+      "react-dom"
+    ],
+    "incremental": true,
+    "esModuleInterop": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "types/**/*.d.ts",
+    "pages/about/index.tsx",
+    // "pages/page.tsx", "pages/layout.tsx"
+    "pages/index.tsx",
+    "pages/_app.tsx",
+    "components/project/UploadComponent_251204",
+    "components/project/SearchComponent_251203",
+    "components/project/DataSourceSelector_251203",
+    "components/project/train/TrainingSettings_251203_2",
+    "pages/project/[project_id]/models/new_251202",
+    "components/v1/layouts/Header_pulse2",
+    "components/v1/layouts/Header_pulse",
+    "components/v1/layouts/Header_pulse2",
+    "components/v1/layouts/Header_pulse",
+    "components/v1/layouts/Header_pulse",
+    "components/v1/layouts/ProjectLayout_251201",
+    "components/v1/layouts/Header_circle",
+    "components/v1/layouts/Header_circle2",
+    "components/v1/layouts/Header_circle_sun3",
+    "components/v1/layouts/Header_circle",
+    "components/v1/layouts/Header_circle_sun3",
+    "components/v1/ai/ModelRetrainSection_251125_2",
+    "pages/project/[project_id]/collection_251201",
+    "pages/v1/project/train/[project_id]_251202/[model_id]",
+    "pages/_app_251218",
+    "components/layouts/Layout_251218",
+    "middleware_251219",
+    "components/LanguageSwitcher_251219",
+    "components/project/train/TrainingSettings_251219",
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
-  
