@@ -4,14 +4,14 @@ services:
       GPU_BACKEND_URL: "http://gpu_backend_dev:8000"
     depends_on:
       - gpu_backend_dev
-      
+
   gpu_backend_dev:
     tty: true
     stdin_open: true
     build:
       context: .
       dockerfile: ./Dockerfile.gpu_backend
-    container_name: ipforce_gpu_backend_dev
+    # container_name: ipforce_gpu_backend_dev
     env_file:
       - ./.env
     environment:
