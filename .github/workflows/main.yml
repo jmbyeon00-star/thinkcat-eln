@@ -62,17 +62,27 @@ jobs:
           # port 쓰면 추가:
           # port: ${{ secrets.SSH_PORT }}
           script: |
-            set -e
+            set -euo pipefail
 
             # ====== 설정 ======
-            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"   # 예: /srv/ipforce
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"   # 예: /home/ipforce
             REPO_URL="${{ secrets.REPO_URL }}"         # 예: git@github.com:ORG/REPO.git
-            REPO_DIR="ipforce"                          # 레포 디렉토리 이름(원하면 변경)
+            REPO_DIR="${{ secrets.REPO_DIR }}"         # 예: ipforce_next
             BRANCH="main"
+
+            # 서버 최상단(=DEPLOY_PATH)에 이미 존재하는 .env를 사용한다는 전제
+            ENV_SRC="${DEPLOY_PATH}/.env"
+            ENV_DST="${DEPLOY_PATH}/${REPO_DIR}/.env"
 
             echo ">>> DEPLOY_PATH=${DEPLOY_PATH}"
             echo ">>> REPO_DIR=${REPO_DIR}"
             echo ">>> BRANCH=${BRANCH}"
+
+            # ====== 필수값 체크 ======
+            if [ -z "${DEPLOY_PATH}" ] || [ -z "${REPO_URL}" ]; then
+              echo "ERROR: DEPLOY_PATH or REPO_URL is empty. Check GitHub Secrets."
+              exit 1
+            fi
 
             # ====== 폴더 준비 ======
             mkdir -p "${DEPLOY_PATH}"
@@ -91,6 +101,17 @@ jobs:
               git clean -fd
               cd ..
             fi
+
+            # ====== .env 연결 (중요) ======
+            if [ ! -f "${ENV_SRC}" ]; then
+              echo "ERROR: env file not found: ${ENV_SRC}"
+              echo "Create it on the server (do NOT commit .env to git)."
+              exit 1
+            fi
+
+            # 레포 폴더에 .env가 없으면 심볼릭 링크로 연결(항상 최신으로 유지)
+            ln -sf "${ENV_SRC}" "${ENV_DST}"
+            echo ">>> Linked env: ${ENV_DST} -> ${ENV_SRC}"
 
             # ====== Docker 배포 ======
             cd "${DEPLOY_PATH}/${REPO_DIR}"

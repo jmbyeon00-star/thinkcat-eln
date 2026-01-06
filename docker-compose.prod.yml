@@ -1,0 +1,81 @@
+services:
+  # ==========================
+  # 🌐 FRONTEND (Next.js)
+  # ==========================
+  frontend:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: "https://ipforce.co.kr"
+    container_name: ipforce_frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Seoul
+      - NODE_ENV=production
+      - NEXTAUTH_SECRET=ipforce_secret
+      - NEXTAUTH_URL=https://ipforce.co.kr
+    volumes:
+      - ./frontend:/app
+      - /app/.next
+      - /app/node_modules
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - ipforce_net
+    command: sh -c "npm install && npm run build && npm start"
+
+  # ==========================
+  # ⚙️ BACKEND (FastAPI)
+  # ==========================
+  backend:
+    build: 
+      context: .
+      dockerfile: ./Dockerfile.backend
+    container_name: ipforce_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Seoul
+    #   - DB_HOST=db
+    #   - DB_PORT=3306
+    #   - DB_USER=ipforce_user
+    #   - DB_PASSWORD=ipforce_pass!2025
+    #   - DB_NAME=ipforce
+    volumes:
+      - ./backend:/app
+      - /etc/localtime:/etc/localtime:ro
+    # depends_on:
+    #   - db
+    restart: always
+    networks:
+      - ipforce_net
+
+  # ==========================
+  # 🗄️ DATABASE (MariaDB)
+  # ==========================
+  # db:
+  #   image: mariadb:10.6
+  #   container_name: ipforce_db
+  #   restart: always
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: doslvkdlqm!
+  #     MYSQL_DATABASE: ipforce
+  #     MYSQL_USER: ipforce_user
+  #     MYSQL_PASSWORD: ipforce_pass!2025
+  #   ports:
+  #     - "3307:3306"
+  #   volumes:
+  #     - /var/lib/mysql:/var/lib/mysql
+  #   networks:
+  #     - ipforce_net
+networks:
+  ipforce_net:
+    driver: bridge
