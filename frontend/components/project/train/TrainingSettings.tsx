@@ -213,8 +213,8 @@ export const Step1Content: React.FC<{
             } else {
                 // 선택 시: used 속성에 따라 학습용(1)과 대조군(0)으로 분류
                 // 파일 업로드 데이터는 used가 1이므로 trainingItems로만 들어감
-                const trainingItems = groupItems.filter(item => item.used === 1 || item.used === true);
-                const counterItems = groupItems.filter(item => item.used === 0 || item.used === false);
+                const trainingItems = groupItems.filter(item => item.used || item.used === 1);
+                const counterItems = groupItems.filter(item => !item.used || item.used === 0);
 
                 onTrainingDataUpdate(prev => [...prev, ...trainingItems]);
                 onCounterDataUpdate(prev => [...prev, ...counterItems]);
