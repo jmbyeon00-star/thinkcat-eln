@@ -1,0 +1,58 @@
+services:
+  backend:
+    environment:
+      GPU_BACKEND_URL: "http://gpu_backend_dev:8000"
+    depends_on:
+      - gpu_backend_dev
+      
+  gpu_backend_dev:
+    tty: true
+    stdin_open: true
+    build:
+      context: .
+      dockerfile: ./Dockerfile.gpu_backend
+    container_name: ipforce_gpu_backend_dev
+    env_file:
+      - ./.env
+    environment:
+      ENV: "dev"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    ports:
+      - "8001:8000" # 외부 8001 → 내부 8000
+    volumes:
+      - ./gpu_backend:/app
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0 --port 8000
+      --reload --reload-dir /app 
+      --log-level debug
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+  # db:
+  #   image: mariadb:11
+  #   container_name: ipforce_db
+  #   restart: always
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: root
+  #     MYSQL_DATABASE: ipforce
+  #     MYSQL_USER: ipforce_user
+  #     MYSQL_PASSWORD: ipforce_pass
+  #   ports:
+  #     - "3307:3306"
+  #   volumes:
+  #     - db_data:/var/lib/mysql
+
+# volumes:
+#   db_data:
+
+# networks:
+#   default:
+#     name: ipforce_network
+#     driver: bridge
+
