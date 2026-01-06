@@ -62,12 +62,12 @@ jobs:
           # port 쓰면 추가:
           # port: ${{ secrets.SSH_PORT }}
           script: |
-            set -e
+            set -euo pipefail
 
             # ====== 설정 ======
-            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"   # 예: /srv/ipforce
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"   # 예: /home/ipforce
             REPO_URL="${{ secrets.REPO_URL }}"         # 예: git@github.com:ORG/REPO.git
-            REPO_DIR="${{ secrets.REPO_DIR }}"         # 레포 디렉토리 이름("ipforce_next")
+            REPO_DIR="${{ secrets.REPO_DIR }}"         # 예: ipforce_next
             BRANCH="main"
 
             # 서버 최상단(=DEPLOY_PATH)에 이미 존재하는 .env를 사용한다는 전제
