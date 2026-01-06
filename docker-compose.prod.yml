@@ -11,10 +11,10 @@ services:
     env_file:
       - .env
     environment:
-      - TZ=Asia/Seoul
-      - NODE_ENV=production
-      - NEXTAUTH_SECRET=ipforce_secret
-      - NEXTAUTH_URL=https://ipforce.co.kr
+      TZ: Asia/Seoul
+      NODE_ENV: production
+      NEXTAUTH_SECRET: ipforce_secret
+      NEXTAUTH_URL: https://ipforce.co.kr
     volumes:
       # 운영에서는 보통 소스 볼륨 마운트 제거(권장)
       # - ./frontend:/app
@@ -41,13 +41,13 @@ services:
     env_file:
       - .env
     environment:
-      - TZ=Asia/Seoul
-      - ENV: "prod"
-    #   - DB_HOST=db
-    #   - DB_PORT=3306
-    #   - DB_USER=ipforce_user
-    #   - DB_PASSWORD=ipforce_pass!2025
-    #   - DB_NAME=ipforce
+      TZ: Asia/Seoul
+      ENV: "prod"
+    #   DB_HOST: db
+    #   DB_PORT: 3306
+    #   DB_USER: ipforce_user
+    #   DB_PASSWORD: ipforce_pass!2025
+    #   DB_NAME: ipforce
     volumes:
       - ./backend:/app
       - /etc/localtime:/etc/localtime:ro
