@@ -3,7 +3,6 @@ uvicorn[standard]==0.30.6
 email-validator>=2.1.0.post1
 beautifulsoup4==4.13.3
 pymilvus==2.5.4
-umap==0.1.1
 umap-learn
 pydantic[email]
 pydantic-settings
@@ -18,7 +17,7 @@ python-jose[cryptography]
 requests
 python-multipart
 pydantic_settings
-
+aiomysql
 
 #####
 statsmodels==0.14.5

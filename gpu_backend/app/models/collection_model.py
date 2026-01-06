@@ -29,7 +29,7 @@ class CollectionInfo(Base):
     project_name: Mapped[str | None] = mapped_column(String(50), nullable=False)
     collection_code: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=False)
     collection_name: Mapped[str | None] = mapped_column(String(255), nullable=False)
-    collection_category: Mapped[str | None] = mapped_column(Integer, nullable=False)
+    collection_category: Mapped[str | None] = mapped_column(String(10), nullable=False)
     collection_data_num: Mapped[int | None] = mapped_column(Integer)
     collection_data_ratio: Mapped[float | None] = mapped_column(Numeric(10, 2))
     mean_vector : Mapped[str | None] = mapped_column(Text)

@@ -3,7 +3,7 @@
 // -----------------------------
 // API 유틸리티 함수
 // -----------------------------
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://ipforce.co.kr";
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 export async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, {
     headers: { "Content-Type": "application/json" },
@@ -43,8 +43,8 @@ export async function searchKeyword({
 }) {
   return fetchAPI(`/api/search/keyword`, {
     method: "POST",
-    body: JSON.stringify({ 
-      category, keyword, page, size 
+    body: JSON.stringify({
+      category, keyword, page, size
     }),
   });
 }
@@ -82,7 +82,7 @@ export async function searchKeyword({
 // }
 
 // export async function getPatentPrice(appNumber: string) {
-//     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
+//     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 //     const res = await fetch(`${API_BASE}/api/patent/price`, {
 //       method: "POST",
 //       headers: { "Content-Type": "application/json" },
@@ -91,7 +91,7 @@ export async function searchKeyword({
 //     if (!res.ok) throw new Error("Failed to fetch patent price");
 //     return res.json();
 //   }
-  
+
 
 // ------------------------------------------------------------
 // ✅ 페이지네이션 검색
@@ -121,13 +121,13 @@ export async function searchPagination({
     include_vector: include_vector.toString(),
     include_quote: include_quote.toString(),
   });
-  
+
   return fetchAPI(`/api/search/keyword?${params.toString()}`);
 }
 
 // ✅ 특허 가격 조회
 // export async function getPatentPrice(appNumber: string) {
-//   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
+//   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 //   const res = await fetch(`${API_BASE}/api/patent/price`, {
 //     method: "POST",
 //     headers: { "Content-Type": "application/json" }, 
@@ -136,10 +136,10 @@ export async function searchPagination({
 //   return res.json();
 // }
 export async function getPatentPrice(appNumber: string) {
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
-  
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
   const requestBody = { app_number: appNumber };
-  
+
   console.log("=== getPatentPrice Request ===");
   console.log("URL:", `${API_BASE}/api/patent/price`);
   console.log("Method:", "POST");
@@ -147,18 +147,18 @@ export async function getPatentPrice(appNumber: string) {
   console.log("Body:", JSON.stringify(requestBody));
   console.log("appNumber:", appNumber);
   console.log("=============================");
-  
+
   const res = await fetch(`${API_BASE}/api/patent/price`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(requestBody),
   });
-  
+
   console.log("=== Response ===");
   console.log("Status:", res.status);
   console.log("Status Text:", res.statusText);
   console.log("===============");
-  
+
   if (!res.ok) {
     const errorText = await res.text();
     console.error("=== Error Response ===");
@@ -167,7 +167,7 @@ export async function getPatentPrice(appNumber: string) {
     console.error("====================");
     throw new Error(`Failed to fetch patent price: ${res.status} - ${errorText}`);
   }
-  
+
   return res.json();
 }
 
@@ -176,7 +176,7 @@ export async function getPatentPrice(appNumber: string) {
 export async function searchByApplication(appNumber: string) {
   return fetchAPI(`/api/search/applicationNum/${appNumber}`);
 }
- 
+
 // ✅ 등록번호 검색
 export async function searchByRegistration(regNumber: string) {
   return fetchAPI(`/api/search/registrationNum/${regNumber}`);
@@ -195,7 +195,7 @@ export async function patentByCitpredict(appNumber: string): Promise<any> {
 // ✅ 특허 네비게이션 데이터
 export async function patentByNavigate(appNumber: string, code: string) {
   return fetchAPI(`/api/patent/navigate?appNumber=${appNumber}&code=${code}`);
-} 
+}
 
 // ✅ NPE 예측
 export async function patentByNpecheck(appNumber: string) {
@@ -205,11 +205,11 @@ export async function patentByNpecheck(appNumber: string) {
 // =========== collectionanalysis_router =========================
 // 콜렉션 조회
 // ✅ 올바른 방법
-export async function getCollectionList() : Promise<any>{
+export async function getCollectionList(): Promise<any> {
   return fetchAPI(`/api/collection/collect?collectionCode=`);
 }
 
-export async function collectionanalysisByCode(collectionCode : string) {
+export async function collectionanalysisByCode(collectionCode: string) {
   return fetchAPI(`/api/collection/collect?collectionCode=${collectionCode}`)
 }
 

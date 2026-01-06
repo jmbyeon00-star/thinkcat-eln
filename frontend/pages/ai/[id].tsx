@@ -1,12 +1,7 @@
 // pages/ai/[id].tsx
-"use client";
-
 import { useRouter } from "next/router";
 import { useEffect, useState, useMemo } from "react";
 import {
-  PieChart,
-  Pie,
-  Cell,
   Tooltip,
   ResponsiveContainer,
   LineChart,
@@ -16,25 +11,32 @@ import {
   YAxis,
   Legend,
 } from "recharts";
-import { 
-  ArrowLeft, 
-  FileBarChart2, 
-  Play, 
-  Upload, 
-  Loader2,
+import {
+  ArrowLeft,
+  ChevronUp,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Eye,
-  X
+  FileBarChart2,
+  Loader2,
+  Play,
+  Upload,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import ModelLayout from "@/components/layouts/ModelLayout";
 import FilePreviewEditor from "@/components/FilePreviewEditor";
 import { useSession } from "next-auth/react";
 import { Session } from "next-auth";
-import { isCompositeComponent } from "react-dom/test-utils";
+// import { isCompositeComponent } from "react-dom/test-utils";
 
+import { formatElapsed } from "@/utils/formatElapsed";
+import { getSegmentColor } from "@/utils/randomSeed";
 import { useUserTaskStore } from '@/lib/store/useUserTaskStore';
+import ModelProgressSSE from "@/components/ModelProgressSSE";
+import ModelRetrainSection from "@/components/ai/ModelRetrainSection";
+import { getEpochInfo, getBestAccuracyInfo } from "@/utils/calculate";
+import { HistorySegment } from "@/types/ai"
 
 type ModelDetail = {
   id: number;
@@ -47,26 +49,63 @@ type ModelDetail = {
   progress: number;
   progress_status: "RUNNING" | "COMPLETED" | "FAILED";
   created_datetime?: string;
-  metrics?: {
-    train_acc?: number[];
-    valid_acc?: number[];
-    train_loss?: number[];
-    valid_loss?: number[];
+  train_status: number;
+  elapsed_time: number;
+
+  epoch?: number;
+  batch_size?: number;
+  learning_rate?: number;
+  data_num?: number;
+  n_data_num?: number;
+  max_length?: number;
+
+  history?: {
+    segments: HistorySegment[];
   };
   mapping?: Record<string, string>;
 };
 
+type LineRow = {
+  epoch: number;
+  train_acc: number;
+  valid_acc: number;
+  train_loss: number;
+  valid_loss: number;
+  segment: number;
+  color: string;
+};
+
 export default function ModelDetailPage() {
   const router = useRouter();
-  const { setState } = useUserTaskStore()
-
+  const { isBusy, progress: storeProgress, status: storeStatus, setState, targetId } = useUserTaskStore();
+  // console.log("progress:", isBusy, storeProgress, targetId)
   const { id } = router.query;
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   const [model, setModel] = useState<ModelDetail | null>(null);
+  const { prevEpoch, added } = getEpochInfo(model?.history?.segments ?? []);
+  const { prevBestAccuracy, recentBestAccuracy } = getBestAccuracyInfo(
+    model?.history?.segments ?? []
+  );
+
   const [loading, setLoading] = useState(true);
 
-  // 클래스 매핑 페이지네이션
+  const [showBasicInfo, setShowBasicInfo] = useState(true);
+  const [showAccuracy, setShowAccuracy] = useState(true);
+  const [showLoss, setShowLoss] = useState(false);
+  const [showCollectionList, setShowCollectionList] = useState(false);
+  const [showRetrain, setShowRetrain] = useState(false);
+
+  const [params, setParams] = useState({
+    epoch: null,
+    batch_size: null,
+    learning_rate: null,
+    max_length: null,
+    shuffle: true,
+    length: null,
+  });
+
+  // 사용된 컬렉션 목록 페이지네이션
   const [mappingPage, setMappingPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
@@ -91,7 +130,8 @@ export default function ModelDetailPage() {
 
   // ✅ 백엔드에서 모델 정보 가져오기
   useEffect(() => {
-    if (!id && !token) return;
+    if (!id || !token) return;
+    if (storeProgress !== -1 && storeProgress !== 0) return;
 
     setLoading(true);
     (async () => {
@@ -105,7 +145,17 @@ export default function ModelDetailPage() {
         const buffer = await res.arrayBuffer();
         const text = new TextDecoder("utf-8").decode(buffer);
         const json = JSON.parse(text);
+        console.log(">>> json:", json)
 
+        setParams(prev => ({
+          ...prev,
+          collection_num: json.collection_num,
+          epoch: json.epoch,
+          learning_rate: json.learning_rate,
+          batch_size: json.batch_size,
+          max_length: json.max_length,
+          shuffle: json.shuffle === 1
+        }));
         // 혹시라도 일부 필드가 깨진 경우 복원
         const decoded = Object.fromEntries(
           Object.entries(json).map(([k, v]) => [k, safeDecode(v)])
@@ -118,20 +168,40 @@ export default function ModelDetailPage() {
         setLoading(false);
       }
     })();
-  }, [id, token]);
+  }, [id, token, isBusy]);
+
+  const usedColors = new Set<string>();
 
   const lineData = useMemo(() => {
-    if (!model?.metrics?.train_acc) return [];
-    return model.metrics.train_acc.map((_, i) => ({
-      epoch: i + 1,
-      train_acc: model.metrics?.train_acc?.[i],
-      valid_acc: model.metrics?.valid_acc?.[i],
-      train_loss: model.metrics?.train_loss?.[i],
-      valid_loss: model.metrics?.valid_loss?.[i],
-    }));
+    if (!model?.history?.segments) return [];
+
+    usedColors.clear(); // 매 렌더링 시 색 기록 초기화
+
+    const rows: LineRow[] = [];
+    let epochCounter = 1;
+    const lastIndex = model?.history?.segments.length - 1;
+
+    model?.history?.segments.forEach((seg, segIndex) => {
+      const color = getSegmentColor(usedColors, segIndex, lastIndex);
+
+      for (let i = 0; i < seg.train_acc.length; i++) {
+        rows.push({
+          epoch: epochCounter++,
+          train_acc: seg.train_acc[i],
+          valid_acc: seg.valid_acc[i],
+          train_loss: seg.train_loss[i],
+          valid_loss: seg.valid_loss[i],
+
+          segment: segIndex,
+          color,
+        })
+      }
+    })
+
+    return rows;
   }, [model]);
 
-  // 클래스 매핑 페이지네이션 계산
+  // 사용된 컬렉션 목록 페이지네이션 계산
   const mappingEntries = useMemo(() => {
     if (!model?.mapping) return [];
     return Object.entries(model.mapping);
@@ -207,7 +277,6 @@ export default function ModelDetailPage() {
       );
       return;
     }
-
     setInferLoading(true);
     setInferResult(null);
 
@@ -245,25 +314,26 @@ export default function ModelDetailPage() {
     }
   };
 
-  // 테이블 행 확장 토글
-  const toggleRowExpansion = (index: number) => {
-    setExpandedRows(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(index)) {
-        newSet.delete(index);
-      } else {
-        newSet.add(index);
-      }
-      return newSet;
-    });
-  };
+  // 새로운 파일 업로드 결과 테이블
+  const [showUploadedData, setShowUploadedData] = useState(false);
+  const [uploadCurrentPage, setUploadCurrentPage] = useState(1);
+  const [uploadItemsPerPage, setUploadItemsPerPage] = useState(5);
+  const [editingCell, setEditingCell] = useState<{ rowIdx: number; colKey: string } | null>(null);
+  const [editValue, setEditValue] = useState("");
 
-  // 텍스트 자르기 함수
-  const truncateText = (text: string, maxLength: number = 50) => {
-    if (!text) return '';
-    const str = String(text);
-    return str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
-  };
+
+  // 페이지네이션 계산 (기존 useMemo들 아래에 추가)
+  const uploadTotalPages = Math.ceil(parsedData.length / uploadItemsPerPage);
+  const paginatedUploadData = useMemo(() => {
+    const startIndex = (uploadCurrentPage - 1) * uploadItemsPerPage;
+    const endIndex = startIndex + uploadItemsPerPage;
+    return parsedData.slice(startIndex, endIndex);
+  }, [parsedData, uploadCurrentPage, uploadItemsPerPage]);
+
+  // 페이지 변경 시 페이지 초기화
+  useEffect(() => {
+    setUploadCurrentPage(1);
+  }, [uploadItemsPerPage]);
 
   // --- 로딩 / 에러 표시 ---
   if (loading)
@@ -322,194 +392,420 @@ export default function ModelDetailPage() {
           </p>
         </div>
 
-        {/* 클래스 매핑 - 개선된 디자인 + 페이지네이션 */}
+        {/* 사용된 컬렉션 목록 - 개선된 디자인 + 페이지네이션 */}
         {model.mapping && (
           <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-zinc-200">
-              <div className="flex items-center gap-2">
-                <FileBarChart2 className="h-5 w-5 text-blue-600" />
-                <h2 className="text-lg font-semibold text-zinc-800">클래스 매핑</h2>
+            <div
+              // className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-zinc-200 cursor-pointer"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 cursor-pointer"
+              onClick={() => setShowBasicInfo((prev) => !prev)}
+            >
+              <div className="flex items-center gap-2" >
+                {showBasicInfo ? (
+                  <ChevronUp className="h-5 w-5 text-white" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-white" />
+                )}
+                <FileBarChart2 className="h-5 w-5 text-white" />
+                <h2 className="text-lg font-semibold text-white">기본 정보</h2>
                 <span className="ml-auto text-sm text-zinc-500">
-                  총 {mappingEntries.length}개 컬렉션
+                  -----
                 </span>
               </div>
             </div>
-            
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {paginatedMapping.map(([k, v], idx) => (
-                  <div 
-                    key={k}
-                    className="flex items-center gap-3 p-4 rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 transition-colors"
-                  >
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm">
-                      {(mappingPage - 1) * ITEMS_PER_PAGE + idx + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs text-zinc-500 mb-1">클래스</div>
-                      <div className="font-medium text-zinc-800 truncate">
-                        {safeDecode(k)}
-                      </div>
-                    </div>
-                    <div className="flex-shrink-0 px-3 py-1 rounded-full bg-blue-600 text-white text-xs font-medium">
-                      {safeDecode(v)}
-                    </div>
-                  </div>
-                ))}
-              </div>
 
-              {/* 페이지네이션 */}
-              {totalMappingPages > 1 && (
-                <div className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-zinc-200">
-                  <button
-                    onClick={() => setMappingPage(p => Math.max(1, p - 1))}
-                    disabled={mappingPage === 1}
-                    className="p-2 rounded-lg border border-zinc-300 hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: totalMappingPages }, (_, i) => i + 1).map(page => (
-                      <button
-                        key={page}
-                        onClick={() => setMappingPage(page)}
-                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
-                          page === mappingPage
-                            ? 'bg-blue-600 text-white'
-                            : 'hover:bg-zinc-100 text-zinc-700'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
+            {showBasicInfo && (
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+
+                  {/* 정확도 */}
+                  <div className="bg-gradient-to-br p-4 rounded-lg bg-zinc-50 hover:bg-zinc-100 border border-gray-200">
+                    <div className="text-xs font-semibold mb-1">정확도</div>
+                    <div className="text-2xl font-bold">
+                      {recentBestAccuracy === null ? (
+                        // 단일 학습
+                        <>
+                          {prevBestAccuracy !== null ? (prevBestAccuracy * 100).toFixed(2) : "-"}%
+                        </>
+                      ) : (
+                        <>
+                          {prevBestAccuracy !== null ? (prevBestAccuracy * 100).toFixed(2) : "-"} &rarr; {recentBestAccuracy !== null ? (recentBestAccuracy * 100).toFixed(2) : "-"}%
+                        </>
+                      )}
+                    </div>
+                    <div className="text-xs text-black-600 mt-1">Accuracy</div>
                   </div>
 
-                  <button
-                    onClick={() => setMappingPage(p => Math.min(totalMappingPages, p + 1))}
-                    disabled={mappingPage === totalMappingPages}
-                    className="p-2 rounded-lg border border-zinc-300 hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
+                  <div className="bg-gradient-to-br p-4 rounded-lg bg-zinc-50 hover:bg-zinc-100 border border-gray-200">
+                    <div className="text-xs font-semibold mb-1">소요시간</div>
+                    <div className="text-2xl font-bold">{formatElapsed(model.elapsed_time)}</div>
+                    <div className="text-xs mt-1">Elapsed Time</div>
+                  </div>
+
+                  {/* 전체 데이터 수 */}
+                  <div className="bg-gradient-to-br p-4 rounded-lg bg-zinc-50 hover:bg-zinc-100 border border-gray-200">
+                    <div className="text-xs font-semibold mb-1">전체 데이터</div>
+                    <div className="text-2xl font-bold">
+                      {((model.data_num || 0) + (model.n_data_num || 0)).toLocaleString()}
+                    </div>
+                    <div className="text-xs text-black-600 mt-1">개</div>
+                  </div>
+
+                  {/* Collection Number */}
+                  <div className="bg-gradient-to-br p-4 rounded-lg bg-zinc-50 hover:bg-zinc-100 border border-gray-200">
+                    <div className="text-xs font-semibold mb-1">사용한 레이블 수</div>
+                    <div className="text-2xl font-bold">{model.collection_num}</div>
+                    <div className="text-xs mt-1">개 컬렉션</div>
+                  </div>
+
+                  {/* Data Scope */}
+                  <div className="bg-gradient-to-br p-4 rounded-lg bg-zinc-50 hover:bg-zinc-100 border border-gray-200">
+                    <div className="text-xs font-semibold mb-1">데이터 범위</div>
+                    <div className="text-xl font-bold capitalize">
+                      {model.data_scope === 'project' ? '프로젝트' : '컬렉션'}
+                    </div>
+                    <div className="text-xs mt-1">Data Scope</div>
+                  </div>
+
+
                 </div>
-              )}
-            </div>
+
+                <hr />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
+                  {/* Epoch */}
+                  <div className="bg-gradient-to-br p-4 rounded-lg bg-zinc-50 hover:bg-zinc-100 border border-gray-200">
+                    <div className="text-xs 600 font-semibold mb-1">학습 횟수</div>
+                    <div className="text-2xl font-bold">
+                      {added > 0 ? (
+                        <>
+                          {prevEpoch} + {added}
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-2xl font-bold">{prevEpoch}</div>
+                        </>
+                      )}
+                    </div>
+                    <div className="text-xs mt-1">Epoch</div>
+                  </div>
+
+
+
+                  {/* Batch Size */}
+                  <div className="bg-gradient-to-br p-4 rounded-lg bg-zinc-50 hover:bg-zinc-100 border border-gray-200">
+                    <div className="text-xs font-semibold mb-1">배치 사이즈</div>
+                    <div className="text-2xl font-bold">{model.batch_size}</div>
+                    <div className="text-xs mt-1">Batch Size</div>
+                  </div>
+
+                  {/* Learning Rate */}
+                  <div className="bg-gradient-to-br p-4 rounded-lg bg-zinc-50 hover:bg-zinc-100 border border-gray-200">
+                    <div className="text-xs font-semibold mb-1">학습률</div>
+                    <div className="text-2xl font-bold">{model.learning_rate}</div>
+                    <div className="text-xs mt-1">Learning Rate</div>
+                  </div>
+
+                  {/* 선택한 데이터 수 */}
+                  <div className="bg-gradient-to-br p-4 rounded-lg bg-zinc-50 hover:bg-zinc-100 border border-gray-200">
+                    <div className="text-xs font-semibold mb-1">선택한 데이터</div>
+                    <div className="text-2xl font-bold">
+                      {model.data_num?.toLocaleString() || 0}
+                    </div>
+                    <div className="text-xs mt-1">개</div>
+                  </div>
+
+                  {/* 선택하지 않은 데이터 수 */}
+                  <div className="bg-gradient-to-br p-4 rounded-lg bg-zinc-50 hover:bg-zinc-100 border border-gray-200">
+                    <div className="text-xs font-semibold mb-1">선택하지 않은 데이터</div>
+                    <div className="text-2xl font-bold">
+                      {model.n_data_num?.toLocaleString() || 0}
+                    </div>
+                    <div className="text-xs mt-1">개</div>
+                  </div>
+
+
+                </div>
+
+                {/* Mapping 정보 요약 */}
+                {model.mapping && (
+                  <div className="mt-6 p-4 bg-zinc-50 rounded-lg border border-zinc-200">
+                    <div className="text-sm font-semibold text-zinc-700 mb-2">
+                      사용된 컬렉션 (레이블)
+                    </div>
+                    <div className="text-xs text-zinc-500">
+                      총 {Object.keys(model.mapping).length}개의 컬렉션이 사용되었습니다.
+                      자세한 내용은 아래 "사용된 컬렉션 목록"을 참고하세요.
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
+
+
+        <ModelRetrainSection
+          model={model}
+          isBusy={isBusy}
+          storeStatus={storeStatus}
+          token={token}
+          onStateChange={setState}
+        />
 
         {/* 학습 결과 그래프 - 개선된 디자인 (Accuracy와 Loss 분리) */}
         {lineData.length > 0 && (
           <div className="space-y-4">
             {/* Accuracy 그래프 */}
             <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-zinc-200">
-                <h2 className="text-lg font-semibold text-zinc-800">정확도 (Accuracy)</h2>
-              </div>
-              <div className="p-6">
-                <div className="h-72">
-                  <ResponsiveContainer>
-                    <LineChart data={lineData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis 
-                        dataKey="epoch" 
-                        label={{ value: 'Epoch', position: 'insideBottom', offset: -5 }}
-                        stroke="#6b7280"
-                      />
-                      <YAxis 
-                        label={{ value: 'Accuracy', angle: -90, position: 'insideLeft' }}
-                        stroke="#6b7280"
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'white', 
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                        }}
-                      />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="train_acc"
-                        stroke="#16a34a"
-                        strokeWidth={2}
-                        name="Train Accuracy"
-                        dot={{ fill: '#16a34a', r: 3 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="valid_acc"
-                        stroke="#0ea5e9"
-                        strokeWidth={2}
-                        name="Valid Accuracy"
-                        dot={{ fill: '#0ea5e9', r: 3 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+              <div
+                // className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-zinc-200 cursor-pointer"
+                // className="bg-gradient-to-r from-lime-500 to-green-600 px-6 py-4 cursor-pointer"
+                // className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 cursor-pointer"
+                // className="bg-gradient-to-r from-teal-600 to-emerald-700 px-6 py-4 cursor-pointer"
+                className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 cursor-pointer"
+                onClick={() => setShowAccuracy((prev) => !prev)}
+              >
+                <div className="flex items-center gap-2" >
+                  {showAccuracy ? (
+                    <ChevronUp className="h-5 w-5 text-white" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-white" />
+                  )}
+                  <h2 className="text-lg font-semibold text-white">정확도 (Accuracy)</h2>
                 </div>
               </div>
+              {showAccuracy && (
+                <div className="p-6">
+                  <div className="h-72">
+                    <ResponsiveContainer>
+                      <LineChart data={lineData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis
+                          dataKey="epoch"
+                          label={{ value: 'Epoch', position: 'insideBottom', offset: -5 }}
+                          stroke="#6b7280"
+                        />
+                        <YAxis
+                          label={{ value: 'Accuracy', angle: -90, position: 'insideLeft' }}
+                          stroke="#6b7280"
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                          }}
+                        />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          dataKey="train_acc"
+                          stroke="#16a34a"
+                          strokeWidth={2}
+                          name="Train Accuracy"
+                          // dot={{ fill: '#16a34a', r: 3 }}
+                          dot={(dotProps) => {
+                            const { cx, cy, payload } = dotProps;
+                            return (
+                              <circle
+                                cx={cx}
+                                cy={cy}
+                                r={4}
+                                fill={payload.color}
+                              />
+                            )
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="valid_acc"
+                          stroke="#0ea5e9"
+                          strokeWidth={2}
+                          name="Valid Accuracy"
+                          // dot={{ fill: '#0ea5e9', r: 3 }}
+                          dot={(dotProps) => {
+                            const { cx, cy, payload } = dotProps;
+                            return (
+                              <circle
+                                cx={cx}
+                                cy={cy}
+                                r={4}
+                                fill={payload.color}
+                              />
+                            )
+                          }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>)}
             </div>
 
             {/* Loss 그래프 */}
             <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
-              <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-zinc-200">
-                <h2 className="text-lg font-semibold text-zinc-800">손실 (Loss)</h2>
-              </div>
-              <div className="p-6">
-                <div className="h-72">
-                  <ResponsiveContainer>
-                    <LineChart data={lineData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis 
-                        dataKey="epoch" 
-                        label={{ value: 'Epoch', position: 'insideBottom', offset: -5 }}
-                        stroke="#6b7280"
-                      />
-                      <YAxis 
-                        label={{ value: 'Loss', angle: -90, position: 'insideLeft' }}
-                        stroke="#6b7280"
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'white', 
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                        }}
-                      />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="train_loss"
-                        stroke="#f97316"
-                        strokeWidth={2}
-                        name="Train Loss"
-                        dot={{ fill: '#f97316', r: 3 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="valid_loss"
-                        stroke="#dc2626"
-                        strokeWidth={2}
-                        name="Valid Loss"
-                        dot={{ fill: '#dc2626', r: 3 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+              <div
+                // className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-zinc-200 cursor-pointer"
+                // className="bg-gradient-to-r from-orange-400 to-amber-500 px-6 py-4 cursor-pointer"
+                // className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-4 cursor-pointer"
+                className="bg-gradient-to-r from-amber-500 to-yellow-500 px-6 py-4 cursor-pointer"
+                onClick={() => setShowLoss((prev) => !prev)}
+              >
+
+                <div className="flex items-center gap-2" >
+                  {showLoss ? (
+                    <ChevronUp className="h-5 w-5 text-white" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-white" />
+                  )}
+                  <h2 className="text-lg font-semibold text-white">손실 (Loss)</h2>
                 </div>
               </div>
+
+              {showLoss && (
+                <div className="p-6">
+                  <div className="h-72">
+                    <ResponsiveContainer>
+                      <LineChart data={lineData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis
+                          dataKey="epoch"
+                          label={{ value: 'Epoch', position: 'insideBottom', offset: -5 }}
+                          stroke="#6b7280"
+                        />
+                        <YAxis
+                          label={{ value: 'Loss', angle: -90, position: 'insideLeft' }}
+                          stroke="#6b7280"
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                          }}
+                        />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          dataKey="train_loss"
+                          stroke="#f97316"
+                          strokeWidth={2}
+                          name="Train Loss"
+                          dot={{ fill: '#f97316', r: 3 }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="valid_loss"
+                          stroke="#dc2626"
+                          strokeWidth={2}
+                          name="Valid Loss"
+                          dot={{ fill: '#dc2626', r: 3 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>)}
             </div>
+          </div>
+        )}
+
+
+        {/* 사용된 컬렉션 목록 - 개선된 디자인 + 페이지네이션 */}
+        {model.mapping && (
+          <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
+            <div
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 cursor-pointer"
+              onClick={() => setShowCollectionList((prev) => !prev)}
+            >
+              <div className="flex items-center gap-2" >
+                {showCollectionList ? (
+                  <ChevronUp className="h-5 w-5 text-white" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-white" />
+                )}
+                <FileBarChart2 className="h-5 w-5 text-white" />
+                <h2 className="text-lg font-semibold text-white">사용된 컬렉션 목록</h2>
+                <span className="ml-auto text-sm text-white">
+                  총 {mappingEntries.length}개 컬렉션
+                </span>
+              </div>
+            </div>
+
+            {showCollectionList && (
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {paginatedMapping.map(([k, v], idx) => (
+                    <div
+                      key={k}
+                      className="flex items-center gap-3 p-4 rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 transition-colors"
+                    >
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm">
+                        {(mappingPage - 1) * ITEMS_PER_PAGE + idx + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-zinc-500 mb-1">컬렉션</div>
+                        <div className="font-medium text-zinc-800 truncate">
+                          {safeDecode(k)}
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0 px-3 py-1 rounded-full bg-blue-600 text-white text-xs font-medium">
+                        {safeDecode(v)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+
+                {/* 페이지네이션 */}
+                {totalMappingPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-zinc-200">
+                    <button
+                      onClick={() => setMappingPage(p => Math.max(1, p - 1))}
+                      disabled={mappingPage === 1}
+                      className="p-2 rounded-lg border border-zinc-300 hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalMappingPages }, (_, i) => i + 1).map(page => (
+                        <button
+                          key={page}
+                          onClick={() => setMappingPage(page)}
+                          className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${page === mappingPage
+                            ? 'bg-blue-600 text-white'
+                            : 'hover:bg-zinc-100 text-zinc-700'
+                            }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => setMappingPage(p => Math.min(totalMappingPages, p + 1))}
+                      disabled={mappingPage === totalMappingPages}
+                      className="p-2 rounded-lg border border-zinc-300 hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         )}
       </div>
 
       {/* 파일 기반 추론 - 개선된 테이블 디자인 */}
       <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden mb-5">
-        <div className="bg-gradient-to-r from-purple-50 to-blue-50 px-6 py-4 border-b border-zinc-200">
+        <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 cursor-pointer">
           <div className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-purple-600" />
-            <h2 className="text-lg font-semibold text-zinc-800">파일 기반 모델 추론</h2>
+            <Upload className="h-5 w-5 text-white" />
+            <h2 className="text-lg font-semibold text-white">파일 기반 모델 추론</h2>
           </div>
         </div>
 
@@ -541,83 +837,6 @@ export default function ModelDetailPage() {
 
           <FilePreviewEditor onDataParsed={setParsedData} />
 
-          {/* 업로드된 데이터 테이블 */}
-          {/* {parsedData.length > 0 && (
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-zinc-700">업로드된 데이터 미리보기</h3>
-                <span className="text-xs text-zinc-500">{parsedData.length}개 행</span>
-              </div>
-              
-              <div className="border border-zinc-200 rounded-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-zinc-50 border-b border-zinc-200">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider w-12">
-                          #
-                        </th>
-                        {parsedData[0] && Object.keys(parsedData[0]).map((key) => (
-                          <th
-                            key={key}
-                            className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider"
-                          >
-                            {key}
-                          </th>
-                        ))}
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-zinc-600 uppercase tracking-wider w-20">
-                          보기
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-zinc-200">
-                      {parsedData.map((row, idx) => (
-                        <>
-                          <tr key={idx} className="hover:bg-zinc-50 transition-colors">
-                            <td className="px-4 py-3 text-zinc-500 font-medium">
-                              {idx + 1}
-                            </td>
-                            {Object.entries(row).map(([key, value]) => (
-                              <td key={key} className="px-4 py-3 text-zinc-700">
-                                {expandedRows.has(idx) 
-                                  ? String(value)
-                                  : truncateText(String(value))
-                                }
-                              </td>
-                            ))}
-                            <td className="px-4 py-3 text-center">
-                              <button
-                                onClick={() => toggleRowExpansion(idx)}
-                                className="p-1.5 rounded-md hover:bg-zinc-100 text-blue-600 transition-colors"
-                                title={expandedRows.has(idx) ? "접기" : "펼치기"}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </button>
-                            </td>
-                          </tr>
-                          {expandedRows.has(idx) && (
-                            <tr className="bg-blue-50">
-                              <td colSpan={Object.keys(row).length + 2} className="px-4 py-3">
-                                <div className="text-xs text-zinc-600 space-y-2">
-                                  {Object.entries(row).map(([key, value]) => (
-                                    <div key={key} className="flex gap-2">
-                                      <span className="font-semibold min-w-[100px]">{key}:</span>
-                                      <span className="flex-1">{String(value)}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )} */}
-
           <button
             onClick={handleInferFile}
             disabled={parsedData.length === 0 || inferLoading || !model?.data_scope}
@@ -638,12 +857,12 @@ export default function ModelDetailPage() {
             ) : (
               <>
                 <Play className="w-4 h-4" />
-                분류하기
+                분류하기 ({parsedData.length}건)
               </>
             )}
           </button>
         </div>
       </div>
-    </ModelLayout>
+    </ModelLayout >
   );
 }

@@ -1,0 +1,17 @@
+{
+    "header": {
+        "about": "서비스 소개",
+        "projectNew": "프로젝트 생성",
+        "projects": "프로젝트 관리",
+        "collections": "컬렉션 관리",
+        "search": "검색"
+    },
+    "common": {
+        "search": "검색",
+        "loading": "로딩 중..."
+    },
+    "search": {
+        "placeholder": "검색어를 입력하세요",
+        "title": "특허 검색"
+    }
+}

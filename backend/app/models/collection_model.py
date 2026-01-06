@@ -6,7 +6,6 @@ from app.core.db import Base
 # from app.models import Base  # or: from app.core.db import Base
 import enum
 
-
 class CollectionType(enum.Enum):
     search = "search"
     upload = "upload"
@@ -34,7 +33,25 @@ class CollectionInfo(Base):
     collection_data_ratio: Mapped[float | None] = mapped_column(Numeric(10, 2))
     mean_vector : Mapped[str | None] = mapped_column(Text)
     created_datetime: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_datetime: Mapped[datetime] = mapped_column(DateTime, onupdate=datetime.utcnow)
+    updated_datetime: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "project_id": self.project_id,
+            "source_type": self.source_type,
+            "project_code": self.project_code,
+            "project_name": self.project_name,
+            "collection_code": self.collection_code,
+            "collection_name": self.collection_name,
+            "collection_category": self.collection_category,
+            "collection_data_num": self.collection_data_num,
+            "collection_data_ratio": self.collection_data_ratio,
+            "mean_vector": self.mean_vector,
+            "created_datetime": self.created_datetime.isoformat(),
+            "updated_datetime": self.updated_datetime.isoformat() if self.updated_datetime else None,
+        }
 
 class CollectionData(Base):
     __tablename__ = "COLLECTION_DATA_TB"

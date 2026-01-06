@@ -1,7 +1,13 @@
-"use client"; 
-
 import { useEffect, useState } from "react";
 import { Database, UploadCloud, Search, ChevronLeft, ChevronRight } from "lucide-react";
+
+import { Session } from "next-auth";
+import { useSession } from "next-auth/react";
+import { authHeader } from "@/utils/common";
+import { api } from "@/lib/apiClient";
+
+import { withMessages } from '@/lib/i18n/withMessages';
+export const getServerSideProps = withMessages();
 
 type Project = {
   id: number;
@@ -29,8 +35,12 @@ const statusMapper: Record<number, { label: string; color: string }> = {
 };
 
 export default function ProjectListPage() {
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
-  
+  const { data: session } = useSession() as {
+    data: (Session & { access_token?: string }) | null;
+    status: "loading" | "authenticated" | "unauthenticated";
+  };
+  const token = session?.access_token;
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -38,42 +48,38 @@ export default function ProjectListPage() {
   const [limit] = useState(6);
   const [total, setTotal] = useState(0);
 
-  const urlMap = (id: number, typ: string, status: number): string => {
-    switch (status) {
-      case 0:
-      case 1:
-        return `/project/${typ}/${id}`;
-      case 2:
-        return `/project/preview/${id}`;
-      case 3:
-        return `/project/labels/${id}`;
-      case 4:
-        return `/project/train/${id}`;
-      default:
-        return `/project/${typ}/${id}`;
-    }
-  };
-
   useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+
     async function loadProjects() {
       try {
         setLoading(true);
-        const res = await fetch(
-          `${API_BASE}/api/project?page=${page}&limit=${limit}&q=${encodeURIComponent(query)}`
-        );
-        const data = await res.json();
-        setProjects(data.items || []);
-        setTotal(data.total || 0);
+
+        const res = await api.get(`/api/project`, {
+          params: { page, limit, query },
+          headers: authHeader(token),
+        });
+
+        const data = res.data;
+        if (!cancelled) {
+          setProjects(data.items || []);
+          setTotal(data.total || 0);
+        }
+
       } catch (e) {
         console.error("프로젝트 목록 로드 실패:", e);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     const debounce = setTimeout(loadProjects, 300);
-    return () => clearTimeout(debounce);
-  }, [query, page, limit]);
+    return () => {
+      cancelled = true;
+      clearTimeout(debounce);
+    };
+  }, [token, query, page, limit]);
 
   const totalPages = Math.ceil(total / limit);
 
@@ -176,7 +182,7 @@ export default function ProjectListPage() {
                 return (
                   <a
                     key={p.id}
-                    href={urlMap(p.id, p.source_type, p.project_status)}
+                    href={`/project/${p.id}`}
                     className="block group"
                   >
                     <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-6 hover:shadow-xl hover:border-blue-200 transition-all duration-300">
@@ -245,11 +251,10 @@ export default function ProjectListPage() {
                     <button
                       key={num}
                       onClick={() => setPage(num)}
-                      className={`min-w-[40px] px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                        num === page
-                          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
-                          : "border border-zinc-200 text-zinc-700 hover:bg-zinc-50"
-                      }`}
+                      className={`min-w-[40px] px-3 py-2 rounded-lg text-sm font-medium transition-all ${num === page
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                        : "border border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                        }`}
                     >
                       {num}
                     </button>
@@ -268,6 +273,6 @@ export default function ProjectListPage() {
           </>
         )}
       </div>
-    </div>
+    </div >
   );
 }

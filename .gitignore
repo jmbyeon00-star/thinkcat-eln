@@ -49,6 +49,7 @@ gpu_backend/app/services/stdSc/
 backend/app/services/model/
 backend/app/services/data/
 backend/app/services/stdSc/
+backend/app/core/db.py
 
 # 로컬 학습용 유저/모델 데이터
 gpu_backend/users/

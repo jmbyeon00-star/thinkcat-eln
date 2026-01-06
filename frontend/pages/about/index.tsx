@@ -1,8 +1,9 @@
-"use client";
-
 import Head from "next/head";
 import { Brain, Database, Rocket, BarChart3, Cpu } from "lucide-react";
 import Link from "next/link";
+
+import { withMessages } from '@/lib/i18n/withMessages';
+export const getServerSideProps = withMessages();
 
 const BRAND_BLUE = "#00548A";
 const BRAND_GRAY = "#3A3736";
@@ -26,12 +27,12 @@ export default function AboutPage() {
               Force
             </h1>
           </div> */}
-            <h1 className="text-4xl font-bold mb-6 text-zinc-900">
-                IPFORCE<span className="text-emerald-600">.</span>
-            </h1>
+          <h1 className="text-4xl font-bold mb-6 text-zinc-900">
+            IPFORCE<span className="text-emerald-600">.</span>
+          </h1>
           <p className="text-lg leading-relaxed mb-12 text-zinc-600">
-            <b style={{ color: BRAND_BLUE }}>IPFORCE</b>는 특허 데이터에 특화된 인공지능 플랫폼으로,  
-            방대한 특허 문헌을 기반으로 <b>AI 분석, 추천, 요약, 가치평가</b>를 수행합니다.  
+            <b style={{ color: BRAND_BLUE }}>IPFORCE</b>는 특허 데이터에 특화된 인공지능 플랫폼으로,
+            방대한 특허 문헌을 기반으로 <b>AI 분석, 추천, 요약, 가치평가</b>를 수행합니다.
             연구개발, 출원 전략, 기술 투자에 필요한 인사이트를 빠르고 정확하게 제공합니다.
           </p>
 
@@ -65,9 +66,9 @@ export default function AboutPage() {
               시스템 아키텍처
             </h2>
             <p className="text-zinc-600 mb-6 leading-relaxed">
-              IPFORCE는 <b>Frontend (Next.js)</b> · <b>Backend (FastAPI)</b> · <b>GPU Backend (PyTorch)</b>  
-              3계층 구조로 구성되어 있습니다.  
-              모든 학습·추론 작업은 GPU 백엔드에서 실행되며,  
+              IPFORCE는 <b>Frontend (Next.js)</b> · <b>Backend (FastAPI)</b> · <b>GPU Backend (PyTorch)</b>
+              3계층 구조로 구성되어 있습니다.
+              모든 학습·추론 작업은 GPU 백엔드에서 실행되며,
               진행률과 결과는 SSE를 통해 실시간으로 프론트엔드로 전달됩니다.
             </p>
             <div className="grid md:grid-cols-3 gap-6 text-center">
@@ -83,9 +84,9 @@ export default function AboutPage() {
               IPFORCE의 미션
             </h2>
             <p className="text-zinc-600 mb-8 leading-relaxed">
-              특허 정보는 세상에서 가장 방대한 기술 문헌입니다.  
-              그러나 그 정보는 복잡하고, 중복되며, 빠르게 변화합니다.  
-              IPFORCE는 이러한 데이터를 <b>인공지능이 읽고, 이해하고, 요약하여</b>  
+              특허 정보는 세상에서 가장 방대한 기술 문헌입니다.
+              그러나 그 정보는 복잡하고, 중복되며, 빠르게 변화합니다.
+              IPFORCE는 이러한 데이터를 <b>인공지능이 읽고, 이해하고, 요약하여</b>
               누구나 활용 가능한 지식으로 바꾸는 것을 목표로 합니다.
             </p>
             <div className="rounded-xl p-8 shadow-md" style={{ backgroundColor: BRAND_BLUE, color: "white" }}>

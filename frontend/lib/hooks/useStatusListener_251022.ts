@@ -1,4 +1,3 @@
-'use client'
 import { useEffect } from 'react';
 import { useUserTaskStore } from '@/lib/store/useUserTaskStore';
 

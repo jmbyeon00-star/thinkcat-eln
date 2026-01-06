@@ -31,6 +31,12 @@ def generate_collection_code() -> str:
     date_str = datetime.now().strftime("%Y%m%d")
     return f"col_{date_str}_{short_token(6)}"
 
+def generate_data_group_code() -> str:
+    """컬렉션 코드 생성: col_날짜_랜덤"""
+    date_str = datetime.now().strftime("%Y%m%d")
+    return f"data_pjt_{date_str}_{short_token(6)}"
+
+
 # def generate_model_code(prefix: str = "model") -> str:
 #     """모델 코드 생성 (prefix는 task_type에 따라 변경 가능)"""
 #     date_str = datetime.now().strftime("%Y%m%d")

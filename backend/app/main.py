@@ -1,20 +1,48 @@
 from fastapi import FastAPI, Depends
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, ai_router, collection_router, file_router, patent_router, project_router, search_router, status_router, users, user_router
+
+'''
+auth, ai_router, 
+collection_router, 
+data_router, 
+file_router, 
+patent_router, project_router, 
+search_router, status_router, 
+users, user_router
+'''
+from app.api.v2.routers import auth, ai_router, \
+collection_router, \
+chat_router, \
+data_router, \
+file_router, \
+patent_router, project_router, \
+search_router, status_router, \
+users, user_router
+
+# from app.core.db import Base, engine
+# from app.models import *
 import os
 
 app = FastAPI(title="ipforce_next API", version="0.1.0")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+# 컨테이너 내부에서 db 생성시 테이블 자동 생성 (초기 1회)
+# Base.metadata.create_all(bind=engine)
+
 # CORS (프론트 도커 서비스명/로컬 둘 다 허용)
-origins = [
-    "https://ipforce.co.kr"
-    "http://localhost:3000",
-    "http://frontend:3000",
-    "http://127.0.0.1:3000",
-    "http://175.128.126.24:3000",
-]
+
+ENV = os.getenv("ENV", "dev")
+
+if ENV == "prod":
+    origins = [
+        "https://ipforce.co.kr",
+        "https://www.ipforce.co.kr",
+    ]
+else:
+    # 개발 환경: 모두 허용
+    origins = ["*"]
+    
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -25,6 +53,8 @@ app.add_middleware(
 app.include_router(ai_router.router, prefix="/api")
 # app.include_router(auth.router, prefix="/api")
 app.include_router(collection_router.router, prefix="/api")
+app.include_router(chat_router.router, prefix="/api")
+app.include_router(data_router.router, prefix="/api")
 app.include_router(file_router.router, prefix="/api")
 app.include_router(patent_router.router, prefix="/api")
 app.include_router(project_router.router, prefix="/api")
@@ -46,6 +76,6 @@ def healthz():
 # def hello():
 #     env = {
 #         "ENV": os.getenv("ENV", "dev"),
-#         "API_BASE_URL": os.getenv("API_BASE_URL", ""),
+#         "BACKEND_URL": os.getenv("BACKEND_URL", ""),
 #     }
 #     return {"message": "Hello from FastAPI!", "env": env}

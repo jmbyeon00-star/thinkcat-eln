@@ -1,20 +1,21 @@
-"use client";
-
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { 
-  Folder, 
-  Database, 
-  FileText, 
-  Search, 
-  LayoutGrid, 
-  Table, 
-  ChevronLeft, 
+import { useRouter } from "next/router";
+import {
+  Folder,
+  Database,
+  FileText,
+  Search,
+  LayoutGrid,
+  Table,
+  ChevronLeft,
   ChevronRight,
   BarChart3
 } from "lucide-react";
 import { Session } from "next-auth";
 import { useSession } from "next-auth/react";
+
+import { withMessages } from '@/lib/i18n/withMessages';
+export const getServerSideProps = withMessages();
 
 type Collection = {
   id: number;
@@ -30,7 +31,7 @@ type Collection = {
 
 export default function CollectionListPage() {
   const router = useRouter();
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
   const { data: session, status } = useSession() as {
     data: (Session & { access_token?: string }) | null;
     status: "loading" | "authenticated" | "unauthenticated";
@@ -44,18 +45,18 @@ export default function CollectionListPage() {
   const [limit] = useState(6);
   const [total, setTotal] = useState(0);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
-  
+
   // ✅ 체크박스 선택 상태
   const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
 
   useEffect(() => {
     async function loadCollections() {
       if (!token) return;
-      
+
       try {
         setLoading(true);
         const res = await fetch(
-          `${API_BASE}/api/collection?page=${page}&limit=${limit}&q=${encodeURIComponent(query)}`, 
+          `${API_BASE}/api/collection?page=${page}&limit=${limit}&q=${encodeURIComponent(query)}`,
           {
             headers: { Authorization: `Bearer ${token}` },
             credentials: "include"
@@ -102,7 +103,7 @@ export default function CollectionListPage() {
       alert("분석할 컬렉션을 선택해주세요.");
       return;
     }
-    
+
     // 선택한 컬렉션 코드들을 쿼리 파라미터로 전달
     const codes = selectedCollections.join(',');
     router.push(`/collection/analysis?codes=${codes}`);
@@ -189,7 +190,7 @@ export default function CollectionListPage() {
                   전체 <span className="font-bold text-blue-600">{total.toLocaleString()}</span>개 컬렉션
                 </span>
               </div>
-              
+
               {selectedCollections.length > 0 && (
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
@@ -199,7 +200,7 @@ export default function CollectionListPage() {
                 </div>
               )}
             </div>
-            
+
             <div className="flex items-center gap-3">
               {collections.length > 0 && (
                 <button
@@ -209,7 +210,7 @@ export default function CollectionListPage() {
                   {selectedCollections.length === collections.length ? '전체 해제' : '전체 선택'}
                 </button>
               )}
-              
+
               {selectedCollections.length > 0 && (
                 <button
                   onClick={handleAnalyze}
@@ -270,15 +271,14 @@ export default function CollectionListPage() {
               {collections.map((c) => {
                 const sourceInfo = getSourceIcon(c.source_type);
                 const isSelected = selectedCollections.includes(c.collection_code);
-                
+
                 return (
                   <div
                     key={c.id}
-                    className={`bg-white rounded-2xl shadow-sm border transition-all duration-300 ${
-                      isSelected 
-                        ? 'border-blue-500 ring-2 ring-blue-200' 
-                        : 'border-zinc-100 hover:border-blue-200'
-                    }`}
+                    className={`bg-white rounded-2xl shadow-sm border transition-all duration-300 ${isSelected
+                      ? 'border-blue-500 ring-2 ring-blue-200'
+                      : 'border-zinc-100 hover:border-blue-200'
+                      }`}
                   >
                     <div className="p-6">
                       <div className="flex items-start gap-4">
@@ -384,13 +384,12 @@ export default function CollectionListPage() {
                   {collections.map((c) => {
                     const sourceInfo = getSourceIcon(c.source_type);
                     const isSelected = selectedCollections.includes(c.collection_code);
-                    
+
                     return (
                       <tr
                         key={c.id}
-                        className={`transition-colors ${
-                          isSelected ? 'bg-blue-50' : 'hover:bg-zinc-50'
-                        }`}
+                        className={`transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-zinc-50'
+                          }`}
                       >
                         <td className="px-6 py-4">
                           {/* ✅ 체크박스 */}
@@ -471,11 +470,10 @@ export default function CollectionListPage() {
                 <button
                   key={num}
                   onClick={() => setPage(num)}
-                  className={`min-w-[40px] px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                    num === page
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
-                      : "border border-zinc-200 text-zinc-700 hover:bg-zinc-50"
-                  }`}
+                  className={`min-w-[40px] px-3 py-2 rounded-lg text-sm font-medium transition-all ${num === page
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                    : "border border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                    }`}
                 >
                   {num}
                 </button>

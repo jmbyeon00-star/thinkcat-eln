@@ -1,7 +1,7 @@
 from fastapi import FastAPI, BackgroundTasks, Depends, WebSocket
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import health, ai_router, train_router, infer_router, search_router#, patent_router, check
+from app.api.v2.routers import health, ai_router, chat_router, train_router, infer_router, search_router#, patent_router, check
 
 import os
 import time
@@ -13,8 +13,6 @@ origins = [
     "http://localhost:3000",
     "http://frontend:3000",
     "http://192.168.1.20:3000",
-    "https://ipforce.co.kr",
-    "https://www.ipforce.co.kr",
     "http://175.118.126.24",
 ]
 
@@ -30,6 +28,7 @@ app.add_middleware(
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 app.include_router(ai_router.router, prefix="/gpu")
+app.include_router(chat_router.router, prefix="/gpu")
 app.include_router(train_router.router, prefix="/gpu")
 app.include_router(infer_router.router, prefix="/gpu")
 

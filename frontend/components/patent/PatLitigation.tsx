@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/router";
 import { AlertCircle, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
-import { patentByNpecheck } from "@/lib/api"; 
+import { patentByNpecheck } from "@/lib/api";
 
 type NpeItem = {
   reg_number: string;
@@ -189,13 +189,12 @@ export default function PatLitigation({ applicationNumber }: PatLitigationProps)
                           return (
                             <tr
                               key={key}
-                              className={`${
-                                hoveredRow === key 
-                                  ? "bg-blue-50" 
-                                  : gIdx % 2 === 0 
-                                    ? "bg-white" 
+                              className={`${hoveredRow === key
+                                  ? "bg-blue-50"
+                                  : gIdx % 2 === 0
+                                    ? "bg-white"
                                     : "bg-zinc-50"
-                              } hover:bg-blue-50 transition-colors`}
+                                } hover:bg-blue-50 transition-colors`}
                               onMouseEnter={() => setHoveredRow(key)}
                               onMouseLeave={() => setHoveredRow(null)}
                             >
@@ -234,9 +233,9 @@ export default function PatLitigation({ applicationNumber }: PatLitigationProps)
                                   <div style={{ color: colorData.color }}>
                                     {colorData.icon}
                                   </div>
-                                  <span 
+                                  <span
                                     className="text-xs font-semibold px-2 py-1 rounded-full"
-                                    style={{ 
+                                    style={{
                                       color: colorData.color,
                                       backgroundColor: `${colorData.color}20`
                                     }}

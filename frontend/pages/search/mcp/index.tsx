@@ -1,0 +1,325 @@
+// app/page.js (혹은 pages/index.js)
+
+import React, { useState, useCallback } from 'react';
+import { useSession } from "next-auth/react";
+import { Session } from "next-auth"
+import Head from 'next/head';
+import { SearchOptions, SearchResultItem } from '@/types/search';
+import { Calendar, Info } from 'lucide-react';
+
+import { useTranslations } from 'next-intl';
+import { withMessages } from '@/lib/i18n/withMessages';
+export const getServerSideProps = withMessages();
+
+export default function SearchPage() {
+    const translator = useTranslations();
+
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const { data: session } = useSession() as {
+        data: (Session & { access_token?: string }) | null;
+        status: "loading" | "authenticated" | "unauthenticated";
+    };
+    const token = session?.access_token;
+
+    const [options, setOptions] = useState<SearchOptions>({
+        search_type: null,
+        use_vector: true,
+        filters: {},
+        exact_match: {},
+        text_query: {
+            fields: [],
+        },
+    });
+
+    const [query, setQuery] = useState('');
+    const [summary, setSummary] = useState('여기에 LLM이 생성한 요약이 표시됩니다.');
+    const [results, setResults] = useState<SearchResultItem[]>([]);
+    const [response, setResponse] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleSearch = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        // console.log("target:", e.target)
+        // console.log("currentTarget:", e.currentTarget)
+
+        if (!query.trim()) {
+            setSummary('검색어를 입력해 주세요.');
+            setResults([]);
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        setSummary('');
+        setResults([]);
+        console.log("options:", options)
+        try {
+            // 1. FastAPI 백엔드에 POST 요청 전송
+            const response = await fetch(`${API_BASE}/api/search/mcp`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                credentials: "include",
+                body: JSON.stringify({ query: query, options: options }),
+            });
+
+            if (!response.ok) {
+                // HTTP 오류 처리
+                throw new Error(`HTTP 오류: ${response.status} ${response.statusText}`);
+            }
+
+            // 2. 응답 데이터 파싱
+            const data = await response.json();
+            console.log(">>>>> response:", data)
+            // 3. 상태 업데이트
+            setSummary(
+                Array.isArray(data.intent.text_query.keywords)
+                    ? data.intent.text_query.keywords.join(', ')
+                    : '검색 결과에 사용된 키워드가 없습니다.'
+            );
+
+            // 결과 데이터는 배열 형태를 예상
+            setResults(Array.isArray(data.results.data.results.hits.hits) ? data.results.data.results.hits.hits : []);
+            setOptions(prev => ({
+                ...prev,
+                filters: data.intent.filters ?? {},
+                exact_match: data.intent.exact_match ?? {}
+            }));
+
+        } catch (err: any) {
+            console.error('검색 중 오류 발생:', err);
+            setError(`검색에 실패했습니다: ${err.message}. 백엔드(FastAPI) 서버가 실행 중인지 확인해 주세요.`);
+            setSummary('검색 실패');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [query, options]); // query가 변경될 때만 함수를 재생성
+
+    return (
+        <div className="min-h-screen bg-slate-50 py-10">
+            <Head>
+                <title>Elasticsearch 검색</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            </Head>
+            <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-lg">
+                <h1 className="text-lg font-semibold mb-2 pb-1">{translator('search.title')}</h1>
+
+                {/* 검색창 */}
+                <form onSubmit={handleSearch} className="flex gap-2 mb-8">
+                    <div className="relative flex-1">
+                        <input
+                            type="text"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder="질문을 입력하세요 (예: 2013 ~ 2014년 자흡식 미세기포 발생장치)"
+                            disabled={isLoading}
+                            className="
+                w-full px-4 py-3 pr-10
+                border-2 border-slate-200
+                rounded-l-lg
+                text-base
+                focus:outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100
+                disabled:bg-slate-100
+              "
+                        />
+
+                        {query && (
+                            <span
+                                onClick={() => setQuery('')}
+                                className="
+                  absolute right-3 top-1/2 -translate-y-1/2
+                  cursor-pointer select-none
+                  text-slate-400 hover:text-slate-600
+                "
+                            >
+                                ×
+                            </span>
+                        )}
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="
+              px-6 py-3
+              bg-indigo-600 text-white font-semibold
+              rounded-r-lg
+              hover:bg-indigo-700
+              disabled:bg-slate-400 disabled:cursor-not-allowed
+            "
+                    >
+                        {isLoading ? '검색 중...' : '검색'}
+                    </button>
+                </form>
+
+                {/* 필터 카드 */}
+                <div className="mb-10 bg-slate-50 border-2 border-slate-200 rounded-xl p-6">
+
+                    {/* 출원 연도 */}
+                    <section className="mb-6">
+                        <h3 className="flex items-center gap-2 font-semibold text-slate-700 mb-3">
+                            <Calendar size={18} className="text-slate-500" />
+                            출원 연도 범위
+                        </h3>
+
+                        <div className="flex items-center gap-4">
+                            <input
+                                type="number"
+                                placeholder="시작 연도"
+                                className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-lg focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100"
+                                value={options.filters.filing_year?.gte ?? options.filters.filing_year?.from ?? ""}
+                                // onChange={(e) =>
+                                //     setOptions(prev => ({
+                                //         ...prev,
+                                //         filters: {
+                                //             ...prev.filters,
+                                //             filing_year: {
+                                //                 ...(typeof prev.filters.filing_year === 'object' ? prev.filters.filing_year : {}),
+                                //                 gte: e.target.value,
+                                //                 from: e.target.value,
+                                //             }
+                                //         }
+                                //     }))
+                                // }
+                                onChange={(e) =>
+                                    setOptions(prev => ({
+                                        ...prev,
+                                        filters: {
+                                            ...prev.filters,
+                                            filing_year: {
+                                                ...prev.filters.filing_year,
+                                                gte: e.target.value
+                                                    ? Number(e.target.value)
+                                                    : undefined,
+                                            },
+                                        },
+                                    }))
+                                }
+
+                            />
+
+                            <span className="text-slate-500 font-semibold">~</span>
+
+                            <input
+                                type="number"
+                                placeholder="종료 연도"
+                                className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-lg focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100"
+                                value={options.filters.filing_year?.lte ?? options.filters.filing_year?.to ?? ""}
+                                // onChange={(e) =>
+                                //     setOptions(prev => ({
+                                //         ...prev,
+                                //         filters: {
+                                //             ...prev.filters,
+                                //             filing_year: {
+                                //                 ...(typeof prev.filters.filing_year === 'object' ? prev.filters.filing_year : {}),
+                                //                 lte: e.target.value,
+                                //                 to: e.target.value,
+                                //             }
+                                //         }
+                                //     }))
+                                // }
+                                onChange={(e) =>
+                                    setOptions(prev => ({
+                                        ...prev,
+                                        filters: {
+                                            ...prev.filters,
+                                            filing_year: {
+                                                ...prev.filters.filing_year,
+                                                lte: e.target.value
+                                                    ? Number(e.target.value)
+                                                    : undefined,
+                                            },
+                                        },
+                                    }))
+                                }
+
+                            />
+                        </div>
+                    </section>
+
+                    {/* 출원 정보 */}
+                    <section>
+                        <h3 className="flex items-center gap-2 font-semibold text-slate-700 mb-3">
+                            <Info size={18} className="text-slate-500" />
+                            출원 정보
+                        </h3>
+
+                        <div className="flex gap-4">
+                            <input
+                                type="text"
+                                placeholder="출원인"
+                                className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-lg focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100"
+                                value={options.filters.inventor_name ?? ""}
+                                onChange={(e) =>
+                                    setOptions(prev => ({
+                                        ...prev,
+                                        filters: { ...prev.filters, inventor_name: e.target.value }
+                                    }))
+                                }
+                            />
+
+                            <input
+                                type="text"
+                                placeholder="출원번호"
+                                className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-lg focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100"
+                                value={options.exact_match?.application_number ?? ""}
+                                onChange={(e) =>
+                                    setOptions(prev => ({
+                                        ...prev,
+                                        exact_match: { ...prev.exact_match, application_number: e.target.value }
+                                    }))
+                                }
+                            />
+                        </div>
+                    </section>
+                </div>
+
+                {/* 에러 */}
+                {error && (
+                    <div className="mb-6 p-4 rounded-lg bg-red-100 text-red-700 border border-red-300">
+                        🚨 {error}
+                    </div>
+                )}
+
+                {/* 요약 */}
+                <section className="mb-8">
+                    <h2 className="text-lg font-semibold mb-2 border-b pb-1">검색에 사용된 키워드</h2>
+                    <div className="p-4 bg-indigo-50 border-l-4 border-indigo-600 rounded">
+                        {summary}
+                    </div>
+                </section>
+
+                {/* 결과 */}
+                <section>
+                    <h2 className="text-lg font-semibold mb-4 border-b pb-1">검색된 데이터</h2>
+
+                    {isLoading && (
+                        <p className="text-center text-slate-500 italic">
+                            검색 중... 데이터를 불러오는 중입니다.
+                        </p>
+                    )}
+
+                    {!isLoading && results.length === 0 && !error && (
+                        <p className="text-slate-500">검색어를 입력하고 검색을 실행하세요.</p>
+                    )}
+
+                    <div className="space-y-4">
+                        {results.map((item, idx) => (
+                            <div key={idx} className="p-4 border rounded-lg shadow-sm">
+                                <p><strong>특허명:</strong> {item._source.title}</p>
+                                <p><strong>출원번호:</strong> {item._source.application_number ?? item._source.address}</p>
+                                <p><strong>출원자:</strong> {item._source.inventor_name}</p>
+                                <p><strong>출원일:</strong> {item._source.filing_date}</p>
+                                <p><strong>상태:</strong> {item._source.end_status}</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    );
+}

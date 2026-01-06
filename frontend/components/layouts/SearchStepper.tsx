@@ -1,4 +1,4 @@
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/router";
 import { CheckCircle2, ChevronRight } from "lucide-react";
 
 export type Step = number;
@@ -32,9 +32,8 @@ export default function SearchStepper({ step, items }: StepperProps) {
               className="flex-1 flex items-center"
             >
               <div
-                className={`flex items-center gap-3 ${
-                  clickable ? "cursor-pointer group" : "cursor-default"
-                }`}
+                className={`flex items-center gap-3 ${clickable ? "cursor-pointer group" : "cursor-default"
+                  }`}
                 onClick={() => {
                   if (clickable) router.push(item.href);
                 }}
@@ -46,8 +45,8 @@ export default function SearchStepper({ step, items }: StepperProps) {
                     passed
                       ? "bg-gradient-to-br from-green-400 to-emerald-500 text-white"
                       : active
-                      ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white ring-4 ring-blue-100"
-                      : "bg-white ring-2 ring-zinc-200 text-zinc-400",
+                        ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white ring-4 ring-blue-100"
+                        : "bg-white ring-2 ring-zinc-200 text-zinc-400",
                     clickable && "group-hover:ring-4 group-hover:ring-blue-100 group-hover:scale-110",
                   ].join(" ")}
                 >
@@ -66,8 +65,8 @@ export default function SearchStepper({ step, items }: StepperProps) {
                       active
                         ? "text-blue-600"
                         : passed
-                        ? "text-emerald-600"
-                        : "text-zinc-400",
+                          ? "text-emerald-600"
+                          : "text-zinc-400",
                       clickable && "group-hover:text-blue-600",
                     ].join(" ")}
                   >
@@ -79,8 +78,8 @@ export default function SearchStepper({ step, items }: StepperProps) {
                       active
                         ? "text-zinc-900"
                         : passed
-                        ? "text-zinc-700"
-                        : "text-zinc-400",
+                          ? "text-zinc-700"
+                          : "text-zinc-400",
                       clickable && "group-hover:text-zinc-900",
                     ].join(" ")}
                   >
@@ -122,14 +121,14 @@ export default function SearchStepper({ step, items }: StepperProps) {
                   i + 1 === step
                     ? "w-8 bg-gradient-to-r from-blue-500 to-indigo-600"
                     : i + 1 < step
-                    ? "w-6 bg-emerald-400"
-                    : "w-6 bg-zinc-200",
+                      ? "w-6 bg-emerald-400"
+                      : "w-6 bg-zinc-200",
                 ].join(" ")}
               />
             ))}
           </div>
         </div>
-        
+
         {/* Current Step Card */}
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
           <div className="flex items-center gap-3">

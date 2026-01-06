@@ -3,6 +3,9 @@ import { useRouter } from 'next/router';
 import { getCollectionList } from '@/lib/api';
 import UmapVisualization from '@/components/patent/UmapVisualization';
 
+import { withMessages } from '@/lib/i18n/withMessages';
+export const getServerSideProps = withMessages();
+
 interface Collection {
   index: number;
   collection_code: string;
@@ -15,10 +18,10 @@ const CollectionAnalysis = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // 선택된 컬렉션들
   const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
-  
+
   // UMAP 분석 화면 표시 여부
   const [showAnalysis, setShowAnalysis] = useState(false);
 
@@ -117,7 +120,7 @@ const CollectionAnalysis = () => {
   // UMAP 분석 화면 표시
   if (showAnalysis) {
     return (
-      <UmapVisualization 
+      <UmapVisualization
         collectionCodes={selectedCollections}
         collectionNames={collectionNameMap}
         onClose={handleCloseAnalysis}
@@ -156,7 +159,7 @@ const CollectionAnalysis = () => {
                 </p>
               )}
             </div>
-            
+
             <div className="flex items-center gap-3">
               {filteredCollections.length > 0 && (
                 <button
@@ -166,7 +169,7 @@ const CollectionAnalysis = () => {
                   {selectedCollections.length === filteredCollections.length ? '전체 해제' : '전체 선택'}
                 </button>
               )}
-              
+
               {selectedCollections.length > 0 && (
                 <button
                   onClick={handleAnalyze}
@@ -189,15 +192,14 @@ const CollectionAnalysis = () => {
             <div
               key={collection.collection_code}
               onClick={(e) => handleCardClick(collection.collection_code, e)}
-              className={`bg-white rounded-lg shadow hover:shadow-lg transition-all cursor-pointer border-2 p-6 ${
-                selectedCollections.includes(collection.collection_code)
+              className={`bg-white rounded-lg shadow hover:shadow-lg transition-all cursor-pointer border-2 p-6 ${selectedCollections.includes(collection.collection_code)
                   ? 'border-blue-500 bg-blue-50'
                   : 'border-gray-200 hover:border-blue-300'
-              }`}
+                }`}
             >
               {/* 체크박스와 인덱스 */}
               <div className="flex items-start justify-between mb-3">
-                <div 
+                <div
                   className="checkbox-container flex items-center"
                   onClick={(e) => e.stopPropagation()}
                 >

@@ -10,7 +10,7 @@ module.exports = {
         extend: {
             colors: {
                 brand: {
-                    50:  "#eef5ff",
+                    50: "#eef5ff",
                     100: "#dbe9ff",
                     200: "#b7d2ff",
                     300: "#93bcff",
@@ -29,5 +29,7 @@ module.exports = {
             }
         }
     },
-    plugins: [],
+    plugins: [
+        require('@tailwindcss/typography'),
+    ],
 }

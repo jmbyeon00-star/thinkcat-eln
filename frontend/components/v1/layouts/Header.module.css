@@ -1,0 +1,95 @@
+/* components/Header.module.css */
+.header {
+    background: #fff;
+    border-bottom: 1px solid #eaeaea;
+    padding: 0.5rem 2rem;
+  }
+  
+  .inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* ← 로고와 메뉴를 양쪽으로 */
+  }
+  
+  .logo img {
+    height: 48px; /* 로고 크기 키우고 싶으면 여기서 조정 */
+  }
+  
+  .nav {
+    display: flex;
+    gap: 2rem; /* 메뉴 간격 */
+  }
+  
+  .nav a {
+    text-decoration: none;
+    color: #333;
+    font-weight: 500;
+  }
+  
+  .nav a:hover {
+    color: #0070f3;
+  }
+
+  .link {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    margin-left: 1rem;
+    text-decoration: underline;
+  }
+
+  /* ===== 버튼 공통 (Login.module.css 의 .submit 느낌 재현) ===== */
+  /* 인증 버튼 그룹 (우측 정렬) */
+.authGroup {
+    margin-left:auto;            /* 오른쪽 끝으로 밀기 */
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  
+  /* 버튼: 폼의 .submit 느낌 개선판 (inline-flex로 세로 정렬 문제 제거) */
+  .cta {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    height:40px;
+    padding:0 14px;
+    border-radius:10px;
+    font-weight:800;
+    font-size:14px;
+    text-decoration:none;
+    line-height:1;               /* 버튼 내부 텍스트 라인 고정 */
+    transition:transform .02s, background-color .15s, color .15s, box-shadow .15s, border-color .15s;
+    -webkit-font-smoothing:antialiased;
+  }
+  
+  /* 아웃라인(로그인) – 더 예쁜 테두리 & 호버 */
+  .ctaOutline {
+    border:1.5px solid #1e5aa8;
+    color:#1e5aa8;
+    background:#fff;
+    box-shadow:0 1px 0 rgba(0,0,0,.02);
+  }
+  .ctaOutline:hover {
+    background:#f3f7fd;
+    box-shadow:0 2px 8px rgba(30,90,168,.10);
+  }
+  
+  /* 프라이머리(회원가입) – 폼 submit과 톤 맞춤 */
+  .ctaPrimary {
+    border:1.5px solid #1e5aa8;
+    background:#1e5aa8;
+    color:#fff;
+    box-shadow:0 2px 10px rgba(30,90,168,.20);
+  }
+  .ctaPrimary:hover {
+    background:#17427e;
+    border-color:#17427e;
+    box-shadow:0 4px 14px rgba(23,66,126,.25);
+  }
+  .cta:active { transform:translateY(1px); }

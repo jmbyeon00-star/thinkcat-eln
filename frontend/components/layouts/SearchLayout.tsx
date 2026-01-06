@@ -1,5 +1,3 @@
-"use client";
-
 import Stepper from "./SearchStepper";
 
 export default function SearchLayout({

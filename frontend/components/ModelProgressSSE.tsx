@@ -1,5 +1,4 @@
 // components/ModelProgressSSE.tsx
-"use client";
 import { useEffect, useState } from "react";
 
 interface ModelProgressSSEProps {
@@ -18,11 +17,12 @@ export default function ModelProgressSSE({
     const [progress, setProgress] = useState(initialProgress);
 
     useEffect(() => {
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
         const es = new EventSource(`${API_BASE}/api/status/progress/stream/${targetId}`);
         es.onmessage = (e) => {
             const data = JSON.parse(e.data);
 
+            // if (data.target_id && Number(data.target_id) !== targetId) return;
             setProgress(Number(data.progress));
             setValue?.(Number(data.progress));
             setStatus?.(data.status);
@@ -90,9 +90,14 @@ export default function ModelProgressSSE({
                 <span
                     className={`absolute inset-0 text-xs font-semibold flex items-center justify-center ${getTextColor()}`}
                 >
-                    {progress}%
+                    {progress < 100 ? `${progress}%` : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        </div>
+                    )}
                 </span>
             </div>
+
         </div>
     );
 }

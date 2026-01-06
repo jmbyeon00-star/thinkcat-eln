@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import {
   ScatterChart,
@@ -46,8 +44,8 @@ const CustomDot = ({
     payload.date_type === 0
       ? 10
       : payload.score < 2 && payload.score >= 1.85
-      ? 7
-      : 5;
+        ? 7
+        : 5;
   return <circle cx={cx} cy={cy} r={r} fill={fill} stroke="white" strokeWidth={1.5} />;
 };
 
@@ -60,8 +58,8 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] 
       item.date_type === 0
         ? "나의 특허"
         : item.score < 2 && item.score >= 1.85
-        ? "침해 가능성 높음"
-        : "기타 특허";
+          ? "침해 가능성 높음"
+          : "기타 특허";
 
     return (
       <div className="bg-white border border-gray-300 rounded-md shadow-sm px-3 py-2 text-sm">
@@ -82,7 +80,7 @@ export default function PatNavigation({ applicationNumber, code }: PatNavigation
   useEffect(() => {
     if (!applicationNumber || !code) return;
     setIsLoading(true);
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://ipforce.co.kr";
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
     fetch(`${API_BASE}/api/patent/navigate?appNumber=${applicationNumber}&code=${code}`)
       .then((res) => res.json())
@@ -119,8 +117,8 @@ export default function PatNavigation({ applicationNumber, code }: PatNavigation
                 <ZAxis range={[60, 60]} />
                 <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: "3 3" }} />
                 <Scatter
-                    data={plotData}
-                    shape={(props: any) => <CustomDot {...props} />}
+                  data={plotData}
+                  shape={(props: any) => <CustomDot {...props} />}
                 />
               </ScatterChart>
             </ResponsiveContainer>

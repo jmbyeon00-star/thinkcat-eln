@@ -58,39 +58,50 @@ def fetch_train_data(config):
     user_id = config["user_id"]
     target_id = config["target_id"]
     target_code = config["target_code"]
+    group_code = config["group_code"]
     
+    run_type = config["run_type"]
     data_scope = config["data_scope"]
     task_type = config["task_type"]
     source_type = config["source_type"]
     collection_names = config.get("collection_names", [])
+    updated_dt = config.get("updated_datetime")
 
     connection, cursor = db_connect()
     result = []
 
     try:
-
         if task_type == "classification":
             
+            where = ""
+            params = [user_id]
+
             if data_scope == "project":
                 if not target_id:
                     raise ValueError("target_id(project_id) must be provided when data_scope='project'")
-                where = " AND project_id=%s"
-                params = (user_id, target_id)
+                where = " AND project_id=%s AND group_code=%s"
+                params.append(target_id)
+                params.append(group_code)
 
             elif data_scope == "collection":
                 if not collection_names:
                     raise ValueError("collection_names must be provided when data_scope='collection'")
                 placeholders = ",".join(["%s"] * len(collection_names))
                 where = f" AND collection_name IN ({placeholders})"
-                params = (user_id, *collection_names)
+                params.extend(collection_names)
 
             else:
                 raise ValueError("Unknown data_scope type")
 
-            query = "SELECT title, abstract, collection_name, used FROM PROJECT_DATA_TB WHERE user_id=%s" + where
+            # if run_type == "retrain":
+            #     if not updated_dt:
+            #         raise ValueError("updated_datetime must be provided for retrain")
+            #     where += " AND updated_datetime > %s"
+            #     params.append(updated_dt)
+
+            query = "SELECT title, abstract, collection_name, used, group_code FROM PROJECT_DATA_TB WHERE user_id=%s" + where
             cursor.execute(query, params)
             result = cursor.fetchall()
-        
 
         elif task_type == "recommendation":
             # positive / COUNTER 데이터를 구성
@@ -107,27 +118,38 @@ def fetch_train_data(config):
                 raise ValueError("collection not found")
 
             # 2️⃣ 학습 데이터 조회
+            extra = ""
+            params = []
+
+            if run_type == "retrain":
+                if not updated_dt:
+                    raise ValueError("updated_datetime must be provided for retrain")
+                extra = " AND updated_datetime > %s"
+                params.append(updated_dt)
+
             if source_type == "search":
                 # DB 기반 프로젝트의 경우 collection_code 기준으로 데이터 가져오기
-                query = """
+                query = f"""
                     SELECT title, abstract, collection_name, used
                     FROM PROJECT_DATA_TB
                     WHERE collection_code = %s
                     AND user_id = %s
+                    {extra}
                 """
-                cursor.execute(query, (target_code, user_id))
+                cursor.execute(query, (target_code, user_id, *params))
 
             elif source_type == "upload":
                 # FILE 기반 프로젝트의 경우 project_code 기준으로 데이터 가져오기
-                query = """
+                query = f"""
                     SELECT title, abstract, collection_name, used
                     FROM PROJECT_DATA_TB
                     WHERE project_code = (
                         SELECT project_code FROM COLLECTION_INFO_TB WHERE id=%s
                     )
                     AND user_id = %s
+                    {extra}
                 """
-                cursor.execute(query, (target_id, user_id))
+                cursor.execute(query, (target_id, user_id, *params))
 
             else:
                 raise ValueError(f"Unknown source_type: {source_type}")
@@ -139,6 +161,7 @@ def fetch_train_data(config):
 
     except Exception as e:
         print(f"DB Error: {str(e)}")
+        print_error(os, sys)
     finally:
         try:
             cursor.close()
@@ -328,25 +351,26 @@ def get_train_data(config):
         task_type = str(config.get('task_type', '')).lower()
         data_scope = config.get('data_scope')
         source_type = config.get('source_type')
-
+        
         if task_type == 'classification':
             df = set_classification_data(raw, data_scope, source_type)
         elif task_type == 'recommendation':
             df = set_recommendation_data(raw, config)
         else:
             raise ValueError("Unknown task_type")
-
+        
         # 정리/인코딩
         df[['source', 'target']] = df[['source', 'target']].apply(lambda col: col.map(safe_encode_decode))
         df = df.drop_duplicates(subset=['source'], keep='first', ignore_index=True)
         df = df.dropna(subset=['source', 'target']).query("source != '' and target != ''")
-
+        
         # 클래스 편향이 심할 때 stratify 에러 방지: 최소 test_size를 클래스 수 기반으로 보호
         num_classes = df['target'].nunique()
         min_test_size = num_classes / max(1, len(df))
 
+        shuffle_db_value = config["shuffle"]
         df_train, df_valid = train_test_split(
-            df, test_size=max(0.1, min_test_size), random_state=42, stratify=df['target'], shuffle=config.get('shuffle', True)
+            df, test_size=max(0.1, min_test_size), random_state=42, stratify=df['target'], shuffle=bool(shuffle_db_value)
         )
         
         # 데이터 분포도 체크
@@ -367,6 +391,9 @@ def get_train_data(config):
 
         lengths = {'train': len(df_train), 'valid': len(df_valid)}
         packaged = {'train': df_train, 'valid': df_valid, 'mapping': mapping}
+        print(">>> train data:", df_train.head())
+        # print(">>> train data:", df_train.shape, df_valid.shape)
+        
         return packaged, lengths
 
     except Exception:
@@ -493,7 +520,7 @@ def set_inference_recommendation_data(config: dict):
     
     try:
         query = """
-            SELECT mean_vector, collection_name
+            SELECT mean_vector, collection_category
             FROM COLLECTION_INFO_TB
             WHERE id=%s AND user_id=%s
         """
@@ -510,7 +537,9 @@ def set_inference_recommendation_data(config: dict):
     # 1️⃣ Elasticsearch 후보군 조회
     loader = PatentDataLoader()
 
-    category = collection_info["collection_name"][:1].lower()
+    # category = collection_info["collection_name"][:1].lower()
+    category = collection_info["collection_category"][:1].lower()
+    print(">>> recommedation category:", category)
     mean_vector = collection_info["mean_vector"]
 
     # print(">>> Elasticsearch 후보군 조회 중...")
