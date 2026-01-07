@@ -21,15 +21,43 @@ const nextConfig = {
     defaultLocale: "ko",
   },
 
-  experimental: {
-    allowedDevOrigins: ["http://192.168.1.20:3000", "http://localhost:3000"],
-  },
+  // experimental: {
+  //   allowedDevOrigins: ["http://192.168.1.20:3000", "http://localhost:3000"],
+  // },
 
   webpack: (config) => {
     config.resolve.alias["@"] = path.resolve(__dirname);
     config.resolve.alias["@components"] = path.resolve(__dirname, "components");
     config.resolve.alias["@lib"] = path.resolve(__dirname, "lib");
     return config;
+  },
+
+  // 핵심: /api 프록시 (NextAuth는 제외)
+  async rewrites() {
+    /**
+     * 우선순위:
+     * 1) API_BASE_URL (서버 전용 env, 운영에서 추천)
+     * 2) NEXT_PUBLIC_API_BASE_URL (개발에서 브라우저도 알아야 할 때 사용)
+     * 3) docker 내부 기본값 (compose에서 service name이 backend라면 동작)
+     */
+    const backend =
+      process.env.API_BASE_URL ||
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      "http://backend:8000";
+
+    return [
+      // ✅ NextAuth는 Next(3000) 내부 라우트가 처리해야 함 (절대 백엔드로 보내지 말 것)
+      {
+        source: "/api/auth/:path*",
+        destination: "/api/auth/:path*",
+      },
+
+      // ✅ 그 외 /api/* 는 FastAPI(8000)로 프록시
+      {
+        source: "/api/:path*",
+        destination: `${backend}/api/:path*`,
+      },
+    ];
   },
 
   async headers() {

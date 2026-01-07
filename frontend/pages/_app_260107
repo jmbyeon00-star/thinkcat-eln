@@ -1,5 +1,5 @@
 // pages/_app.tsx
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import type { AppProps } from 'next/app';
 import { SessionProvider, useSession } from 'next-auth/react'
 import { NextIntlClientProvider } from 'next-intl';
@@ -60,50 +60,28 @@ function GlobalStatusListener() {
   return null
 }
 
-export default function MyApp({ Component, pageProps }: AppProps) {
-  const router = useRouter();
-
-  // ✅ Pages Router에서는 locale을 pageProps로 받기보다 router.locale이 기준
-  const activeLocale = (router.locale ?? router.defaultLocale ?? 'ko') as 'ko' | 'en';
-  // ✅ pageProps.messages가 비어도 Header가 안 죽게 "base messages"를 항상 제공
-  const mergedMessages = useMemo(() => {
-    const base = activeLocale === 'en' ? (enMessages as any) : (koMessages as any);
-    const page = (pageProps as any)?.messages ?? {};
-
-    // 얕은 merge (namespace 단위). 필요하면 deep merge로 바꿔도 됨.
-    return {
-      ...base,
-      ...page,
-      header: {
-        ...(base.header ?? {}),
-        ...(page.header ?? {}),
-      },
-    };
-  }, [activeLocale, pageProps]);
-
-  // 디버그 로그
-  // console.log('[i18n]', {
-  //   locale: activeLocale,
-  //   hasMessages: !!(pageProps as any)?.messages,
-  //   headerKeys: Object.keys((mergedMessages as any)?.header ?? {}),
-  // });
+export default function MyApp({
+  Component,
+  pageProps: { session, locale, messages, ...pageProps }
+}: AppProps & {
+  pageProps: {
+    session?: any;
+    locale?: string;
+    messages?: Record<string, any>;
+  };
+}) {
+  console.log('[i18n]', { locale, hasMessages: !!messages, headerKeys: Object.keys(messages?.header ?? {}) });
 
   return (
     <SessionProvider
-      session={(pageProps as any).session}
+      session={session}
       refetchInterval={5 * 60}
       refetchOnWindowFocus={true}
     >
       {/* 🌐 i18n Provider */}
       <NextIntlClientProvider
-        locale={activeLocale}
-        messages={mergedMessages}
-        timeZone="Asia/Seoul"
-        now={new Date()}
-      // dev에서만 누락 경고를 덜 시끄럽게 하고 싶으면 사용
-      // onError={(err) => {
-      // if (process.env.NODE_ENV === 'development') console.warn('[next-intl]', err);
-      // }}
+        locale={locale || 'ko'}
+        messages={messages || {}}
       >
         {/* 전역 SSE 리스너 */}
         <GlobalStatusListener />
