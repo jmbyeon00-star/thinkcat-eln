@@ -21,7 +21,7 @@ jobs:
             set -euo pipefail
 
             # 1. 경로 설정 (반드시 서버의 실제 경로와 일치하는지 확인하세요)
-            GPU_DEPLOY_PATH="/home/yckim/production"
+            GPU_DEPLOY_PATH="/home2/yckim/production"
             REPO_DIR="ipforce"
 
             echo ">>> 개발 서버 내 GPU 서버(운영용) 업데이트 시작"
