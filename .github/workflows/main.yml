@@ -1,154 +1,27 @@
-name: CI/CD - IPFORCE
+name: CI/CD - GPU TEST ONLY
 
 on:
   push:
     branches: [ main ]
 
 jobs:
-  # 1) CI
-  # test:
-  #   runs-on: ubuntu-latest
-
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-
-  #     # ---------- Frontend ----------
-  #     - name: Setup Node for frontend
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 20
-  #         cache: npm
-  #         cache-dependency-path: frontend/package-lock.json
-
-  #     - name: Install and Build (frontend)
-  #       working-directory: ./frontend
-  #       run: |
-  #         npm ci
-  #         npm run build
-  #       env:
-  #         NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
-  #         NEXT_PUBLIC_GPU_URL: "http://125.141.113.2"
-
-  #     # ---------- Backend ----------
-  #     - name: Setup Python for backend
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: "3.10"
-  #         cache: pip
-
-  #     - name: Install dependencies (backend)
-  #       working-directory: ./backend
-  #       run: |
-  #         pip install -r requirements.txt
-
-  #     # 테스트가 아직 불안정하면 아래 중 택1:
-  #     # (선호1) continue-on-error로 명확하게
-  #     - name: Run tests (backend)
-  #       working-directory: ./backend
-  #       continue-on-error: true
-  #       run: |
-  #         pytest
-
-  # 2) CD
-  deploy:
+  # 앞의 CI(test) 단계를 완전히 삭제하고 바로 배포(deploy)만 실행합니다.
+  deploy_gpu:
     runs-on: ubuntu-latest
-    needs: test
 
     steps:
-      # [1단계] 운영 서버 배포 (기존 내용)
-      # - name: Deploy via SSH
-      #   uses: appleboy/ssh-action@v1.0.0
-      #   with:
-      #     host: ${{ secrets.SSH_HOST }}
-      #     username: ${{ secrets.SSH_USER }}
-      #     key: ${{ secrets.SSH_KEY }}
-      #     # port 쓰면 추가:
-      #     # port: ${{ secrets.SSH_PORT }}
-      #     script: |
-      #       set -euo pipefail
-
-      #       # ====== 설정 ======
-      #       DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"   # 예: /home/ipforce
-      #       REPO_URL="${{ secrets.REPO_URL }}"         # 예: git@github.com:ORG/REPO.git
-      #       REPO_DIR="${{ secrets.REPO_DIR }}"         # 예: ipforce_next
-      #       BRANCH="main"
-
-      #       # 서버 최상단(=DEPLOY_PATH)에 이미 존재하는 .env를 사용한다는 전제
-      #       ENV_SRC="${DEPLOY_PATH}/.env"
-      #       ENV_DST="${DEPLOY_PATH}/${REPO_DIR}/.env"
-
-      #       echo ">>> DEPLOY_PATH=${DEPLOY_PATH}"
-      #       echo ">>> REPO_DIR=${REPO_DIR}"
-      #       echo ">>> BRANCH=${BRANCH}"
-
-      #       # ====== 필수값 체크 ======
-      #       if [ -z "${DEPLOY_PATH}" ] || [ -z "${REPO_URL}" ]; then
-      #         echo "ERROR: DEPLOY_PATH or REPO_URL is empty. Check GitHub Secrets."
-      #         exit 1
-      #       fi
-
-      #       # ====== 폴더 준비 ======
-      #       mkdir -p "${DEPLOY_PATH}"
-      #       cd "${DEPLOY_PATH}"
-
-      #       # ====== 최초 clone / 이후 강제 동기화 ======
-      #       if [ ! -d "${REPO_DIR}/.git" ]; then
-      #         echo ">>> 최초 배포: git clone"
-      #         rm -rf "${REPO_DIR}"
-      #         git clone -b "${BRANCH}" "${REPO_URL}" "${REPO_DIR}"
-      #       else
-      #         echo ">>> 기존 배포: fetch + reset --hard"
-      #         cd "${REPO_DIR}"
-      #         git fetch origin
-      #         git reset --hard "origin/${BRANCH}"
-      #         git clean -fd
-      #         cd ..
-      #       fi
-
-      #       # ====== .env 연결 (중요) ======
-      #       if [ ! -f "${ENV_SRC}" ]; then
-      #         echo "ERROR: env file not found: ${ENV_SRC}"
-      #         echo "Create it on the server (do NOT commit .env to git)."
-      #         exit 1
-      #       fi
-
-      #       # 레포 폴더에 .env가 없으면 심볼릭 링크로 연결(항상 최신으로 유지)
-      #       ln -sf "${ENV_SRC}" "${ENV_DST}"
-      #       echo ">>> Linked env: ${ENV_DST} -> ${ENV_SRC}"
-
-      #       # ====== Docker 배포 ======
-      #       cd "${DEPLOY_PATH}/${REPO_DIR}"
-
-      #       if [ ! -f docker-compose.prod.yml ]; then
-      #         echo "ERROR: docker-compose.prod.yml not found in repo"
-      #         exit 1
-      #       fi
-
-      #       echo ">>> Docker compose up (prod)"
-      #       docker compose \
-      #         -f docker-compose.yml \
-      #         -f docker-compose.prod.yml \
-      #         up -d --build
-
-      #       echo ">>> (선택) 미사용 이미지 정리"
-      #       docker image prune -f
-
-      #       echo ">>> 배포 완료!"
-
-      # [2단계] 개발 서버에 있는 GPU 서버 업데이트
       - name: Deploy GPU Backend to Dev Server
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.DEV_SERVER_IP }}   # 개발 서버의 공인 IP (125.141.113.2)
-          username: ${{ secrets.DEV_SERVER_USER }}
-          key: ${{ secrets.DEV_SERVER_KEY }}
-          port: ${{ secrets.DEV_SERVER_PORT }} # 필요시 추가
+          host: ${{ secrets.DEV_SERVER_IP }}   # 125.141.113.2
+          username: ${{ secrets.DEV_SERVER_USER }} # yckim
+          key: ${{ secrets.DEV_SERVER_KEY }}   # cat ~/.ssh/id_rsa 내용
+          port: ${{ secrets.DEV_SERVER_PORT }} # 7001
           script: |
             set -euo pipefail
 
-            # GPU 서버 전용 운영 경로
-            GPU_DEPLOY_PATH="/home/yckim/production" # 실제 경로로 수정
+            # 1. 경로 설정 (반드시 서버의 실제 경로와 일치하는지 확인하세요)
+            GPU_DEPLOY_PATH="/home/yckim/production"
             REPO_DIR="ipforce"
 
             echo ">>> 개발 서버 내 GPU 서버(운영용) 업데이트 시작"
@@ -156,21 +29,26 @@ jobs:
             mkdir -p "${GPU_DEPLOY_PATH}"
             cd "${GPU_DEPLOY_PATH}"
 
-            # 폴더가 없으면 clone, 있으면 fetch & reset
+            # 2. 코드 업데이트 로직
             if [ ! -d "${REPO_DIR}/.git" ]; then
+              echo ">>> 최초 배포: clone 진행"
               git clone -b main ${{ secrets.REPO_URL }} "${REPO_DIR}"
             else
+              echo ">>> 기존 폴더 존재: 코드 동기화"
               cd "${REPO_DIR}"
               git fetch origin
               git reset --hard origin/main
               git clean -fd
             fi
 
+            # 3. Docker 실행
             cd "${GPU_DEPLOY_PATH}/${REPO_DIR}"
             
-            # GPU 서버만 80포트로 실행 (이미 docker-compose.prod.yml에 설정되어 있다는 전제)
             echo ">>> GPU 컨테이너 빌드 및 재시작"
+            # docker-compose.prod.yml 파일 내에 gpu_backend 서비스가 정의되어 있어야 합니다.
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build gpu_backend
 
+            echo ">>> 미사용 이미지 정리"
             docker image prune -f
+            
             echo ">>> GPU 서버 업데이트 완료"
