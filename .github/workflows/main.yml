@@ -136,14 +136,14 @@ jobs:
 
             echo ">>> 배포 완료!"
 
-      # [2단계] 개발 서버에 있는 GPU 서버 업데이트 (새로 추가!)
+      # [2단계] 개발 서버에 있는 GPU 서버 업데이트
       - name: Deploy GPU Backend to Dev Server
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.DEV_SERVER_IP }}   # 개발 서버의 공인 IP (125.141.113.2)
           username: ${{ secrets.DEV_SERVER_USER }}
           key: ${{ secrets.DEV_SERVER_KEY }}
-          # port: ${{ secrets.DEV_SERVER_SSH_PORT }} # 필요시 추가
+          port: ${{ secrets.DEV_SERVER_PORT }} # 필요시 추가
           script: |
             set -euo pipefail
 
