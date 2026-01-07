@@ -74,12 +74,13 @@
     "components/v1/layouts/Header_circle_sun3",
     "components/v1/ai/ModelRetrainSection_251125_2",
     "pages/project/[project_id]/collection_251201",
-    "pages/v1/project/train/[project_id]_251202/[model_id]",
+    "page_legacy/v1/project/train/[project_id]_251202/[model_id]",
     "pages/_app_251218",
     "components/layouts/Layout_251218",
     "middleware_251219",
     "components/LanguageSwitcher_251219",
     "components/project/train/TrainingSettings_251219",
+    "pages/_app_260107",
   ],
   "exclude": [
     "node_modules"

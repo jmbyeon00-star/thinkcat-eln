@@ -28,6 +28,7 @@ jobs:
           npm run build
         env:
           NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
+          NEXT_PUBLIC_GPU_URL: "http://125.141.113.2"
 
       # ---------- Backend ----------
       - name: Setup Python for backend
@@ -55,6 +56,7 @@ jobs:
     needs: test
 
     steps:
+      # [1단계] 운영 서버 배포 (기존 내용)
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -133,3 +135,42 @@ jobs:
             docker image prune -f
 
             echo ">>> 배포 완료!"
+
+      # [2단계] 개발 서버에 있는 GPU 서버 업데이트 (새로 추가!)
+      - name: Deploy GPU Backend to Dev Server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEV_SERVER_IP }}   # 개발 서버의 공인 IP (125.141.113.2)
+          username: ${{ secrets.DEV_SERVER_USER }}
+          key: ${{ secrets.DEV_SERVER_KEY }}
+          # port: ${{ secrets.DEV_SERVER_SSH_PORT }} # 필요시 추가
+          script: |
+            set -euo pipefail
+
+            # GPU 서버 전용 운영 경로
+            GPU_DEPLOY_PATH="/home/yckim/production" # 실제 경로로 수정
+            REPO_DIR="ipforce"
+
+            echo ">>> 개발 서버 내 GPU 서버(운영용) 업데이트 시작"
+            
+            mkdir -p "${GPU_DEPLOY_PATH}"
+            cd "${GPU_DEPLOY_PATH}"
+
+            # 폴더가 없으면 clone, 있으면 fetch & reset
+            if [ ! -d "${REPO_DIR}/.git" ]; then
+              git clone -b main ${{ secrets.REPO_URL }} "${REPO_DIR}"
+            else
+              cd "${REPO_DIR}"
+              git fetch origin
+              git reset --hard origin/main
+              git clean -fd
+            fi
+
+            cd "${GPU_DEPLOY_PATH}/${REPO_DIR}"
+            
+            # GPU 서버만 80포트로 실행 (이미 docker-compose.prod.yml에 설정되어 있다는 전제)
+            echo ">>> GPU 컨테이너 빌드 및 재시작"
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build gpu_backend
+
+            docker image prune -f
+            echo ">>> GPU 서버 업데이트 완료"

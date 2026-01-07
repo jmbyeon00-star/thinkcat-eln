@@ -15,6 +15,9 @@ services:
       NODE_ENV: production
       NEXTAUTH_SECRET: ipforce_secret
       NEXTAUTH_URL: https://ipforce.co.kr
+      NEXT_PUBLIC_API_BASE_URL: https://ipforce.co.kr
+      NEXT_PUBLIC_ENV: "prod"
+      BACKEND_URL: "http://backend:8000"
     volumes:
       # 운영에서는 보통 소스 볼륨 마운트 제거(권장)
       # - ./frontend:/app

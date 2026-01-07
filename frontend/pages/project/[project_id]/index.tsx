@@ -291,8 +291,8 @@ export default function ProjectHomePage() {
                                     </div>
                                     <div>
                                         <p className="font-medium text-zinc-900">새 모델 생성</p>
-                                        <p className="text-sm text-zinc-600">새로운 AI
-                                            모델을 학습시킵니다
+                                        <p className="text-sm text-zinc-600">
+                                            새로운 AI 모델을 학습시킵니다
                                         </p>
                                     </div>
                                 </div>
