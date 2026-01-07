@@ -26,6 +26,8 @@ jobs:
         run: |
           npm ci
           npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
 
       # ---------- Backend ----------
       - name: Setup Python for backend
