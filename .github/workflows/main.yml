@@ -16,7 +16,7 @@ jobs:
           host: ${{ secrets.DEV_SERVER_IP }}   # 125.141.113.2
           username: ${{ secrets.DEV_SERVER_USER }} # yckim
           key: ${{ secrets.DEV_SERVER_KEY }}   # cat ~/.ssh/id_rsa 내용
-          port: ${{ secrets.DEV_SERVER_PORT }} # 7001
+          # port: ${{ secrets.DEV_SERVER_PORT }} # 7001
           script: |
             set -euo pipefail
 
