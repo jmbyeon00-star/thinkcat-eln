@@ -13,7 +13,6 @@ export const authOptions: AuthOptions = {
             },
             async authorize(credentials) {
                 const API_BASE = process.env.BACKEND_URL;
-                console.log("<<<", API_BASE)
                 const res = await fetch(`${API_BASE}/api/user/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
