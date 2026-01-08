@@ -20,5 +20,5 @@ jobs:
           # 이미 서버 안에서 실행되므로 git pull만 하면 끝!
           git fetch origin
           git reset --hard origin/main
-          docker compose -f docker-compose.gpu.yml up -d --build gpu_backend
+          docker compose -f docker-compose.prod.gpu.yml up -d --build gpu_backend
           docker image prune -f
