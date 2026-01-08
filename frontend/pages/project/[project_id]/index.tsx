@@ -81,6 +81,14 @@ export default function ProjectHomePage() {
     // 초기값을 true로 설정하여 페이지 진입 시 스켈레톤을 바로 표시
     const [loading, setLoading] = useState(true);
 
+    // href = { projectInfo && projectInfo.collection_num ?
+    //     `/project/${projectInfo.id}/models/new?collection_num=${projectInfo.collection_num}&task_type=${projectInfo.task_type}&source_type=${projectInfo.source_type}` :
+    //     projectInfo && !projectInfo.collection_num ?
+    //         `/project/${projectInfo.id}/collection` :
+    //         "#"
+    // }
+    console.log("projectInfo:", projectInfo)
+
     useEffect(() => {
         if (!project_id || !token) return;
 
@@ -278,11 +286,19 @@ export default function ProjectHomePage() {
                                 //         projectInfo && projectInfo.collection_num && !projectInfo.labeled_documents ?
                                 //             `/project/${projectInfo.id}/models/${projectInfo.source_type}` :
                                 //             "#"}
-                                href={projectInfo && projectInfo.collection_num ?
+
+                                // >>> 2026-01-08 temporary modified
+                                // 컬렉션 관리를 임시로 제거하고 첫 모델 학습시에도 바로 학습 페이지로 이동
+                                // 검색 또는 업로드 결과에 대한 학습만 진행하도록 수정
+                                // href={projectInfo && projectInfo.collection_num ?
+                                //     `/project/${projectInfo.id}/models/new?collection_num=${projectInfo.collection_num}&task_type=${projectInfo.task_type}&source_type=${projectInfo.source_type}` :
+                                //     projectInfo && !projectInfo.collection_num ?
+                                //         `/project/${projectInfo.id}/collection` :
+                                //         "#"}
+
+                                href={projectInfo ?
                                     `/project/${projectInfo.id}/models/new?collection_num=${projectInfo.collection_num}&task_type=${projectInfo.task_type}&source_type=${projectInfo.source_type}` :
-                                    projectInfo && !projectInfo.collection_num ?
-                                        `/project/${projectInfo.id}/collection` :
-                                        "#"}
+                                    "#"}
                                 className="w-full flex items-center justify-between p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-left group"
                             >
                                 <div className="flex items-center gap-3">

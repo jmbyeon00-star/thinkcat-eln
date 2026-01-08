@@ -271,14 +271,14 @@ export const Step1Content: React.FC<{
         );
 
         // if (!projectDataGroups && projectDataGroups.groups.length === 0) {
-        if (!projectDataGroups || (projectDataGroups && projectDataGroups.groups.length === 0)) {
-            return (
-                <div className="text-center p-10 text-gray-500">
-                    <Database className="w-8 h-8 mx-auto mb-3 animate-pulse" />
-                    <p>프로젝트 데이터 그룹을 불러오는 중이거나 데이터가 없습니다.</p>
-                </div>
-            );
-        }
+        // if (!projectDataGroups || (projectDataGroups && projectDataGroups.groups.length === 0)) {
+        //     return (
+        //         <div className="text-center p-10 text-gray-500">
+        //             <Database className="w-8 h-8 mx-auto mb-3 animate-pulse" />
+        //             <p>프로젝트 데이터 그룹을 불러오는 중이거나 데이터가 없습니다.</p>
+        //         </div>
+        //     );
+        // }
         // ----------------
         // 데이터 현황 관리
         // ----------------

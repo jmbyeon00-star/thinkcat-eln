@@ -262,6 +262,7 @@ def get_project_stats(session: Session, project_id: int):
     }
 
 def get_project_collections(session: Session, user_id: int, project_id: int, page: int, limit: int, q: str) -> Dict[str, Any]:
+    project_info = session.query(ProjectInfo).filter(ProjectInfo.id == project_id).first()
     # 1. 프로젝트 전체 컬렉션 데이터 수 계산
     # CollectionInfo.collection_data_num의 합계를 구합니다.
     total_data_num_query = session.query(
@@ -305,8 +306,9 @@ def get_project_collections(session: Session, user_id: int, project_id: int, pag
             item_dict['calculated_ratio'] = 0.0
 
         collections_data.append(item_dict)
-
+    print(project_info.to_dict())
     return {
+        "project_info": project_info.to_dict(),
         "collections": collections_data,
         "total_collections": total_count,      # 페이지네이션을 위한 전체 컬렉션 수
         "total_data_num": total_data_num,      # 프로젝트의 전체 데이터 수 (통계)

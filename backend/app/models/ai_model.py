@@ -31,7 +31,6 @@ class ModelInfo(Base):
         default="RUNNING",
         nullable=False
     )
-    model_version: Mapped[int] = mapped_column(Integer)
     collection_num: Mapped[int] = mapped_column(Integer)
     n_unique: Mapped[int] = mapped_column(Integer, nullable=False)
     accuracy: Mapped[float] = mapped_column(Integer)

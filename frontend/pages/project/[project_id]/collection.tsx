@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { BarChart3, FileText, XCircle, Loader2, PieChart as PieChartIcon, BarChart2, ChevronLeft, ChevronRight, Plus, Search, Eye, List } from "lucide-react";
+import { ArrowRight, BarChart3, FileText, XCircle, Loader2, PieChart as PieChartIcon, BarChart2, ChevronLeft, ChevronRight, Plus, Save, Search, Eye, List } from "lucide-react";
 
 import { useSession } from "next-auth/react";
 import { Session } from "next-auth";
@@ -11,16 +11,8 @@ import ProjectLayout from "@/components/layouts/ProjectLayout";
 import { CollectionInfo } from "@/types/collection";
 
 import { withMessages } from '@/lib/i18n/withMessages';
+import { ProjectInfo } from "@/types/project";
 export const getServerSideProps = withMessages();
-
-// 백엔드 응답 전체 타입을 정의합니다.
-type ApiCollectionsResponse = {
-    collections: CollectionInfo[];
-    total_collections: number;
-    total_data_num: number; // 새로 추가된 전체 데이터 수
-    page: number;
-    limit: number;
-};
 
 // 새 차트 데이터 타입 정의 (막대 그래프와 파이 그래프 공통 사용)
 type ChartData = {
@@ -29,17 +21,6 @@ type ChartData = {
     ratio: number;
     color: string;
 };
-
-interface PieChartLabelProps {
-    cx: number;
-    cy: number;
-    midAngle: number;
-    innerRadius: number;
-    outerRadius: number;
-    percent: number;
-    name: string;
-    // ... Recharts가 전달하는 다른 속성(e.g., fill, value)이 있다면 추가
-}
 
 function CollectionSettingPageContent() {
     const router = useRouter();
@@ -56,7 +37,8 @@ function CollectionSettingPageContent() {
     const [chartType, setChartType] = useState<'bar' | 'pie'>('bar');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-    const [collections, setCollections] = useState<CollectionInfo[] | []>([]);
+    const [projectInfo, setProjectInfo] = useState<ProjectInfo[] | []>([]);
+    const [collectionInfo, setCollectionInfo] = useState<CollectionInfo[] | []>([]);
     const [loading, setLoading] = useState(true);
 
     const [query, setQuery] = useState("");
@@ -64,6 +46,8 @@ function CollectionSettingPageContent() {
     const [limit] = useState(10);
     const [total, setTotal] = useState(0);
     const [totalDataNum, setTotalDataNum] = useState(0);
+
+    console.log("collectionInfo:", collectionInfo)
 
     // --- Data Loading Logic (실제 Fetch 사용) ---
     const loadCollections = useCallback(async () => {
@@ -87,20 +71,21 @@ function CollectionSettingPageContent() {
 
             const data = await res.json();
 
-            setCollections(data.collections || []);
+            setProjectInfo(data.project_info || [])
+            setCollectionInfo(data.collection_info || []);
             setTotal(data.total_collections || 0);
             setTotalDataNum(data.total_data_num || 0);
 
         } catch (e) {
             console.error("컬렉션 목록을 불러오지 못했습니다:", e);
-            setCollections([]);
+            setCollectionInfo([]);
             setTotal(0);
             setTotalDataNum(0);
         } finally {
             setLoading(false);
         }
     }, [token, project_id, page, limit, query, API_BASE]);
-
+    console.log("projectInfo:", projectInfo)
     // Initial load and dependency tracking
     useEffect(() => {
         const debounce = setTimeout(loadCollections, 300);
@@ -151,7 +136,6 @@ function CollectionSettingPageContent() {
     const RADIAN = Math.PI / 180;
 
     // 파이 차트의 라벨 렌더링 함수
-    // const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: PieChartLabelProps) => {
     const renderCustomizedLabel = (props: any): JSX.Element | null => {
         const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props;
 
@@ -168,9 +152,9 @@ function CollectionSettingPageContent() {
 
     // 데이터를 useMemo로 차트용 데이터로 변환 (BarChart, PieChart 공통)
     const chartData: ChartData[] = useMemo(() => {
-        if (!Array.isArray(collections) || totalDataNum === 0) return [];
+        if (!Array.isArray(collectionInfo) || totalDataNum === 0) return [];
         // 컬렉션 배열을 데이터 수 기준으로 내림차순 정렬하여 상위 10개 추출
-        const sortedCollections = [...collections]
+        const sortedCollections = [...collectionInfo]
             .sort((a, b) => b.collection_data_num - a.collection_data_num)
             .slice(0, 10); // 상위 10개만 차트에 표시
 
@@ -181,7 +165,7 @@ function CollectionSettingPageContent() {
             ratio: col.calculated_ratio ?? (col.collection_data_num / totalDataNum) * 100,
             color: COLORS[index % COLORS.length]
         }));
-    }, [collections, totalDataNum]);
+    }, [collectionInfo, totalDataNum]);
 
     // Handle pagination change
     const handlePageChange = (newPage: number) => {
@@ -189,6 +173,10 @@ function CollectionSettingPageContent() {
             setPage(newPage);
         }
     };
+
+    const handleCollectionNumCheck = () => {
+        console.log("?")
+    }
 
     const renderBarChart = () => (
         <ResponsiveContainer width="100%" height={400}>
@@ -319,7 +307,7 @@ function CollectionSettingPageContent() {
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-zinc-200">
-                        {Array.isArray(collections) && collections.map((col) => (
+                        {Array.isArray(collectionInfo) && collectionInfo.map((col) => (
                             <tr key={col.id} className="hover:bg-blue-50/50 transition duration-100">
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-zinc-900">{col.id}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-700">{col.collection_name}</td>
@@ -329,7 +317,7 @@ function CollectionSettingPageContent() {
                                 </td>
                             </tr>
                         ))}
-                        {Array.isArray(collections) && collections.length === 0 && (
+                        {Array.isArray(collectionInfo) && collectionInfo.length === 0 && (
                             <tr>
                                 <td colSpan={4} className="px-6 py-10 text-center text-zinc-500 bg-zinc-50">
                                     검색 결과가 없거나 컬렉션이 없습니다.
@@ -482,7 +470,7 @@ function CollectionSettingPageContent() {
         );
     }
 
-    if (!collections) {
+    if (!collectionInfo) {
         return (
             <ProjectLayout projectNo={project_id as string} token={token} API_BASE={API_BASE}>
                 <div className="min-h-screen bg-white p-8">
@@ -498,7 +486,7 @@ function CollectionSettingPageContent() {
     }
 
     // collections가 빈 배열이 아니라 null/undefined일 경우 에러 처리
-    if (!Array.isArray(collections) && !loading) {
+    if (!Array.isArray(collectionInfo) && !loading) {
         return (
             <ProjectLayout projectNo={project_id as string} token={token} API_BASE={API_BASE}>
                 <div className="min-h-screen bg-white p-8">
@@ -545,6 +533,26 @@ function CollectionSettingPageContent() {
                     onSave={handleAddCollection as any}
                 />
             )}
+
+            <div className="flex gap-3 pt-5">
+                <button
+                    onClick={() => handleCollectionNumCheck()}
+                    disabled={false}
+                    className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold rounded-xl hover:from-emerald-700 hover:to-teal-700 disabled:from-zinc-300 disabled:to-zinc-400 transition-all flex items-center gap-2"
+                >
+                    <Save size={18} />
+                    이전
+                    {/* 저장하기 {Object.keys(modified).length > 0 && `(${Object.keys(modified).length})`} */}
+                </button>
+                <button
+                    onClick={() => router.push(`/project/${project_id}/models/new?collection_num=${collectionInfo.length}&task_type=${projectInfo.task_type}&source_type=${projectInfo.source_type}`)}
+                    // onClick={() => handleCollectionNumCheck()}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center gap-2"
+                >
+                    다음
+                    <ArrowRight size={18} />
+                </button>
+            </div>
         </ProjectLayout>
     );
 }
