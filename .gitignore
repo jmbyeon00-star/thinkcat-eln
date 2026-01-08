@@ -16,6 +16,10 @@ pnpm-lock.yaml
 .vscode/
 .ipynb_checkpoints
 
+docker-compose.yml
+docker-compose.prod.yml
+docker-compose.gpu.yml
+
 # Python / FastAPI
 __pycache__/
 *.py[cod]
