@@ -6,8 +6,8 @@ import { SearchBar } from "@/components/search/SearchBar";
 // import { SearchResults } from "@/components/search/SearchResults";
 // import { SearchResp } from "@lib/types";
 // import ModelAccuracyRadarChart from "@/components/charts/ModelAccuracyRadarChart";
-// import BarChart from "@/components/charts/BarChart";
-// import ModelAccuracyLineChart from "@/components/charts/ModelAccuracyLineChart";
+import BarChart from "@/components/charts/BarChart";
+import ModelAccuracyLineChart from "@/components/charts/ModelAccuracyLineChart";
 // import { useSession } from "next-auth/react";
 // import { useUserTaskStore } from '@/lib/store/useUserTaskStore'
 
@@ -91,14 +91,14 @@ export default function Home() {
                             </p>
                         </header>
 
-                        {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {mounted && <div className="bg-white rounded-xl shadow-sm border border-zinc-100 p-4">
                                 <BarChart />
                             </div>}
                             {mounted && <div className="bg-white rounded-xl shadow-sm border border-zinc-100 p-4">
                                 <ModelAccuracyLineChart />
                             </div>}
-                        </div> */}
+                        </div>
                     </section>
                 </div>
             </section>
