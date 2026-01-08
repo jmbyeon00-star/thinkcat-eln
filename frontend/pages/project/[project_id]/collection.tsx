@@ -37,7 +37,7 @@ function CollectionSettingPageContent() {
     const [chartType, setChartType] = useState<'bar' | 'pie'>('bar');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-    const [projectInfo, setProjectInfo] = useState<ProjectInfo[] | []>([]);
+    const [projectInfo, setProjectInfo] = useState<ProjectInfo | null>(null);
     const [collectionInfo, setCollectionInfo] = useState<CollectionInfo[] | []>([]);
     const [loading, setLoading] = useState(true);
 
@@ -545,7 +545,13 @@ function CollectionSettingPageContent() {
                     {/* 저장하기 {Object.keys(modified).length > 0 && `(${Object.keys(modified).length})`} */}
                 </button>
                 <button
-                    onClick={() => router.push(`/project/${project_id}/models/new?collection_num=${collectionInfo.length}&task_type=${projectInfo.task_type}&source_type=${projectInfo.source_type}`)}
+                    onClick={() => {
+                        const project = Array.isArray(projectInfo) ? projectInfo[0] : projectInfo;
+
+                        if (project) {
+                            router.push(`/project/${project_id}/models/new?collection_num=${collectionInfo.length}&task_type=${projectInfo?.task_type}&source_type=${projectInfo?.source_type}`)
+                        }
+                    }}
                     // onClick={() => handleCollectionNumCheck()}
                     className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center gap-2"
                 >

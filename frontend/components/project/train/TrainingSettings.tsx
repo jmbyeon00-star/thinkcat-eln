@@ -279,6 +279,7 @@ export const Step1Content: React.FC<{
         //         </div>
         //     );
         // }
+
         // ----------------
         // 데이터 현황 관리
         // ----------------
@@ -308,7 +309,7 @@ export const Step1Content: React.FC<{
             onTrainingDataUpdate(prev => {
                 // 그룹 데이터 삭제
                 if (source.type === "group") {
-                    const group = projectDataGroups.groups.find(g => g.id === source.sourceId);
+                    const group = projectDataGroups?.groups.find(g => g.id === source.sourceId);
                     if (!group) return prev;
 
                     const removeIds = new Set(group.group_items.map(item => item.id));
@@ -321,7 +322,7 @@ export const Step1Content: React.FC<{
             onCounterDataUpdate(prev => {
                 // 그룹 데이터 삭제
                 if (source.type === "group") {
-                    const group = projectDataGroups.groups.find(g => g.id === source.sourceId);
+                    const group = projectDataGroups?.groups.find(g => g.id === source.sourceId);
                     if (!group) return prev;
 
                     const removeIds = new Set(group.group_items.map(item => item.id));
@@ -384,7 +385,7 @@ export const Step1Content: React.FC<{
                         isUsed={selectedGroups.length > 0}
                         // 📌 [FIX] 상위 체크박스 로직: 전체 선택/해제 기능만 수행 (개별 선택 기능과 분리)
                         setIsUsed={(used) => {
-                            if (used && projectDataGroups.groups.length > 0) {
+                            if (used && projectDataGroups?.groups && projectDataGroups.groups.length > 0) {
                                 setSelectedGroups(projectDataGroups.groups.map(group => group.id));
                             } else {
                                 setSelectedGroups([]);
