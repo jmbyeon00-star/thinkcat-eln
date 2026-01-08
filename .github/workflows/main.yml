@@ -16,7 +16,7 @@ jobs:
 
       - name: Update GPU Backend
         run: |
-          cd ~/production/ipforce_next
+          cd /home/yckim/production/ipforce_next
           # 이미 서버 안에서 실행되므로 git pull만 하면 끝!
           git fetch origin
           git reset --hard origin/main
