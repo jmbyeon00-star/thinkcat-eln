@@ -294,7 +294,7 @@ def get_project_collections(session: Session, user_id: int, project_id: int, pag
     )
 
     # 3. 응답 데이터 구성 및 통계 추가
-    collections_data: List[Dict[str, Any]] = []
+    collections_info: List[Dict[str, Any]] = []
     for item in items:
         item_dict = item.to_dict()
         
@@ -305,11 +305,11 @@ def get_project_collections(session: Session, user_id: int, project_id: int, pag
         else:
             item_dict['calculated_ratio'] = 0.0
 
-        collections_data.append(item_dict)
+        collections_info.append(item_dict)
     print(project_info.to_dict())
     return {
         "project_info": project_info.to_dict(),
-        "collections": collections_data,
+        "collection_info": collections_info,
         "total_collections": total_count,      # 페이지네이션을 위한 전체 컬렉션 수
         "total_data_num": total_data_num,      # 프로젝트의 전체 데이터 수 (통계)
         "page": page,
