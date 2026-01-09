@@ -164,8 +164,6 @@ export default function SearchComponent({ project, token, collections, onTrainin
                 return;
             }
 
-            console.log(">>> cart:", cart)
-            console.log(">>> results:", results)
             if (cart.length === 0) return;
 
             // 🎯 1. 소스 정보 구성
@@ -183,6 +181,7 @@ export default function SearchComponent({ project, token, collections, onTrainin
                 label: item.collection_name,
                 application_number: item.application_number,
                 score: item.score,
+                vector: item.vector
             }));
 
             const counterItemsToSave = results.map((item, index) => ({

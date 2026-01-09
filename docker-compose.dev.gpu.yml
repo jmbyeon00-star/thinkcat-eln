@@ -1,9 +1,9 @@
 services:
-  backend:
-    environment:
-      GPU_BACKEND_URL: "http://gpu_backend_dev:8000"
-    depends_on:
-      - gpu_backend_dev
+  # backend:
+  #   environment:
+  #     GPU_BACKEND_URL: "http://gpu_backend_dev:8000"
+  #   depends_on:
+  #     - gpu_backend_dev
 
   gpu_backend_dev:
     tty: true

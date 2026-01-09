@@ -287,6 +287,11 @@ async def run_inference_recommendation(session: Session, user_id: int, body: dic
     """
     GPU 백엔드로 추천 추론 요청 (비동기 httpx 기반)
     """
+    is_internal_session = False
+    if session is None:
+        session = Session()
+        is_internal_session = True
+
     try:
         session.query(ModelInfo).filter(ModelInfo.id == body["model_id"], ModelInfo.user_id == user_id).update(
             {
@@ -327,9 +332,17 @@ async def run_inference_recommendation(session: Session, user_id: int, body: dic
         }
 
     except Exception as e:
+        if is_internal_session and session:
+            session.rollback()
+
         print(str(e))
         session.rollback()
         raise HTTPException(status_code=500, detail=f"추론 중 오류 발생: {str(e)}")
+
+    finally:
+        # --- [수정 포인트] 직접 만든 세션은 반드시 닫아줌 ---
+        if is_internal_session and session:
+            session.close()
 
 async def run_auto_recommend(session: Session, user_id: int, collection_id: int, body: dict):
     """

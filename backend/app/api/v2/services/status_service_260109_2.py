@@ -86,7 +86,7 @@ async def update_status_sse(session: Session, run_type: str, user_id: str, body:
         await q.put(json.dumps(payload))
 
     print(f"[STATUS] User {user_id} → {status} {task}")
-    if task == "recommend" and run_type == "train":
+    if task == "recommend" and run_type == "train" and (status == "COMPLETED" or progress == -1):
         try:
             model_info = (
                 session.query(ModelInfo).filter(
@@ -99,8 +99,11 @@ async def update_status_sse(session: Session, run_type: str, user_id: str, body:
                 )
                 .first()
             )
-            print("\n\n\n\n\n\n:", model_info, target_id)
-            if model_info.model_code.startswith("rec_") and model_info.progress_status != "INFERRING":
+            
+            if model_info and model_info.model_code.startswith("rec_"):
+                if model_info.progress_status == "INFERRING":
+                    return {"ok": True, "status": status}
+
                 print(f"[AUTO-INFER] 추천 모델 {model_info.model_code} 학습 완료 → 자동 추론 시작")
                 # 필요한 값 준비
                 infer_body = {
@@ -155,10 +158,12 @@ async def _progress_event_generator(target_id: str):
 # 진행률 업데이트
 # ------------------------
 async def update_progress_sse(session: Session, target_type: str, target_id: str, body: dict):
-    progress = body.get("progress", None)
+    progress = body.get("progress", 0)
     remaining_time = body.get("remaining_time", None)
     # status = body.get("status", None) if progress < 100 else "COMPLETED"
     status = body.get("status", None)
+
+    is_finished = (progress == -1)
 
     # ------------------------
     # TRAIN (학습)
@@ -167,15 +172,51 @@ async def update_progress_sse(session: Session, target_type: str, target_id: str
         model_info = session.query(ModelInfo).filter(ModelInfo.id == int(target_id)).first()
         if model_info:
             model_info.progress = progress
-            if status:
-                model_info.progress_status = status
-            if progress == -1:
+
+            # if status:
+            #     model_info.progress_status = status
+            # if progress == -1:
+            #     model_info.model_version = (model_info.model_version or 0) + 1
+            #     model_info.model_status = 1 
+            #     if "accuracy" in body.keys():
+            #         model_info.accuracy = body["accuracy"]
+            #     print(f"[PROGRESS] Model {model_info.id} training completed → version {model_info.model_version}")
+            # session.commit()
+
+            if is_finished:
+                if model_info.progress_status == "COMPLETED":
+                    return {"status": True, "already_done": True}
+                model_info.progress_status = "COMPLETED"
                 model_info.model_version = (model_info.model_version or 0) + 1
-                model_info.model_status = 1 
-                if "accuracy" in body.keys():
+                model_info.model_status = 1
+
+                if "accuracy" in body:
                     model_info.accuracy = body["accuracy"]
-                print(f"[PROGRESS] Model {model_info.id} training completed → version {model_info.model_version}")
-            session.commit()
+
+                session.commit()
+
+                # [Recommendation 자동 추론 트리거]
+                if model_info.model_code.startswith("rec_"):
+                    # 상태 SSE 전송 (유저 알림용)
+                    await update_status_sse(session, "train", str(model_info.user_id), {
+                        "status": "COMPLETED",
+                        "task": "recommend",
+                        "model_id": model_info.id,
+                        "progress": -1  # 여기도 -1 유지
+                    })
+
+                    # 비동기 추론 시작 (독립 세션 사용 권장)
+                    from .ai_service import run_inference_recommendation
+                    # body 구성 시 필요한 정보를 model_info에서 추출하여 전달
+                    infer_body = {
+                        "model_id": model_info.id,
+                        "task_type": model_info.task_type,
+                        # ... 기타 필요한 파라미터들
+                    }
+                    asyncio.create_task(run_inference_recommendation(None, model_info.user_id, infer_body))
+            else:
+                model_info.progress_status = status or "RUNNING"
+                session.commit()
     # ------------------------
     # INFER (추론)
     # ------------------------
@@ -183,20 +224,19 @@ async def update_progress_sse(session: Session, target_type: str, target_id: str
         file_info = session.query(FileInfo).filter(FileInfo.id == target_id).first()
         if file_info:
             file_info.progress = progress
-            file_info.progress_status = status or file_info.progress_status
-            session.commit()
 
-        if progress >= 80 and file_info:
-            model_info = session.query(ModelInfo).filter(ModelInfo.id == file_info.model_id).first()
-            if model_info:
-                model_info.inference_completed = True
-                model_info.inference_at = datetime.now()
-                model_info.model_status = 1
-                model_info.inference_result_path = (
-                    f"/app/data/users/{model_info.user_id}/models/recommendation/{model_info.id}/inference_result.json"
-                )
+            if is_finished:
+                file_info.progress_status = "COMPLETED"
+                model_info = session.query(ModelInfo).filter(ModelInfo.id == file_info.model_id).first()
+                if model_info:
+                    # model_info.inference_completed = True
+                    model_info.last_inference_at = datetime.now()
+                    model_info.model_status = 1
                 session.commit()
-
+            else:
+                file_info.progress_status = status or "INFERRING"
+                session.commit()
+            
     # ------------------------
     # SSE broadcast
     # ------------------------

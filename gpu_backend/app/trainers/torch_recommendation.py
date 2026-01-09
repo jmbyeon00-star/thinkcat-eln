@@ -169,7 +169,8 @@ class TorchRecommendationTrainer(BaseTrainer):
                 elapsed = time.time() - start
                 est_total = elapsed / max(1e-9, step / total_steps)
                 remaining = str(timedelta(seconds=int(est_total - elapsed)))
-                safe_create_task(self._progress({"progress": min(prog, 95), "status": "RUNNING", "remaining_time": remaining}))
+            
+            # safe_create_task(self._progress({"progress": min(prog, 95), "status": "RUNNING", "remaining_time": remaining}))
 
             train_loss = t_loss / max(1, t_total)
             train_acc = t_correct / max(1, t_total)
@@ -265,11 +266,7 @@ class TorchRecommendationTrainer(BaseTrainer):
                 est_total = elapsed / max(1e-9, (batch_idx + 1) / total_batches)
                 remaining = str(timedelta(seconds=int(est_total - elapsed)))
                 
-                safe_create_task(self._progress({
-                    "progress": min(progress, 95),
-                    "status": "INFERRING",
-                    "remaining_time": remaining
-                }))
+        # safe_create_task(self._progress({ "progress": min(progress, 95), "status": "INFERRING", "remaining_time": remaining }))
 
         scores = np.concatenate(all_scores, axis=0)
         pred_labels = np.argmax(scores, axis=1)

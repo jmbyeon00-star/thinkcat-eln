@@ -99,7 +99,7 @@ async def update_status_sse(session: Session, run_type: str, user_id: str, body:
                 )
                 .first()
             )
-            print("\n\n\n\n\n\n:", model_info, target_id)
+            print("\n\n\n\n\n\n:", target_id, model_info.id, model_info.progress, model_info.progress_status)
             if model_info.model_code.startswith("rec_") and model_info.progress_status != "INFERRING":
                 print(f"[AUTO-INFER] 추천 모델 {model_info.model_code} 학습 완료 → 자동 추론 시작")
                 # 필요한 값 준비
@@ -155,7 +155,7 @@ async def _progress_event_generator(target_id: str):
 # 진행률 업데이트
 # ------------------------
 async def update_progress_sse(session: Session, target_type: str, target_id: str, body: dict):
-    progress = body.get("progress", None)
+    progress = body.get("progress", 0)
     remaining_time = body.get("remaining_time", None)
     # status = body.get("status", None) if progress < 100 else "COMPLETED"
     status = body.get("status", None)

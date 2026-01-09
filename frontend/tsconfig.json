@@ -81,6 +81,7 @@
     "components/LanguageSwitcher_251219",
     "components/project/train/TrainingSettings_251219",
     "pages/_app_260107",
+    "pages/project/[project_id]/stats_260109",
   ],
   "exclude": [
     "node_modules"
