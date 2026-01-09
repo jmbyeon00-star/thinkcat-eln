@@ -246,7 +246,8 @@ export default function ProjectStatsPage() {
                         outerRadius={150}
                         innerRadius={80}
                         paddingAngle={5}
-                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(1)}%)`}
+                        // label={({ name, percent }) => `${name} (${(percent * 100).toFixed(1)}%)`}
+                        label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(1)}%)`}
                       >
                         {currentChartData.map((_, idx) => <Cell key={`idx-${idx}`} fill={COLORS[idx % COLORS.length]} />)}
                       </Pie>
