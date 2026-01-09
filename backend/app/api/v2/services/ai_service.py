@@ -22,7 +22,8 @@ from dotenv import load_dotenv
 from datetime import datetime
 
 load_dotenv()
-GPU_BACKEND_URL = os.getenv("GPU_BACKEND_URL", "http://125.141.113.2:7001")
+# GPU_BACKEND_URL = os.getenv("GPU_BACKEND_URL", "http://125.141.113.2:7001")
+GPU_BACKEND_URL = os.getenv("NEXT_PUBLIC_GPU_BASE_URL", "http://125.141.113.2:7001")
 
 def check_user_busy(session: Session, user_id: int):
     running = session.query(ModelInfo).filter(

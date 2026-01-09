@@ -10,8 +10,9 @@ import httpx
 from dotenv import load_dotenv
 
 load_dotenv()
-BACKEND_URL  = os.getenv("BACKEND_URL",  "http://backend:8000")
 DEFAULT_PATH = os.getenv("DEFAULT_PATH", "/app")
+# BACKEND_URL  = os.getenv("BACKEND_URL",  "http://backend:8000")
+BACKEND_URL  = os.getenv("NEXT_PUBLIC_API_BASE_URL", "http://125.141.113.2:7001")
 
 def train_recommendation(payload: dict):
     if not payload:

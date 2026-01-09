@@ -2,12 +2,22 @@ import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, PieLabelRenderProps, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import ProjectLayout from "@/components/layouts/ProjectLayout";
-import { BarChart3, AlertTriangle, FileText, CheckCircle, XCircle, ArrowLeft, ArrowRight, Loader2, PieChartIcon, BarChart2, ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertTriangle, ChevronDown, BarChart3, FileText, CheckCircle, XCircle, ArrowLeft, ArrowRight, Loader2, PieChartIcon, BarChart2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { Session } from "next-auth";
 
 import { withMessages } from '@/lib/i18n/withMessages';
 export const getServerSideProps = withMessages();
+
+// --- 타입 정의 ---
+type GroupStatItem = {
+  name: string;
+  value: number;
+};
+
+type GroupInfo = {
+  code: string;
+  total: number;
+};
 
 type ProjectInfo = {
   id: number;
@@ -33,7 +43,9 @@ type CollectionInfo = {
 
 type StatsResponse = {
   project_info: ProjectInfo;
-  collection_info: CollectionInfo[];
+  collection_info: CollectionInfo[]; // 전체 컬렉션 마스터 정보
+  group_list: GroupInfo[];           // SELECT 박스용 그룹 목록
+  group_distribution: Record<string, GroupStatItem[]>; // 그룹별 컬렉션 분포 데이터
 };
 
 const COLORS = ['#3b82f6', '#06b6d4', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1'];
@@ -44,7 +56,7 @@ const CustomTooltip = ({ active, payload }: any) => {
       <div className="bg-white px-4 py-3 rounded-lg shadow-lg border border-zinc-200">
         <p className="text-sm font-semibold text-zinc-700 mb-1">{payload[0].name}</p>
         <p className="text-sm text-zinc-600">
-          문서 수: <span className="font-bold text-zinc-900">{payload[0].value}개</span>
+          문서 수: <span className="font-bold text-zinc-900">{payload[0].value.toLocaleString()}개</span>
         </p>
       </div>
     );
@@ -57,22 +69,20 @@ export default function ProjectStatsPage() {
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
   const { project_id } = router.query;
 
-  const { data: session, status: sessionStatus } = useSession() as {
-    data: (Session & { access_token?: string }) | null;
-    status: "loading" | "authenticated" | "unauthenticated";
-  };
+  const { data: session } = useSession() as any;
   const token = session?.access_token;
 
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [chartType, setChartType] = useState<'pie' | 'bar'>('pie');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [selectedGroup, setSelectedGroup] = useState<string>("all");
 
+  const itemsPerPage = 10;
   const MIN_PER_GROUP = 5;
 
   useEffect(() => {
-    if (!project_id) return;
+    if (!project_id || !token) return;
     setLoading(true);
     fetch(`${API_BASE}/api/project/${project_id}/stats`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -81,58 +91,57 @@ export default function ProjectStatsPage() {
       .then(setStats)
       .catch((err) => console.error("통계 불러오기 실패:", err))
       .finally(() => setLoading(false));
-  }, [project_id]);
+  }, [project_id, token, API_BASE]);
 
-  const projectInfo = stats?.project_info;
-  const collectionInfo: CollectionInfo[] = stats?.collection_info ?? [];
+  // --- 데이터 필터링 로직 ---
+  const groupDistribution = stats?.group_distribution ?? {};
 
-  const totalDocs = useMemo(() => {
-    const labeled = projectInfo?.labeled_documents ?? 0;
-    const unlabeled = projectInfo?.unlabeled_documents ?? 0;
-    return labeled + unlabeled;
-  }, [projectInfo]);
+  // 1. 차트와 테이블에 사용할 핵심 데이터 (선택된 그룹에 따라 결정)
+  const currentChartData = useMemo(() => {
+    if (selectedGroup === "all") {
+      const totalMap: Record<string, number> = {};
+      Object.values(groupDistribution).flat().forEach((item) => {
+        totalMap[item.name] = (totalMap[item.name] || 0) + item.value;
+      });
+      return Object.entries(totalMap).map(([name, value]) => ({ name, value }));
+    }
+    return groupDistribution[selectedGroup] ?? [];
+  }, [groupDistribution, selectedGroup]);
 
-  const pieData = useMemo(
-    () =>
-      collectionInfo.map((c) => ({
-        name: c.collection_name,
-        value: c.collection_data_num,
-      })),
-    [collectionInfo]
-  );
+  // 2. 현재 화면에 표시되는 총 문서 수
+  const currentTotalDocs = useMemo(() => {
+    return currentChartData.reduce((acc, cur) => acc + cur.value, 0);
+  }, [currentChartData]);
 
-  const invalidGroups = useMemo(
-    () => collectionInfo.filter((c) => (c.collection_data_num ?? 0) < MIN_PER_GROUP),
-    [collectionInfo]
-  );
-  const canProceed = invalidGroups.length === 0 && collectionInfo.length > 0;
-
-  // 페이지네이션 계산
-  const totalPages = Math.ceil(collectionInfo.length / itemsPerPage);
+  // 3. 페이지네이션 데이터
+  const totalPages = Math.ceil(currentChartData.length / itemsPerPage);
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return collectionInfo.slice(startIndex, endIndex);
-  }, [collectionInfo, currentPage]);
+    return currentChartData.slice(startIndex, startIndex + itemsPerPage);
+  }, [currentChartData, currentPage]);
+
+  // 4. 학습 가능 여부 (전체 마스터 컬렉션 정보 기준 유지)
+  const invalidCollections = useMemo(
+    () => (stats?.collection_info ?? []).filter((c) => (c.collection_data_num ?? 0) < MIN_PER_GROUP),
+    [stats]
+  );
+  const canProceed = invalidCollections.length === 0 && (stats?.collection_info.length ?? 0) > 0;
 
   const goNext = () => {
     if (!canProceed) {
-      const lines = invalidGroups
+      const lines = invalidCollections
         .slice(0, 8)
         .map((g) => `- ${g.collection_name || "(미분류)"}: ${g.collection_data_num}개 (필요: ${MIN_PER_GROUP}+)`)
         .join("\n");
-      alert(
-        `아래 그룹은 문서 수가 ${MIN_PER_GROUP}개 미만이라 학습을 시작할 수 없습니다.\n\n${lines}${invalidGroups.length > 8 ? `\n… 외 ${invalidGroups.length - 8}개 그룹` : ""
-        }\n\n라벨 분포를 보강한 뒤 다시 시도해주세요.`
-      );
+      alert(`일부 컬렉션의 데이터가 부족합니다.\n\n${lines}\n\n데이터를 보강해주세요.`);
       return;
     }
     router.push({
       pathname: `/project/train/${project_id}`,
       query: {
-        collection_num: projectInfo?.collection_num ?? "",
-        source_type: projectInfo?.source_type ?? "",
-        task_type: projectInfo?.task_type ?? "",
+        collection_num: stats?.project_info?.collection_num ?? "",
+        source_type: stats?.project_info?.source_type ?? "",
+        task_type: stats?.project_info?.task_type ?? "",
       },
     });
   };
@@ -141,382 +150,206 @@ export default function ProjectStatsPage() {
     return (
       <ProjectLayout>
         <div className="flex min-h-screen items-center justify-center bg-white">
-          <div className="flex items-center gap-3">
-            <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-            <span className="text-zinc-600">통계 불러오는 중...</span>
-          </div>
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mr-3" />
+          <span className="text-zinc-600 font-medium">통계 데이터를 분석하는 중...</span>
         </div>
       </ProjectLayout>
     );
   }
 
-  if (!stats) {
-    return (
-      <ProjectLayout>
-        <div className="min-h-screen bg-white p-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
-              <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <p className="text-red-700 font-semibold">통계를 불러오지 못했습니다.</p>
-            </div>
-          </div>
-        </div>
-      </ProjectLayout>
-    );
-  }
+  if (!stats) return <ProjectLayout><div className="p-20 text-center">데이터를 불러오지 못했습니다.</div></ProjectLayout>;
 
   return (
-    // <ProjectLayout step={4} sourceType={projectInfo?.source_type} projectNo={Number(project_id)}>
     <ProjectLayout
-      projectNo={projectInfo?.id}
-      projectName={projectInfo?.project_name}
-      projectDesc={projectInfo?.project_description}
-      sourceType={projectInfo?.source_type}
+      projectNo={stats.project_info.id}
+      projectName={stats.project_info.project_name}
+      projectDesc={stats.project_info.project_description}
+      sourceType={stats.project_info.source_type}
     >
       <div className="min-h-screen bg-white p-8">
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-1 h-8 bg-gradient-to-b from-blue-700 to-blue-900 rounded-full" />
-            <h1 className="text-3xl font-bold text-zinc-900">파일 통계</h1>
+        {/* 헤더 섹션 */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="w-1.5 h-8 bg-blue-700 rounded-full" />
+              <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">파일 통계</h1>
+            </div>
+            <p className="text-zinc-500 ml-4 font-medium">데이터 그룹 및 클래스별 분포 현황입니다.</p>
           </div>
-          <p className="text-zinc-600 ml-4">
-            업로드 데이터의 통계 정보를 제공합니다.
-          </p>
+
+          {/* 그룹 필터 셀렉트 */}
+          <div className="relative min-w-[300px] group">
+            <label className="block text-xs font-bold text-zinc-400 mb-1.5 ml-1 uppercase">Group Filter</label>
+            <div className="relative">
+              <select
+                value={selectedGroup}
+                onChange={(e) => {
+                  setSelectedGroup(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full appearance-none bg-zinc-50 border-2 border-zinc-200 text-zinc-700 py-3 px-4 pr-10 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-bold cursor-pointer shadow-sm group-hover:border-zinc-300"
+              >
+                <option value="all">전체 프로젝트 (All Groups)</option>
+                {stats.group_list.map((g) => (
+                  <option key={g.code} value={g.code}>
+                    {g.code} ({g.total.toLocaleString()}건)
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" size={20} />
+            </div>
+          </div>
         </div>
 
-        <div className="max-w-6xl mx-auto space-y-6">
-          {/* Warning Banner */}
-          {!canProceed && (
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 shadow-lg">
-              <div className="flex items-start gap-4">
-                <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-amber-900 mb-2">학습 시작 조건 미충족</h3>
-                  <p className="text-sm text-amber-800 mb-3">
-                    각 컬렉션에 최소 <strong>{MIN_PER_GROUP}개</strong> 이상의 데이터가 필요합니다.
-                  </p>
-                  <div className="space-y-1">
-                    {invalidGroups.slice(0, 5).map((g) => (
-                      <div key={g.id} className="text-sm text-amber-800 flex items-center gap-2">
-                        <span className="w-2 h-2 bg-amber-500 rounded-full" />
-                        <span className="font-medium">{g.collection_name || "(미분류)"}</span>
-                        <span className="text-amber-600">
-                          {g.collection_data_num}개 (부족: {MIN_PER_GROUP - (g.collection_data_num ?? 0)}개)
-                        </span>
-                      </div>
-                    ))}
-                    {invalidGroups.length > 5 && (
-                      <div className="text-sm text-amber-700 ml-4">… 외 {invalidGroups.length - 5}개 컬렉션</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Stats Cards */}
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* 수치 요약 카드 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
-                <div className="flex items-center gap-3">
-                  <FileText className="w-5 h-5 text-white" />
-                  <h3 className="text-sm font-semibold text-white">총 데이터</h3>
-                </div>
+            <div className="bg-white rounded-3xl p-6 border border-zinc-100 shadow-xl shadow-zinc-200/50">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-blue-50 rounded-lg"><FileText className="text-blue-600 w-5 h-5" /></div>
+                <h3 className="text-sm font-bold text-zinc-500">데이터 수</h3>
               </div>
-              <div className="p-6">
-                <p className="text-3xl font-bold text-zinc-900">{totalDocs.toLocaleString()}</p>
-                <p className="text-sm text-zinc-500 mt-1">전체 문서 수</p>
+              <p className="text-4xl font-black text-zinc-900">{currentTotalDocs.toLocaleString()}</p>
+              <p className="text-xs text-zinc-400 mt-2 font-medium">
+                {selectedGroup === "all" ? "프로젝트 전체 데이터 건수" : `${selectedGroup} 그룹 데이터 건수`}
+              </p>
+            </div>
+            {/* 필요시 라벨링 완료/미라벨 카드도 여기에 같은 스타일로 추가 가능 */}
+          </div>
+
+          {/* 차트 영역 */}
+          <div className="bg-white rounded-[2rem] shadow-2xl shadow-zinc-200/60 border border-zinc-100 overflow-hidden">
+            <div className="bg-indigo-600 px-8 py-6 flex justify-between items-center">
+
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <PieChartIcon size={22} className="text-blue-400" />
+                  클래스 분포
+                </h2>
+              </div>
+              <div className="flex bg-white/10 p-1 rounded-xl">
+                <button onClick={() => setChartType('pie')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${chartType === 'pie' ? 'bg-white text-zinc-900 shadow-lg' : 'text-zinc-400 hover:text-white'}`}>원형</button>
+                <button onClick={() => setChartType('bar')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${chartType === 'bar' ? 'bg-white text-zinc-900 shadow-lg' : 'text-zinc-400 hover:text-white'}`}>막대</button>
               </div>
             </div>
-
-            <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden">
-              <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-white" />
-                  <h3 className="text-sm font-semibold text-white">라벨링 완료</h3>
-                </div>
-              </div>
-              <div className="p-6">
-                <p className="text-3xl font-bold text-emerald-600">
-                  {(projectInfo?.labeled_documents ?? 0).toLocaleString()}
-                </p>
-                <p className="text-sm text-zinc-500 mt-1">
-                  {totalDocs > 0 ? `${((projectInfo?.labeled_documents ?? 0) / totalDocs * 100).toFixed(1)}%` : '0%'}
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden">
-              <div className="bg-gradient-to-r from-zinc-500 to-zinc-600 px-6 py-4">
-                <div className="flex items-center gap-3">
-                  <XCircle className="w-5 h-5 text-white" />
-                  <h3 className="text-sm font-semibold text-white">미라벨</h3>
-                </div>
-              </div>
-              <div className="p-6">
-                <p className="text-3xl font-bold text-zinc-600">
-                  {(projectInfo?.unlabeled_documents ?? 0).toLocaleString()}
-                </p>
-                <p className="text-sm text-zinc-500 mt-1">컬렉션 필요</p>
+            <div className="p-10">
+              <div className="h-[400px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  {chartType === 'pie' ? (
+                    <PieChart>
+                      <Pie
+                        data={currentChartData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={150}
+                        innerRadius={80}
+                        paddingAngle={5}
+                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(1)}%)`}
+                      >
+                        {currentChartData.map((_, idx) => <Cell key={`idx-${idx}`} fill={COLORS[idx % COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend verticalAlign="bottom" height={36} />
+                    </PieChart>
+                  ) : (
+                    <BarChart data={currentChartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} tick={{ fill: '#888', fontSize: 12 }} />
+                      <YAxis tick={{ fill: '#888', fontSize: 12 }} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
+                        {currentChartData.map((_, idx) => <Cell key={`idx-${idx}`} fill={COLORS[idx % COLORS.length]} />)}
+                      </Bar>
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
               </div>
             </div>
           </div>
 
-          {/* Chart Section */}
-          <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <BarChart3 className="w-6 h-6 text-white" />
-                    <h2 className="text-xl font-semibold text-white">컬렉션 분포</h2>
-                  </div>
-                  <p className="text-blue-100 text-sm mt-2">컬렉션별 데이터 분포를 확인하세요</p>
-                </div>
-
-                {/* Chart Type Toggle */}
-                <div className="flex bg-white/20 rounded-lg p-1 gap-1">
-                  <button
-                    onClick={() => setChartType('pie')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all ${chartType === 'pie'
-                      ? 'bg-white text-blue-600 shadow-md'
-                      : 'text-white hover:bg-white/10'
-                      }`}
-                  >
-                    <PieChartIcon size={18} />
-                    <span className="text-sm font-medium">원형</span>
-                  </button>
-                  <button
-                    onClick={() => setChartType('bar')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all ${chartType === 'bar'
-                      ? 'bg-white text-blue-600 shadow-md'
-                      : 'text-white hover:bg-white/10'
-                      }`}
-                  >
-                    <BarChart2 size={18} />
-                    <span className="text-sm font-medium">막대</span>
-                  </button>
-                </div>
-              </div>
+          {/* 테이블 영역 */}
+          <div className="bg-white rounded-[2rem] shadow-xl border border-zinc-100 overflow-hidden">
+            <div className="px-8 py-6 border-b border-zinc-100 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-zinc-900">상세 리스트</h2>
+              <span className="bg-blue-50 text-blue-700 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
+                {currentChartData.length} Classes Found
+              </span>
             </div>
-
-            <div className="p-8">
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    {chartType === 'pie' ? (
-                      <PieChart>
-                        <Pie
-                          data={pieData}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={120}
-                          label={(props: PieLabelRenderProps) => {
-                            const name = props.name as string;
-                            const percent = props.percent as number;
-                            if (percent) {
-                              return `${name} (${(percent * 100).toFixed(1)}%)`;
-                            }
-                            return name;
-                          }}
-                          labelLine={{ stroke: '#64748b', strokeWidth: 1 }}
-                        >
-                          {pieData.map((_, idx) => (
-                            <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip content={<CustomTooltip />} />
-                      </PieChart>
-                    ) : (
-                      <BarChart data={pieData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                        <XAxis
-                          dataKey="name"
-                          angle={-45}
-                          textAnchor="end"
-                          height={100}
-                          tick={{ fill: '#52525b', fontSize: 12 }}
-                        />
-                        <YAxis tick={{ fill: '#52525b', fontSize: 12 }} />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                          {pieData.map((_, idx) => (
-                            <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    )}
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Table Section */}
-          <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-white">컬렉션별 상세 정보</h2>
-                <span className="text-blue-100 text-sm">
-                  전체 {collectionInfo.length}개 컬렉션
-                </span>
-              </div>
-            </div>
-
-            <div className="p-8">
-              <div className="overflow-hidden rounded-xl border-2 border-zinc-200">
-                <table className="w-full">
-                  <thead className="bg-zinc-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-zinc-700">컬렉션</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-zinc-700">문서 수</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-zinc-700">비율</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-zinc-700">상태</th>
+            <div className="p-0">
+              <table className="w-full text-left">
+                <thead className="bg-zinc-50">
+                  <tr>
+                    <th className="px-8 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">컬렉션 명</th>
+                    <th className="px-8 py-4 text-right text-xs font-bold text-zinc-400 uppercase tracking-widest">데이터 수</th>
+                    <th className="px-8 py-4 text-right text-xs font-bold text-zinc-400 uppercase tracking-widest">비율(%)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {paginatedData.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[((currentPage - 1) * itemsPerPage + idx) % COLORS.length] }} />
+                          <span className="font-bold text-zinc-700 group-hover:text-blue-700 transition-colors">{item.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-8 py-5 text-right font-black text-zinc-900">{item.value.toLocaleString()}</td>
+                      <td className="px-8 py-5 text-right">
+                        <span className="inline-block px-3 py-1 bg-zinc-100 rounded-lg text-xs font-bold text-zinc-500">
+                          {((item.value / currentTotalDocs) * 100).toFixed(1)}%
+                        </span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedData.map((c, idx) => {
-                      const isInsufficient = c.collection_data_num < MIN_PER_GROUP;
-                      const originalIndex = (currentPage - 1) * itemsPerPage + idx;
-                      return (
-                        <tr
-                          key={c.id}
-                          className={`border-t border-zinc-200 transition-colors ${isInsufficient ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-blue-50'
-                            }`}
-                        >
-                          <td className="px-4 py-3 text-sm">
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: COLORS[originalIndex % COLORS.length] }}
-                              />
-                              <span className="font-medium text-zinc-900">{c.collection_name}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm font-semibold text-zinc-900">
-                            {c.collection_data_num.toLocaleString()}
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm text-zinc-600">
-                            {(c.collection_data_ratio * 100).toFixed(1)}%
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {isInsufficient ? (
-                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-semibold">
-                                <AlertTriangle size={12} />
-                                부족 ({MIN_PER_GROUP - c.collection_data_num}개)
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-semibold">
-                                <CheckCircle size={12} />
-                                정상
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
 
-              {/* Pagination */}
+              {/* 페이지네이션 버튼 */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-6">
-                  <div className="text-sm text-zinc-600">
-                    {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, collectionInfo.length)} / {collectionInfo.length}
-                  </div>
-
-                  <div className="flex items-center gap-2">
+                <div className="p-6 border-t border-zinc-50 flex items-center justify-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-xl border border-zinc-200 disabled:opacity-30 hover:bg-zinc-50 transition-all"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                     <button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                      className={`flex items-center gap-1 px-4 py-2 rounded-lg font-medium transition-all ${currentPage === 1
-                        ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
-                        : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                        }`}
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${currentPage === page ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-zinc-100 text-zinc-600'}`}
                     >
-                      <ChevronLeft size={18} />
-                      이전
+                      {page}
                     </button>
-
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                        // 페이지 번호 표시 로직: 첫 페이지, 마지막 페이지, 현재 페이지 근처만 표시
-                        if (
-                          page === 1 ||
-                          page === totalPages ||
-                          (page >= currentPage - 1 && page <= currentPage + 1)
-                        ) {
-                          return (
-                            <button
-                              key={page}
-                              onClick={() => setCurrentPage(page)}
-                              className={`w-10 h-10 rounded-lg font-medium transition-all ${currentPage === page
-                                ? 'bg-blue-600 text-white shadow-md'
-                                : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
-                                }`}
-                            >
-                              {page}
-                            </button>
-                          );
-                        } else if (
-                          page === currentPage - 2 ||
-                          page === currentPage + 2
-                        ) {
-                          return (
-                            <span key={page} className="text-zinc-400 px-2">
-                              ...
-                            </span>
-                          );
-                        }
-                        return null;
-                      })}
-                    </div>
-
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages}
-                      className={`flex items-center gap-1 px-4 py-2 rounded-lg font-medium transition-all ${currentPage === totalPages
-                        ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
-                        : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                        }`}
-                    >
-                      다음
-                      <ChevronRight size={18} />
-                    </button>
-                  </div>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-xl border border-zinc-200 disabled:opacity-30 hover:bg-zinc-50 transition-all"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-between items-center">
+          {/* 이전/다음 액션 버튼 */}
+          <div className="flex justify-between items-center pt-10">
             <button
               onClick={() => router.push(`/project/preview/${project_id}`)}
-              className="px-6 py-3 bg-zinc-200 text-zinc-700 rounded-xl hover:bg-zinc-300 font-medium transition-all flex items-center gap-2"
+              className="flex items-center gap-2 px-8 py-4 bg-zinc-100 text-zinc-600 rounded-2xl font-bold hover:bg-zinc-200 transition-all"
             >
-              <ArrowLeft size={18} />
-              이전 단계
+              <ArrowLeft size={20} /> 이전 단계
             </button>
-
             <button
               onClick={goNext}
-              disabled={!canProceed}
-              className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2 ${canProceed
-                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700'
-                : 'bg-zinc-300 text-zinc-500 cursor-not-allowed'
-                }`}
-              title={
-                canProceed
-                  ? '학습 페이지로 이동'
-                  : `모든 라벨이 최소 ${MIN_PER_GROUP}개 이상이어야 이동할 수 있습니다.`
-              }
+              className={`flex items-center gap-2 px-10 py-4 rounded-2xl font-bold transition-all shadow-xl ${canProceed ? 'bg-indigo-600 text-white hover:bg-indigo-800 shadow-zinc-300' : 'bg-indigo-200 text-indigo-400 cursor-not-allowed shadow-none'}`}
             >
-              학습 설정
-              <ArrowRight size={18} />
+              학습 설정 <ArrowRight size={20} />
             </button>
           </div>
         </div>

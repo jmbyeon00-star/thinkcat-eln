@@ -352,7 +352,7 @@ export default function ProjectModelDetailPage() {
                                         <p className="text-sm font-semibold text-slate-500 mb-1">총 Epoch</p>
                                         {/* <p className="text-2xl font-bold text-slate-900">{prevEpoch}</p> */}
                                         <p className="text-2xl font-bold text-slate-900">
-                                            {isNaN(Number(prevEpoch)) ? '-' : `${prevEpoch}(${prevEpoch - added}+${added})`}
+                                            {isNaN(Number(prevEpoch)) ? '-' : `${prevEpoch + added}(${prevEpoch}+${added})`}
                                         </p>
                                     </div>
                                 </div>

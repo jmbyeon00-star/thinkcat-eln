@@ -93,7 +93,6 @@ async def analyze_search_intent(user_query: str) -> dict:
         user_prompt=user_query,
         system_prompt=SYSTEM_PROMPT,
     )
-    print(">>>", text, "<<<")
 
     intent = extract_json(text)
     return intent

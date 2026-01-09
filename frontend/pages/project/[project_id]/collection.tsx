@@ -39,6 +39,7 @@ function CollectionSettingPageContent() {
 
     const [projectInfo, setProjectInfo] = useState<ProjectInfo | null>(null);
     const [collectionInfo, setCollectionInfo] = useState<CollectionInfo[] | []>([]);
+    console.log(">>> collectionInfo:", collectionInfo)
     const [loading, setLoading] = useState(true);
 
     const [query, setQuery] = useState("");
@@ -46,8 +47,6 @@ function CollectionSettingPageContent() {
     const [limit] = useState(10);
     const [total, setTotal] = useState(0);
     const [totalDataNum, setTotalDataNum] = useState(0);
-
-    console.log("collectionInfo:", collectionInfo)
 
     // --- Data Loading Logic (실제 Fetch 사용) ---
     const loadCollections = useCallback(async () => {

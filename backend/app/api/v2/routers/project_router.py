@@ -57,7 +57,6 @@ def get_projects(
     q: str | None = Query(None, description="검색어"),
 ):
     user_id = token_data.user_id
-    print(">>> user_id:", user_id)
     return project_service.get_projects(session, user_id=user_id, page=page, limit=limit, q=q)
 
 # 프로젝트 단건 조회

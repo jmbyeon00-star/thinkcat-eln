@@ -245,6 +245,42 @@ def get_project_data(session: Session, project_id: int):
     }
 
 def get_project_stats(session: Session, project_id: int):
+    # project_groups = (
+    #     session.query(
+    #         ProjectData.group_code,
+    #         func.count(ProjectData.id).label('data_count')
+    #     )
+    #     .filter_by(project_id=project_id)
+    #     .group_by(ProjectData.group_code)
+    #     .all()
+    # )
+    # group_stats = [{"group_code": g[0], "count": g[1]} for g in project_groups]
+    
+    # 1. 모든 그룹 리스트 가져오기 (Select 박스용)
+    group_list = session.query(
+        ProjectData.group_code,
+        func.count(ProjectData.id).label('cnt')
+    ).filter_by(project_id=project_id).group_by(ProjectData.group_code).all()
+
+    # 2. 그룹별 컬렉션 분포 데이터 가져오기
+    # 예: (group_code, collection_name, count)
+    stats_raw = session.query(
+        ProjectData.group_code,
+        CollectionInfo.collection_name,
+        func.count(ProjectData.id).label('doc_count')
+    ).join(CollectionInfo, ProjectData.collection_id == CollectionInfo.id) \
+     .filter(ProjectData.project_id == project_id) \
+     .group_by(ProjectData.group_code, CollectionInfo.collection_name).all()
+
+    # 프론트엔드에서 필터링하기 쉬운 구조로 변환
+    group_distribution = {}
+    for g_code, c_name, count in stats_raw:
+        if g_code not in group_distribution:
+            group_distribution[g_code] = []
+        group_distribution[g_code].append({"name": c_name, "value": count})
+
+    print(">>> group_distribution:", group_distribution)
+
     project_info = (
         session.query(ProjectInfo)
         .filter_by(id=project_id)
@@ -258,11 +294,13 @@ def get_project_stats(session: Session, project_id: int):
     
     return {
         'project_info': project_info,
-        'collection_info': collection_info
+        'collection_info': collection_info,
+        'group_list': [{"code": g[0], "total": g[1]} for g in group_list],
+        "group_distribution": group_distribution, # { "group_A": [{"name": "Label1", "value": 10}, ...], "group_B": [...] }
     }
 
 def get_project_collections(session: Session, user_id: int, project_id: int, page: int, limit: int, q: str) -> Dict[str, Any]:
-    project_info = session.query(ProjectInfo).filter(ProjectInfo.id == project_id).first()
+    project_info = session.query(ProjectInfo).filter(ProjectInfo.user_id == user_id, ProjectInfo.id == project_id).first()
     # 1. 프로젝트 전체 컬렉션 데이터 수 계산
     # CollectionInfo.collection_data_num의 합계를 구합니다.
     total_data_num_query = session.query(
@@ -273,7 +311,7 @@ def get_project_collections(session: Session, user_id: int, project_id: int, pag
     total_data_num = total_data_num_query.scalar() or 0
 
     # 2. 페이지네이션을 위한 쿼리
-    query = session.query(CollectionInfo).filter(CollectionInfo.project_id == project_id)
+    query = session.query(CollectionInfo).filter(CollectionInfo.user_id == user_id, CollectionInfo.project_id == project_id)
 
     # 검색어 처리 (기존 코드 유지)
     if q:
@@ -306,7 +344,7 @@ def get_project_collections(session: Session, user_id: int, project_id: int, pag
             item_dict['calculated_ratio'] = 0.0
 
         collections_info.append(item_dict)
-    print(project_info.to_dict())
+    
     return {
         "project_info": project_info.to_dict(),
         "collection_info": collections_info,

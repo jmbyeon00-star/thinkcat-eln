@@ -21,8 +21,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GPU_BACKEND_URL = os.getenv("GPU_BACKEND_URL", "http://125.141.113.2:7001")
-GPU_SERVER_URL = os.getenv("GPU_SERVER_URL", "http://125.141.113.2:7001")
+GPU_BACKEND_URL = os.getenv("NEXT_PUBLIC_GPU_BASE_URL", "http://125.141.113.2:7001")
 
 SYSTEM_PREFIXES = (
     "[GPU_CONNECTED]",
@@ -94,6 +93,8 @@ async def run_chat_session(session: AsyncSession, user_id, payload: Dict) -> Dic
             "user_id": user_id,
             "model_type": "gemma3:4b"
         })
+        print(">>> GPU_BACKEND_URL:", GPU_BACKEND_URL)
+        print(">>> payload:", payload)
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 f"{GPU_BACKEND_URL}/gpu/chat/ollama", 

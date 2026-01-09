@@ -148,6 +148,7 @@ export default function ProjectLayout({
   // -------------------------------------------------------------
   return (
     <div className="w-full bg-white min-h-screen">
+
       {/* 프로필 섹션 */}
       <div className="bg-white">
         <div className="mx-auto w-full max-w-6xl px-5">
@@ -165,14 +166,16 @@ export default function ProjectLayout({
                 </h1>
 
                 <Link
-                  href={`/project/${projectNo}/data/${sourceType}`}
+                  // href={`/project/${projectNo}/data/${sourceType}`}
+                  // href={`/project/${projectNo}/models/new?collection_num=${}&task_type=${}&source_type=${sourceType}`}
+                  href={`/project/${projectNo}/models/new`}
                   className="group flex items-center justify-center w-10 h-10 rounded-full bg-white text-blue-600 border border-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all duration-300 shadow-md overflow-hidden hover:w-32 hover:rounded-3xl"
                 >
                   <div className="absolute flex items-center justify-center transition-opacity duration-200 group-hover:opacity-0">
                     <Plus className="h-5 w-5" />
                   </div>
                   <span className="opacity-0 transition-opacity duration-300 group-hover:opacity-100 text-sm font-medium whitespace-nowrap">
-                    데이터 추가
+                    모델 만들기
                   </span>
                 </Link>
               </div>
@@ -199,47 +202,54 @@ export default function ProjectLayout({
         </div>
       </div>
 
-      {/* 메인 탭 네비게이션 */}
-      <div className="bg-white border-b border-zinc-200">
-        <div className="mx-auto w-full max-w-6xl px-5">
-          <nav className="flex gap-8">
-            {tabs.map((tab) => (
-              <Link
-                key={tab.id}
-                href={tab.href}
-                className={`py-3 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-zinc-600 hover:text-zinc-900"
-                  }`}
-              >
-                {tab.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </div>
+      {/* 고정 세션 */}
+      <div className="sticky top-[64px] z-[40] bg-white border-b border-zinc-200">
 
-      {/* 데이터 서브 탭 (데이터 탭이 활성화되었을 때만 표시) */}
-      {showDataSubTabs && (
-        <div className="bg-zinc-50 border-b border-zinc-200">
-          <div className="mx-auto w-full max-w-6xl px-5 py-4">
-            <div className="inline-flex rounded-lg border border-zinc-200 p-1 bg-white">
-              {dataSubTabs.map((tab) => (
+        {/* 메인 탭 네비게이션 */}
+        <div className="bg-white border-b border-zinc-200">
+          <div className="mx-auto w-full max-w-6xl px-5">
+            <nav className="flex gap-8">
+              {tabs.map((tab) => (
                 <Link
                   key={tab.id}
                   href={tab.href}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeDataSubTab === tab.id
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
+                  className={`py-3 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-zinc-600 hover:text-zinc-900"
                     }`}
                 >
                   {tab.label}
                 </Link>
               ))}
+            </nav>
+          </div>
+
+        </div>
+
+
+        {/* 데이터 서브 탭 (데이터 탭이 활성화되었을 때만 표시) */}
+        {showDataSubTabs && (
+          <div className="bg-zinc-50 border-b border-zinc-200">
+            <div className="mx-auto w-full max-w-6xl px-5 py-4">
+              <div className="inline-flex rounded-lg border border-zinc-200 p-1 bg-white">
+                {dataSubTabs.map((tab) => (
+                  <Link
+                    key={tab.id}
+                    href={tab.href}
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeDataSubTab === tab.id
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
+                      }`}
+                  >
+                    {tab.label}
+                  </Link>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+      </div>
 
       {/* 본문 컨텐츠 */}
       <div className="mx-auto w-full max-w-7xl px-5 py-8">

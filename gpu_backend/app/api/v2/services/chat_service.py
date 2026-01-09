@@ -262,12 +262,12 @@ async def chat_stream_with_ollama(payload: dict):
 
         decision = await decision_call(user_query)
         yield f"data: [DECISION:{decision.action}]\n\n"
-
+        
+        decision.action = "direct"
         if decision.action == "direct":
             async for token in stream_generate_text(prompt=user_query):
                 yield f"data: {token}\n\n"
                 await asyncio.sleep(0)
-
         else:
             yield "data: 현재 search 스트림 미구현\n\n"
 
