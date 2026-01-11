@@ -102,7 +102,7 @@ jobs:
               cd "${REPO_DIR}"
               git fetch origin
               git reset --hard "origin/${BRANCH}"
-              git clean -fd
+              git clean -fd -e .well-known/
               cd ..
             fi
 
