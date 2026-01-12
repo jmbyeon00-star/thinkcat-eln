@@ -151,6 +151,7 @@ def get_project_collections(
     q: str | None = Query(None, description="검색어 (파일명 또는 모델코드)")
 ):
     user_id = get_current_user_from_request(request)
+    print("user_id:", user_id)
     return project_service.get_project_collections(session, user_id, project_id, page, limit, q)
 
 @router.get("/{project_id}/preview")
@@ -178,7 +179,6 @@ def get_project_data_groups(
 ):
     user_id = get_current_user_from_request(request)
     return project_service.get_project_data_groups(session, user_id, project_id, page, limit, q)
-
 
 # 프로젝트 데이터 입력
 @router.post("/{project_id}/data/insert")
@@ -216,7 +216,6 @@ async def upload_project_source(
         parsed_project_info = {}
         if project_info:
             try:
-                import json
                 parsed_project_info = json.loads(project_info)
                 print(f"[DEBUG] project_info parsed OK keys={list(parsed_project_info.keys())}")
             except Exception as e:

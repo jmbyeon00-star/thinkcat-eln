@@ -128,6 +128,7 @@ def get_model_detail(session: Session, user_id: int, model_id: int):
 async def run_training(session, user_id: int, target_id: int, payload: dict):
     start = time.perf_counter()
 
+    print(">>> train page payload:", payload.keys(), payload['collection_num'])
     data_scope = payload.get("data_scope", "").lower()
     task_type = payload.get("task_type", "").lower()
     run_type = payload.get("run_type", "").lower()
@@ -199,7 +200,6 @@ async def run_training(session, user_id: int, target_id: int, payload: dict):
         # model_info.updated_datetime = target_updated
         model_info.progress = 0
         model_info.progress_status = "RUNNING"
-        session.commit()
 
         # 2. 엑셀 파일 읽기 및 데이터 변환
         contents = await file.read()
@@ -232,7 +232,11 @@ async def run_training(session, user_id: int, target_id: int, payload: dict):
     # 3. 데이터 입력 (insert_project_data 호출)
     from app.utils.common import generate_data_group_code
     group_code = generate_data_group_code()
-    project_service.insert_project_data(session, user_id, target_id, group_code, dataset)
+    inserted_data_info = project_service.insert_project_data(session, user_id, target_id, group_code, dataset)
+    print(">>> inserted_data_info:", inserted_data_info)
+
+    model_info.collection_num = inserted_data_info["collections"]
+    session.commit()
 
     # 4. GPU 서버로 보낼 최종 페이로드 구성
     gpu_payload = {
@@ -368,7 +372,6 @@ async def run_auto_recommend(session: Session, user_id: int, collection_id: int,
     if not latest_model:
         print("추천 모델 없음 -> 신규 학습 시작")
         try:
-            print("?:", body)
             return await run_training(session=session, user_id=user_id, target_id=collection_info.id, payload=body)
         except Exception as e:
             print(">>> Error", str(e))

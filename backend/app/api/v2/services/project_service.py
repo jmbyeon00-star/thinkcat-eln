@@ -435,7 +435,6 @@ def insert_project_data(session: Session, user_id: int, project_id: int, group_c
     # ---- 객체 리스트 사용 ----
     # 결과 변수 초기화 (오류 발생 시에도 반환 가능하도록)
     collections_num, labeled_num, unlabeled_num = 0, 0, 0 
-    print(">>> def insert_project_data:", body)
     
     try:
         project_info = session.query(ProjectInfo).filter(ProjectInfo.id==project_id, ProjectInfo.user_id==user_id).first()

@@ -205,6 +205,7 @@ export default function ProjectTrainPage() {
         if (!projectInfo) return;
 
         if (dataSummary && trainingConfig) {
+            console.log(">>>", dataSummary)
             console.log('Final Training Start Payload:', { dataSummary, trainingConfig, projectInfo });
             const dataset = {
                 sources: dataSummary,
@@ -230,6 +231,7 @@ export default function ProjectTrainPage() {
                     learning_rate: trainingConfig.learningRate,
                     max_length: trainingConfig.maxLength,
                     shuffle: trainingConfig.shuffle,
+
                     data_scope: "project",
                     collection_num: projectInfo?.collection_num,
                     task_type: projectInfo?.task_type,
