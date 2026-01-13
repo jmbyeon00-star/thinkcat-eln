@@ -697,29 +697,31 @@ async def search_with_mcp(payload: dict):
     # results = await search_with_ollama(user_query)
 
     # 1. 검색 의도 분석
-    intent = await analyze_search_intent(user_query) if user_query else {}
-    # print("\n\n\n>>> search mcp intent:", intent)
+    if not user_query:
+        # ✨ [핵심] 검색어가 없으면 LLM을 부르지 않고, 프론트의 options를 intent 구조로 변환
+        print(">>> 검색어 없음: LLM 분석 스킵, 전달받은 options 사용")
+        print(body)
+        intent = {
+            "filters": options.get("filters", {}),
+            "exact_match": options.get("exact_match", {}),
+            "text_query": {"keywords": [], "fields": ["title", "abstract", "claim"]},
+            "use_vector": options.get("use_vector", False)
+        }
+    else:
+        intent = await analyze_search_intent(user_query) if user_query else {}
+        print("\n\n\n>>> search mcp intent:", intent)
 
-    if "filters" not in intent: intent["filters"] = {}
-    
-    filter_keys = ["applicant_name", "filing_year", "inventor_name", "applicant_code"]
-
-    for key in filter_keys:
-        ui_val = ui_options.get("filters", {}).get(key)
-        intent_val = intent["filters"].get(key)
-        
-        # LLM이 분석을 못했거나({}) 비어있는데, UI(옵션)에는 값이 있는 경우 -> UI 값 유지
-        if (not intent_val or intent_val == {}) and ui_val:
-            intent["filters"][key] = ui_val
-
-    # 2. 임베딩
+    # 2. 임베딩 (선택)
+    # query_vector = None
+    # if intent.get("use_vector"):
+    # query_vector = get_embedding(user_query)
     query_vector = None
     if user_query:
         query_vector = get_embedding(user_query)
     # print(">>>", query_vector, "<<<")
 
     # 3. ES DSL 생성
-    query_dsl = build_es_query_from_intent(intent, ui_options, query_vector, raw_query=user_query)
+    query_dsl = build_es_query_from_intent(intent, options, query_vector, raw_query=user_query)
     print("\n\n\n>>> search mcp query_dsl:", query_dsl)
 
     # 4. MCP 검색 실행

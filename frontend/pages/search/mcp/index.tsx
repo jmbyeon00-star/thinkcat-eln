@@ -43,8 +43,16 @@ export default function SearchPage() {
         // console.log("target:", e.target)
         // console.log("currentTarget:", e.currentTarget)
 
-        if (!query.trim()) {
-            setSummary('검색어를 입력해 주세요.');
+        // if (!query.trim()) return;
+        const hasQuery = query.trim().length > 0;
+        const hasFilters = Object.values(options.filters).some(value =>
+            value !== null && value !== "" && (typeof value !== 'object' || Object.keys(value).length > 0)
+        );
+        const hasExactMatch = Object.values(options.exact_match).some(value =>
+            value !== null && value !== ""
+        );
+        if (!hasQuery && !hasFilters && !hasExactMatch) {
+            setSummary('검색어 또는 필터 옵션을 입력해 주세요.');
             setResults([]);
             return;
         }
@@ -53,7 +61,14 @@ export default function SearchPage() {
         setError(null);
         setSummary('');
         setResults([]);
-        console.log("options:", options)
+
+        const initialOptions = {
+            ...options,
+            filters: {},
+            exact_match: {}
+        };
+        console.log(">>> options:", initialOptions)
+
         try {
             // 1. FastAPI 백엔드에 POST 요청 전송
             const response = await fetch(`${API_BASE}/api/search/mcp`, {
@@ -73,7 +88,8 @@ export default function SearchPage() {
 
             // 2. 응답 데이터 파싱
             const data = await response.json();
-            console.log(">>>>> response:", data)
+            console.log(">>> response:", data)
+
             // 3. 상태 업데이트
             setSummary(
                 Array.isArray(data.intent.text_query.keywords)
@@ -90,6 +106,12 @@ export default function SearchPage() {
             }));
 
         } catch (err: any) {
+            setOptions(prev => ({
+                ...prev,
+                filters: {},
+                exact_match: {}
+            }));
+
             console.error('검색 중 오류 발생:', err);
             setError(`검색에 실패했습니다: ${err.message}. 백엔드(FastAPI) 서버가 실행 중인지 확인해 주세요.`);
             setSummary('검색 실패');
@@ -240,7 +262,7 @@ export default function SearchPage() {
                         </div>
                     </section>
 
-                    {/* 출원 정보 */}
+                    {/* 발명자 정보 */}
                     <section>
                         <h3 className="flex items-center gap-2 font-semibold text-slate-700 mb-3">
                             <Info size={18} className="text-slate-500" />
@@ -250,7 +272,32 @@ export default function SearchPage() {
                         <div className="flex gap-4">
                             <input
                                 type="text"
-                                placeholder="출원인"
+                                placeholder="출원번호(Application Number)"
+                                className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-lg focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100"
+                                value={options.exact_match?.application_number ?? ""}
+                                onChange={(e) =>
+                                    setOptions(prev => ({
+                                        ...prev,
+                                        exact_match: { ...prev.exact_match, application_number: e.target.value }
+                                    }))
+                                }
+                            />
+                            <input
+                                type="text"
+                                placeholder="출원인(Applicant)"
+                                className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-lg focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100"
+                                value={options.filters.applicant_name ?? ""}
+                                onChange={(e) =>
+                                    setOptions(prev => ({
+                                        ...prev,
+                                        filters: { ...prev.filters, applicant_name: e.target.value }
+                                    }))
+                                }
+                            />
+
+                            <input
+                                type="text"
+                                placeholder="발명인(Inventor)"
                                 className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-lg focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100"
                                 value={options.filters.inventor_name ?? ""}
                                 onChange={(e) =>
@@ -261,20 +308,9 @@ export default function SearchPage() {
                                 }
                             />
 
-                            <input
-                                type="text"
-                                placeholder="출원번호"
-                                className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-lg focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100"
-                                value={options.exact_match?.application_number ?? ""}
-                                onChange={(e) =>
-                                    setOptions(prev => ({
-                                        ...prev,
-                                        exact_match: { ...prev.exact_match, application_number: e.target.value }
-                                    }))
-                                }
-                            />
                         </div>
                     </section>
+
                 </div>
 
                 {/* 에러 */}
@@ -311,8 +347,9 @@ export default function SearchPage() {
                             <div key={idx} className="p-4 border rounded-lg shadow-sm">
                                 <p><strong>특허명:</strong> {item._source.title}</p>
                                 <p><strong>출원번호:</strong> {item._source.application_number ?? item._source.address}</p>
-                                <p><strong>출원자:</strong> {item._source.inventor_name}</p>
+                                <p><strong>출원인:</strong> {item._source.applicant_name}</p>
                                 <p><strong>출원일:</strong> {item._source.filing_date}</p>
+                                <p><strong>발명인:</strong> {item._source.inventor_name}</p>
                                 <p><strong>상태:</strong> {item._source.end_status}</p>
                             </div>
                         ))}

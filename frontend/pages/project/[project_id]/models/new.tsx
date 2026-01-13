@@ -205,13 +205,13 @@ export default function ProjectTrainPage() {
         if (!projectInfo) return;
 
         if (dataSummary && trainingConfig) {
-            console.log(">>>", dataSummary)
-            console.log('Final Training Start Payload:', { dataSummary, trainingConfig, projectInfo });
             const dataset = {
                 sources: dataSummary,
                 items: trainingDataItems,
                 n_items: counterDataItems,
             };
+            console.log('Final Training Start Payload:', { dataSummary, trainingConfig, projectInfo, dataset });
+
 
             setState({ isBusy: true, status: 'RUNNING', progress: 0 })
             setIsLoading(true);

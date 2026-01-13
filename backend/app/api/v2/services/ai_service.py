@@ -128,7 +128,7 @@ def get_model_detail(session: Session, user_id: int, model_id: int):
 async def run_training(session, user_id: int, target_id: int, payload: dict):
     start = time.perf_counter()
 
-    print(">>> train page payload:", payload.keys(), payload['collection_num'])
+    print(">>> train page payload:", payload.keys())
     data_scope = payload.get("data_scope", "").lower()
     task_type = payload.get("task_type", "").lower()
     run_type = payload.get("run_type", "").lower()
