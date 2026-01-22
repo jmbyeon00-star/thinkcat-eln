@@ -10,7 +10,6 @@ openpyxl
 sqlalchemy
 pymysql
 passlib
-pandas
 python-dotenv
 httpx
 python-jose[cryptography]
@@ -19,5 +18,9 @@ python-multipart
 pydantic_settings
 aiomysql
 
-#####
-statsmodels==0.14.5
+# 🚀 [핵심] statsmodels와 scipy의 호환성 고정
+numpy<2.0.0
+pandas<2.2.0
+scipy<1.14.0      # 1.14.0 이상에서 _lazywhere 관련 ImportError 발생
+statsmodels==0.14.4
+patsy>=0.5.6
