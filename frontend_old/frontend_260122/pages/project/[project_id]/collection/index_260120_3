@@ -1,0 +1,498 @@
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/router";
+import { useSession } from "next-auth/react";
+import { Session } from "next-auth";
+import Head from "next/head";
+import {
+  Folder, Database, FileText, Search, LayoutGrid, Table,
+  ChevronLeft, ChevronRight, BarChart3, PieChart as PieChartIcon,
+  Plus, XCircle, Loader2, Edit3, ChevronDown, ChevronUp, Save, ArrowRight
+} from "lucide-react";
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
+} from "recharts";
+
+import ProjectLayout from "@/components/layouts/ProjectLayout";
+import AddCollectionModal from "@/components/collection/AddCollectionModal";
+import { useCollectionActions } from "@/hooks/project/useCollectionActions";
+import { withMessages } from '@/lib/i18n/withMessages';
+import { CollectionInfo } from "@/types/collection";
+import { ProjectInfo } from "@/types/project";
+import { ModelInfo } from "@/lib/types";
+
+export const getServerSideProps = withMessages();
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF19A6', '#19FFD1', '#5B86E5', '#A52A2A', '#004D40'];
+
+type PreviewItem = {
+  pdid: number;
+  application_number: string;
+  title: string;
+  abstract?: string;
+  collection_name?: string;
+};
+
+export default function IntegratedProjectPage() {
+  const router = useRouter();
+  const { project_id } = router.query;
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  const { data: session } = useSession() as {
+    data: (Session & { access_token?: string }) | null;
+  };
+  const token = session?.access_token;
+
+  // --- UI 상태 ---
+  const [viewMode, setViewMode] = useState<"grid" | "table" | "stats" | "preview">("grid");
+  const [chartType, setChartType] = useState<'bar' | 'pie'>('bar');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // --- 컬렉션 데이터 상태 ---
+  const [collections, setCollections] = useState<CollectionInfo[]>([]);
+  const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
+  const [total, setTotal] = useState(0);
+  const [totalDataNum, setTotalDataNum] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit] = useState(6);
+  const [selectedCollections, setSelectedCollections] = useState<{ id: number, code: string }[]>([]);
+
+  // --- 미리보기(데이터 편집) 상태 ---
+  const [previewItems, setPreviewItems] = useState<PreviewItem[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [editingCell, setEditingCell] = useState<{ row: number; key: keyof PreviewItem } | null>(null);
+  const [modified, setModified] = useState<Record<number, Partial<PreviewItem>>>({});
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [previewPage, setPreviewPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+
+  // --- 데이터 로딩 함수 (컬렉션) ---
+  const loadCollections = useCallback(async () => {
+    if (!project_id || !token) return;
+    try {
+      setLoading(true);
+      const res = await fetch(
+        `${API_BASE}/api/project/${project_id}/collection?page=${page}&limit=${limit}&q=${encodeURIComponent(query)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      setCollections(data.collection_info || []);
+      setModelInfo(data.model_info);
+      setTotal(data.total_collections || 0);
+      setTotalDataNum(data.total_data_num || 0);
+    } catch (e) {
+      console.error("데이터 로드 실패:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [project_id, token, page, limit, query, API_BASE]);
+
+  // --- 데이터 로딩 함수 (미리보기) ---
+  const loadPreview = useCallback(async () => {
+    if (!project_id || !token) return;
+    try {
+      setPreviewLoading(true);
+      const res = await fetch(`${API_BASE}/api/project/${project_id}/preview`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setPreviewItems(data.items || []);
+    } catch (e) {
+      alert("미리보기 데이터를 불러오지 못했습니다.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [project_id, token, API_BASE]);
+
+  useEffect(() => {
+    const debounce = setTimeout(loadCollections, 300);
+    return () => clearTimeout(debounce);
+  }, [loadCollections]);
+
+  useEffect(() => {
+    if (viewMode === "preview") loadPreview();
+  }, [viewMode, loadPreview]);
+
+  // 커스텀 훅 (컬렉션 액션)
+  const { addCollection, deleteCollections, isActionLoading } = useCollectionActions(
+    project_id as string,
+    token,
+    loadCollections
+  );
+
+  // --- 핸들러 함수 (데이터 편집) ---
+  const handleDataChange = (row: number, key: keyof PreviewItem, value: string) => {
+    const pdid = previewItems[row].pdid;
+    setPreviewItems((prev) => prev.map((item, idx) => idx === row ? { ...item, [key]: value } : item));
+    setModified((prev) => ({ ...prev, [pdid]: { ...prev[pdid], [key]: value } }));
+  };
+
+  const handleSaveData = async () => {
+    const updates = Object.entries(modified).map(([pdid, fields]) => ({
+      pdid: parseInt(pdid),
+      ...fields,
+    }));
+    if (updates.length === 0) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/project/${project_id}/data/update`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ items: updates }),
+      });
+      if (!res.ok) throw new Error("업데이트 실패");
+      alert("저장 완료!");
+      setModified({});
+    } catch (err) {
+      alert("저장 실패");
+    }
+  };
+
+  // --- 유틸리티 ---
+  const hasModel = useMemo(() => Array.isArray(modelInfo) ? modelInfo.length > 0 : !!modelInfo, [modelInfo]);
+  const truncateText = (text: string | undefined, max: number) => text && text.length > max ? text.slice(0, max) + "..." : text;
+
+  // --- 서브 컴포넌트: 통계 뷰 ---
+  const renderStatsView = () => {
+    const chartData = [...collections]
+      .sort((a, b) => (b.collection_data_num || 0) - (a.collection_data_num || 0))
+      .slice(0, 10)
+      .map((col, index) => ({
+        name: col.collection_name,
+        value: col.collection_data_num || 0,
+        color: COLORS[index % COLORS.length]
+      }));
+
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-white font-bold">
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-2xl shadow-lg">
+            <p className="text-blue-100 text-sm">총 컬렉션</p>
+            <p className="text-3xl">{total}개</p>
+          </div>
+          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-6 rounded-2xl shadow-lg">
+            <p className="text-indigo-100 text-sm">총 데이터 수</p>
+            <p className="text-3xl">{totalDataNum.toLocaleString()}건</p>
+          </div>
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-2xl shadow-lg">
+            <p className="text-emerald-100 text-sm">학습 모델</p>
+            <p className="text-3xl">{hasModel ? "보유" : "미보유"}</p>
+          </div>
+        </div>
+        <div className="bg-white p-8 rounded-2xl border border-zinc-100 shadow-sm h-[450px]">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-bold flex items-center gap-2"><BarChart3 className="text-blue-600" /> 데이터 분포</h3>
+            <div className="flex gap-2 bg-zinc-100 p-1 rounded-lg">
+              <button onClick={() => setChartType('bar')} className={`px-3 py-1 text-xs rounded ${chartType === 'bar' ? 'bg-white shadow text-blue-600' : ''}`}>막대</button>
+              <button onClick={() => setChartType('pie')} className={`px-3 py-1 text-xs rounded ${chartType === 'pie' ? 'bg-white shadow text-blue-600' : ''}`}>파이</button>
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height="90%">
+            {chartType === 'bar' ? (
+              <BarChart data={chartData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                  {chartData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                </Bar>
+              </BarChart>
+            ) : (
+              <PieChart>
+                <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                  {chartData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            )}
+          </ResponsiveContainer>
+        </div>
+      </div>
+    );
+  };
+
+  // --- 서브 컴포넌트: 미리보기(편집) 뷰 ---
+  const renderPreviewView = () => {
+    const totalPages = Math.ceil(previewItems.length / perPage);
+    const pagedItems = previewItems.slice((previewPage - 1) * perPage, previewPage * perPage);
+
+    return (
+      <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500">
+        <div className="bg-white rounded-2xl border border-zinc-200 shadow-xl overflow-hidden">
+          <div className="bg-gradient-to-r from-zinc-800 to-zinc-900 px-8 py-5 flex justify-between items-center">
+            <div className="flex items-center gap-3 text-white">
+              <FileText className="w-5 h-5" />
+              <h2 className="text-lg font-bold">데이터 상세 편집</h2>
+              <span className="bg-white/20 px-3 py-0.5 rounded-full text-xs">{previewItems.length}건</span>
+            </div>
+            <button
+              onClick={handleSaveData}
+              disabled={Object.keys(modified).length === 0}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-700 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all shadow-lg"
+            >
+              <Save className="w-4 h-4" /> 저장하기 ({Object.keys(modified).length})
+            </button>
+          </div>
+
+          <div className="p-0 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500">
+                <tr>
+                  <th className="px-6 py-4 font-bold text-center w-16">#</th>
+                  <th className="px-6 py-4 font-bold text-left w-40">출원번호</th>
+                  <th className="px-6 py-4 font-bold text-left">특허명 (클릭하여 수정)</th>
+                  <th className="px-6 py-4 font-bold text-center w-24">보기</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {pagedItems.map((item, idx) => {
+                  const globalIdx = (previewPage - 1) * perPage + idx;
+                  const isExpanded = expandedRow === globalIdx;
+                  return (
+                    <>
+                      <tr key={item.pdid} className={`hover:bg-blue-50/50 transition-colors ${modified[item.pdid] ? 'bg-yellow-50/50' : ''}`}>
+                        <td className="px-6 py-4 text-center text-zinc-400">{globalIdx + 1}</td>
+                        <td className="px-6 py-4 font-mono font-medium">{item.application_number}</td>
+                        <td className="px-6 py-4 relative group" onClick={() => !isExpanded && setEditingCell({ row: globalIdx, key: 'title' })}>
+                          {editingCell?.row === globalIdx && editingCell.key === 'title' ? (
+                            <input
+                              autoFocus
+                              className="w-full px-2 py-1 border-2 border-blue-500 rounded outline-none"
+                              value={item.title}
+                              onChange={(e) => handleDataChange(globalIdx, 'title', e.target.value)}
+                              onBlur={() => setEditingCell(null)}
+                            />
+                          ) : (
+                            <div className="flex items-center justify-between">
+                              <span className="truncate max-w-md">{item.title}</span>
+                              <Edit3 className="w-3 h-3 text-zinc-300 opacity-0 group-hover:opacity-100" />
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <button onClick={() => setExpandedRow(isExpanded ? null : globalIdx)} className="text-blue-600">
+                            {isExpanded ? <ChevronUp /> : <ChevronDown />}
+                          </button>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="bg-zinc-50/80">
+                          <td colSpan={4} className="px-10 py-6 border-b border-zinc-200">
+                            <div className="space-y-4">
+                              <div>
+                                <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">요약문 편집</label>
+                                <textarea
+                                  className="w-full mt-2 p-4 border border-zinc-200 rounded-xl h-32 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                  value={item.abstract || ""}
+                                  onChange={(e) => handleDataChange(globalIdx, 'abstract', e.target.value)}
+                                />
+                              </div>
+                              <div className="flex justify-between items-center text-xs text-zinc-500">
+                                <span>컬렉션: <b className="text-blue-600">{item.collection_name || "미지정"}</b></span>
+                                <span>PDID: {item.pdid}</span>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="p-6 bg-zinc-50 border-t border-zinc-200 flex justify-between items-center">
+            <div className="flex gap-2">
+              <button onClick={() => setPreviewPage(p => Math.max(1, p - 1))} className="p-2 bg-white border rounded-lg hover:bg-zinc-50 disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
+              <span className="flex items-center px-4 text-sm font-bold">{previewPage} / {totalPages}</span>
+              <button onClick={() => setPreviewPage(p => Math.min(totalPages, p + 1))} className="p-2 bg-white border rounded-lg hover:bg-zinc-50 disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
+            </div>
+            <select value={perPage} onChange={(e) => setPerPage(Number(e.target.value))} className="text-sm border rounded-lg px-2 py-1 outline-none">
+              <option value={10}>10개씩 보기</option>
+              <option value={50}>50개씩 보기</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <ProjectLayout projectNo={Number(project_id)} API_BASE={API_BASE} token={token}>
+      <Head>
+        <title>프로젝트 관리 | IPFORCE</title>
+      </Head>
+      <div className="min-h-screen bg-zinc-50/50 p-4 md:p-10">
+        <div className="max-w-7xl mx-auto">
+          {/* Header & View Switcher */}
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 mb-10">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-1.5 h-8 bg-blue-600 rounded-full" />
+                <h1 className="text-3xl font-black text-zinc-900 tracking-tight">
+                  {viewMode === 'preview' ? '데이터 상세 편집' : '컬렉션 대시보드'}
+                </h1>
+              </div>
+              <p className="text-zinc-500 font-medium ml-4">
+                {viewMode === 'preview' ? '특허 정보를 검토하고 텍스트를 수정하여 품질을 높이세요.' : '전체 컬렉션 현황과 통계를 한눈에 관리합니다.'}
+              </p>
+            </div>
+
+            <div className="flex bg-white p-1.5 rounded-2xl border border-zinc-200 shadow-sm self-center lg:self-auto">
+              {[
+                { id: 'grid', label: '카드', icon: LayoutGrid },
+                { id: 'table', label: '목록', icon: Table },
+                { id: 'stats', label: '통계', icon: BarChart3 },
+                { id: 'preview', label: '편집', icon: Edit3 }
+              ].map(mode => (
+                <button
+                  key={mode.id}
+                  onClick={() => setViewMode(mode.id as any)}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${viewMode === mode.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-zinc-400 hover:text-zinc-600'}`}
+                >
+                  <mode.icon className="w-4 h-4" /> {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Toolbar (Grid/Table Mode Only) */}
+          {(viewMode === 'grid' || viewMode === 'table') && (
+            <div className="flex flex-col md:flex-row gap-4 mb-8">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300" />
+                <input
+                  className="w-full bg-white border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 text-sm outline-none focus:ring-4 focus:ring-blue-50 transition-all shadow-sm"
+                  placeholder="컬렉션 이름 검색..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-3">
+                {!hasModel && (
+                  <button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2 px-6 py-3.5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-100">
+                    <Plus className="w-5 h-5" /> 컬렉션 추가
+                  </button>
+                )}
+                {selectedCollections.length > 0 && (
+                  <button onClick={async () => {
+                    if (confirm("선택한 컬렉션을 삭제하시겠습니까?")) await deleteCollections(selectedCollections);
+                  }} className="flex items-center gap-2 px-6 py-3.5 bg-red-50 text-red-600 border border-red-100 rounded-2xl font-bold hover:bg-red-100 transition">
+                    <XCircle className="w-5 h-5" /> 삭제 ({selectedCollections.length})
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Main Content Area */}
+          {loading || previewLoading ? (
+            <div className="flex flex-col items-center justify-center py-32 bg-white rounded-3xl border border-dashed border-zinc-200">
+              <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
+              <p className="text-zinc-400 font-bold">데이터 동기화 중...</p>
+            </div>
+          ) : (
+            <>
+              {viewMode === 'stats' && renderStatsView()}
+              {viewMode === 'preview' && renderPreviewView()}
+              {viewMode === 'grid' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {collections.map(c => (
+                    <div key={c.id} className="group bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm hover:shadow-xl transition-all cursor-pointer relative overflow-hidden">
+                      <div className="flex justify-between items-start mb-6">
+                        <div className="p-4 bg-blue-50 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                          <Folder className="w-6 h-6" />
+                        </div>
+                        <input
+                          type="checkbox"
+                          className="w-5 h-5 rounded-md border-zinc-200"
+                          checked={selectedCollections.some(s => s.id === c.id)}
+                          onChange={() => {
+                            const isSel = selectedCollections.some(s => s.id === c.id);
+                            setSelectedCollections(isSel ? selectedCollections.filter(s => s.id !== c.id) : [...selectedCollections, { id: c.id, code: c.collection_code }]);
+                          }}
+                        />
+                      </div>
+                      <h3 className="text-lg font-black text-zinc-900 mb-1">{c.collection_name}</h3>
+                      <p className="text-xs font-mono text-zinc-400 mb-6">{c.collection_code}</p>
+                      <div className="flex items-center justify-between pt-6 border-t border-zinc-50">
+                        <span className="text-sm font-black text-blue-600">{c.collection_data_num?.toLocaleString()} <small className="text-zinc-400 font-normal">건</small></span>
+                        <button onClick={() => setViewMode('preview')} className="text-xs font-bold text-zinc-300 hover:text-blue-600 flex items-center gap-1">미리보기 <ArrowRight className="w-3 h-3" /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {viewMode === 'table' && (
+                <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
+                  {/* 기존 테이블 코드와 동일하게 구현 */}
+                  <table className="w-full text-left">
+                    <thead className="bg-zinc-50 border-b border-zinc-100 text-xs font-bold text-zinc-400 uppercase tracking-widest">
+                      <tr>
+                        <th className="px-8 py-5">컬렉션 정보</th>
+                        <th className="px-8 py-5 text-right">데이터 건수</th>
+                        <th className="px-8 py-5 text-center">동작</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-50">
+                      {collections.map(c => (
+                        <tr key={c.id} className="hover:bg-blue-50/30 transition-colors">
+                          <td className="px-8 py-5">
+                            <p className="font-bold text-zinc-800">{c.collection_name}</p>
+                            <p className="text-xs font-mono text-zinc-300">{c.collection_code}</p>
+                          </td>
+                          <td className="px-8 py-5 text-right font-black text-blue-600">{c.collection_data_num?.toLocaleString()}건</td>
+                          <td className="px-8 py-5 text-center">
+                            <button onClick={() => setViewMode('preview')} className="px-4 py-2 text-xs font-bold border rounded-xl hover:bg-white transition-all">편집하기</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Pagination for Collections */}
+          {viewMode !== 'stats' && viewMode !== 'preview' && total > limit && (
+            <div className="mt-12 flex justify-center items-center gap-4">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} className="w-12 h-12 flex items-center justify-center bg-white border rounded-2xl hover:shadow-lg transition-all"><ChevronLeft className="w-5 h-5" /></button>
+              <span className="text-sm font-black bg-white px-6 py-3 rounded-2xl border shadow-sm">{page} <span className="text-zinc-300 font-normal mx-2">/</span> {Math.ceil(total / limit)}</span>
+              <button onClick={() => setPage(p => Math.min(Math.ceil(total / limit), p + 1))} className="w-12 h-12 flex items-center justify-center bg-white border rounded-2xl hover:shadow-lg transition-all"><ChevronRight className="w-5 h-5" /></button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modals & Overlays */}
+      {isActionLoading && (
+        <div className="fixed inset-0 z-[100] bg-zinc-900/20 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center">
+            <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4" />
+            <p className="text-sm font-black text-zinc-800">서버와 통신 중...</p>
+          </div>
+        </div>
+      )}
+
+      {isAddModalOpen && (
+        <AddCollectionModal
+          project_id={project_id as string}
+          onClose={() => setIsAddModalOpen(false)}
+          onSave={async (name: string) => {
+            const success = await addCollection(name);
+            if (success) {
+              setIsAddModalOpen(false);
+              loadCollections();
+            }
+          }}
+        />
+      )}
+    </ProjectLayout>
+  );
+}

@@ -5,6 +5,7 @@ from ..services import ai_service
 
 import os
 import json
+import time
 from pathlib import Path
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -19,11 +20,15 @@ def get_histories(model_id: int, paths: dict):
     model_path = paths.get("model_path", None)
     history_path = paths.get("history_path", None)
     mapping_path = paths.get("mapping_path", None)
+    artifact_path = paths.get("artifact_path", None)
 
-    print(history_path)
+    print(">>> history_path:", history_path)
+    print(">>> mapping_path:", mapping_path)
+    print(">>> artifact_path:", artifact_path)
 
     metrics = json.load(open(history_path)) if os.path.exists(history_path) else {}
     mapping = json.load(open(mapping_path)) if os.path.exists(mapping_path) else {}
+    artifact = json.load(open(artifact_path)) if os.path.exists(artifact_path) else {}
     
     # print("절대경로:", os.path.abspath(history_path))
     # print("현재 경로:", os.getcwd())
@@ -32,7 +37,8 @@ def get_histories(model_id: int, paths: dict):
 
     return {
         "metrics": metrics, 
-        "mapping": mapping
+        "mapping": mapping,
+        "artifact": artifact
     }
 
 @router.post("/recommendation/result")
@@ -51,11 +57,19 @@ def get_gpu_recommendation_result(body: dict = Body(...)):
     if not user_id or not model_id:
         raise HTTPException(status_code=400, detail="user_id 또는 model_id가 누락되었습니다.")
 
-    base_path = f"/app/users/{user_id}/models/recommendation/{model_id}"
+    base_path = f"/app/app/storage/users/{user_id}/models/recommendation/{model_id}"
     result_path = os.path.join(base_path, "inference_result.json")
     history_path = os.path.join(base_path, "histories.json")
 
+    max_retries = 10
+    for i in range(max_retries):
+        if os.path.exists(result_path):
+            break
+        print(f">>> [{i+1}/{max_retries}] 결과 파일 대기 중... {result_path}")
+        time.sleep(1.0)
+
     if not os.path.exists(result_path):
+        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
         raise HTTPException(status_code=404, detail="추천 결과 파일이 존재하지 않습니다.")
 
     try:

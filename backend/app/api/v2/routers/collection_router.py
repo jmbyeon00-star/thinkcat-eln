@@ -23,7 +23,7 @@ class UmapRequest(BaseModel):
 # 📄 컬렉션 CRUD
 # ==========================================
 
-@router.get("")
+@router.get("/")
 def get_collections(
     request: Request,
     session: Session = Depends(get_sync_session),
@@ -45,6 +45,28 @@ def get_collections(
     
     return collection_service.get_collections(session, user_id, page=page, limit=limit, q=q)
 
+@router.get("/{project_id}")
+def get_collections_from_project(
+    project_id: int,
+    request: Request,
+    session: Session = Depends(get_sync_session),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    q: str | None = Query(None, description="검색어 (collection_name / code / category)"),
+):
+    """
+    컬렉션 목록 조회 (검색 + 페이지네이션)
+    - page: 페이지 번호
+    - limit: 페이지당 항목 수
+    - q: 검색어 (선택)
+    """
+    try:
+        user_id = get_current_user_from_request(request)
+    except Exception as e:
+        print("get_current_user_from_request raised:", repr(e))
+        raise
+    
+    return collection_service.get_collections_from_project(session, user_id, project_id, page=page, limit=limit, q=q)
 
 @router.get("/project/{project_id}")
 def get_project_collections(
@@ -64,7 +86,7 @@ def get_project_collections(
     return collection_service.get_collections_by_project_id(session, user_id, project_id)
 
 
-@router.get("/{collection_id}")
+@router.get("/detail/{collection_id}")
 def get_collection_detail(
     collection_id: int,
     page: int = Query(1, ge=1),
@@ -92,6 +114,18 @@ def get_collection_detail(
         limit=limit,
         q=q,
     )
+
+@router.post("/{collection_id}/{project_id}/save")
+async def insert_recommendation_data(
+    request: Request,
+    collection_id: int,
+    project_id: int,
+    body: dict,
+    session: Session = Depends(get_sync_session)
+):
+    user_id = get_current_user_from_request(request)
+    
+    return await collection_service.insert_project_data(session, user_id, collection_id, project_id, body)
 
 
 # ==========================================

@@ -122,6 +122,7 @@ export default function ProjectModelDetailPage() {
                 const decoded = Object.fromEntries(
                     Object.entries(json).map(([k, v]) => [k, safeDecode(v)])
                 );
+                console.log(">>> decoded:", decoded)
                 setModel(decoded as ModelDetail);
             } catch (err) {
                 console.error("모델 불러오기 실패:", err);
@@ -345,7 +346,11 @@ export default function ProjectModelDetailPage() {
 
                                     <div className="p-5 rounded-xl bg-slate-50 border border-slate-100">
                                         <p className="text-sm font-semibold text-slate-500 mb-1">학습 데이터 수</p>
-                                        <p className="text-2xl font-bold text-slate-900">{(model.data_num || 0).toLocaleString()}</p>
+                                        {/* <p className="text-2xl font-bold text-slate-900">{(model.artifact.data_info.train + model.artifact.data_info.valid || 0).toLocaleString()}{`(${(model.artifact.data_info.train || 0).toLocaleString()}+${(model.artifact.data_info.valid || 0).toLocaleString()})`}</p> */}
+                                        <p className="text-2xl font-bold text-slate-900">
+                                            {(((model as any).artifact?.data_info?.train || 0) + ((model as any).artifact?.data_info?.valid || 0)).toLocaleString()}
+                                            {`(${((model as any).artifact?.data_info?.train || 0).toLocaleString()}+${((model as any).artifact?.data_info?.valid || 0).toLocaleString()})`}
+                                        </p>
                                     </div>
 
                                     <div className="p-5 rounded-xl bg-slate-50 border border-slate-100">
@@ -372,7 +377,12 @@ export default function ProjectModelDetailPage() {
 
 
                     <ModelRetrainSection
-                        model={model}
+                        // model={model}
+                        model={{
+                            ...model,
+                            id: Number(model.id), // id를 number로 변환
+                            shuffle: model.shuffle ? 1 : 0 // boolean을 number(0 또는 1)로 변환
+                        } as any}
                         isBusy={isBusy}
                         storeStatus={storeStatus}
                         token={token}

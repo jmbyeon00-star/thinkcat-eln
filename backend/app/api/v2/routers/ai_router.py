@@ -2,9 +2,11 @@ import requests, json, os
 
 from fastapi import APIRouter, Depends, Form, File, HTTPException, Query, Request, UploadFile
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
-from app.core.db import get_sync_session
+from app.schemas import ai_schema
+from app.core.db import get_sync_session, get_async_session
 from app.utils.security import get_current_user_from_request
 from ..services import ai_service
 
@@ -53,6 +55,23 @@ def get_model_detail(model_id: int, request: Request, session: Session = Depends
         
     return ai_service.get_model_detail(session, user_id, model_id)
 
+# 모델명 변경
+@router.patch("/{model_id}/rename")
+async def update_model_name(
+    model_id: int, 
+    payload: ai_schema.RenameRequest, 
+    request: Request, 
+    # session: Session = Depends(get_sync_session)
+    session: AsyncSession = Depends(get_async_session)
+):
+    try:
+        user_id = get_current_user_from_request(request)
+    except Exception as e:
+        print("get_current_user_from_request raised:", repr(e))
+        raise
+        
+    return await ai_service.update_model_name(session, user_id, model_id, payload.model_name)
+
 # ------------------------------------------
 #  추천 시스템
 # ------------------------------------------
@@ -85,7 +104,7 @@ async def train_project_data(
     except Exception as e:
         print("get_current_user_from_request raised:", repr(e))
         raise
-    return await ai_service.run_training(session, user_id, project_id, body)
+    return await ai_service.run_training(session=session, payload=body, user_id=user_id, project_id=project_id)
 
 @router.post("/retrain/classification/project/{project_id}")
 async def retrain_project_data(
@@ -129,7 +148,7 @@ async def retrain_project_data(
         "file": file
     }
     
-    return await ai_service.run_training(session, user_id, project_id, payload)
+    return await ai_service.run_training(session=session, payload=payload, user_id=user_id, project_id=project_id)
 
 # ---- 컬렉션 데이터 학습 ----
 @router.post("/train/classification/collection/{collection_id}")
@@ -146,7 +165,7 @@ async def train_colletion_data(
     except Exception as e:
         print("get_current_user_from_request raised:", repr(e))
         raise
-    return await ai_service.run_training(session, user_id, collection_id, body)
+    return await ai_service.run_training(session=session, payload=body, user_id=user_id, collection_id=collection_id)
 
 @router.post("/infer/classification/project/{model_id}")
 async def infer_project_data(
@@ -222,9 +241,7 @@ async def train_recommendation_project(
     if ai_service.check_user_busy(session, user_id):
         raise HTTPException(status_code=400, detail="이미 학습/추론 작업이 진행 중입니다.")
 
-    return await ai_service.run_training(
-        session, user_id, collection_id, body
-    )
+    return await ai_service.run_training(session=session, payload=body, user_id=user_id, collection_id=collection_id)
 
 # ---- 추천 모델 학습 및 추론 자동화 ----
 @router.post("/recommend/{collection_id}")

@@ -21,7 +21,6 @@ def train_recommendation(payload: dict):
     print(">>> gpu rec payload:", payload)
     user_id = payload["user_id"]
     model_id = payload["model_id"]
-    target_id = payload["target_id"]
 
     # 프로젝트 메타 조회
     connection, cursor = db_connect()
@@ -46,7 +45,7 @@ def train_recommendation(payload: dict):
     source_type = model_info["source_type"]
     collection_num = model_info.get("collection_num")
 
-    user_path  = f"{DEFAULT_PATH}/users/{user_id}"
+    user_path  = f"{DEFAULT_PATH}/app/storage/users/{user_id}"
     model_path = f"{user_path}/models/{task_type}/{model_id}"
     
     setup_directories(user_path, model_path)
@@ -128,7 +127,6 @@ def train_classification(payload: dict):
 
     user_id = payload["user_id"]
     model_id = payload["model_id"]
-    target_id = payload["target_id"]
 
     # 1) 프로젝트 메타 조회
     connection, cursor = db_connect()
@@ -155,7 +153,7 @@ def train_classification(payload: dict):
     collection_num = model_info["collection_num"]
 
     # 2) 경로 구성 & 디렉토리 준비
-    user_path  = f"{DEFAULT_PATH}/users/{user_id}"
+    user_path  = f"{DEFAULT_PATH}/app/storage/users/{user_id}"
     model_path = f"{user_path}/models/{task_type}/{model_id}"
     setup_directories(user_path, model_path)  # logs/, models/ 하위까지 생성
 

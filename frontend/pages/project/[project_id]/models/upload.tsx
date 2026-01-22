@@ -9,18 +9,8 @@ import { Session } from "next-auth";
 // import DataLayout from "@/components/layouts/DataLayout";
 // import { handleRedirectLogic } from "@/utils/redirectLogic";
 import { withMessages } from '@/lib/i18n/withMessages';
+import { ProjectInfo } from "@/types/project";
 export const getServerSideProps = withMessages();
-
-type Project = {
-  id: number;
-  project_code: string;
-  project_name: string;
-  project_description?: string;
-  source_type: string;
-  task_type: string;
-  project_status: number;
-  created_datetime?: string;
-};
 
 const taskMapper: Record<string, string> = {
   classification: "특허 분류",
@@ -40,7 +30,7 @@ function ProjectUploadPage() {
   };
   const token = session?.access_token;
 
-  const [project, setProject] = useState<Project | null>(null);
+  const [project, setProject] = useState<ProjectInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [rows, setRows] = useState<any[]>([]);
@@ -221,7 +211,11 @@ function ProjectUploadPage() {
       projectNo={project?.id}
       projectName={project?.project_name}
       projectDesc={project?.project_description}
+      taskType={project?.task_type}
       sourceType={project?.source_type}
+      collectionNum={project?.collection_num}
+      CreatedDatetime={project?.created_datetime}
+      UpdatedDatetime={project?.updated_datetime}
     >
       <div className="min-h-screen bg-white">
         <div className="max-w-5xl mx-auto p-8 space-y-8">

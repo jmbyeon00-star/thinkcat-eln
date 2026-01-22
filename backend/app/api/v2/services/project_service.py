@@ -1,20 +1,27 @@
 # app/services/project_service.py
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, func
+from sqlalchemy import select, update, delete, func, or_
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.schemas.project_schema import ProjectCreate
 from app.models.project_model import ProjectInfo, ProjectData
 from app.models.ai_model import ModelInfo
-from app.models.file_model import FileInfo
-from app.schemas.project_schema import ProjectCreate
 from app.models.collection_model import CollectionInfo
+from app.models.file_model import FileInfo
 from app.utils.common import *
 
-import os
+import httpx
+import os, sys
 import uuid
 import traceback
 import numpy as np
 from typing import Tuple, List, Dict, Optional, Any
 from collections import defaultdict
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
+GPU_BACKEND_URL = os.getenv("NEXT_PUBLIC_GPU_BASE_URL", "http://125.141.113.2:7001")
 
 def create_project(req: ProjectCreate, session: Session, user_id: int) -> ProjectInfo:
     # project_code = "PRJ-" + secrets.token_hex(4).upper()
@@ -35,49 +42,175 @@ def create_project(req: ProjectCreate, session: Session, user_id: int) -> Projec
     
     return project
 
-def create_collection(session: Session, user_id: int, project_id: int, name: str):
-    # 1. 고유한 collection_code 또는 project_code 생성 로직 필요 (예: UUID 또는 slug)
-    # project_info = session.query(ProjectInfo.source_type, ProjectInfo.project_code, ProjectInfo.project_name).filter(ProjectInfo.id==project_id).first()
-    project_info = session.query(ProjectInfo).filter(ProjectInfo.id==project_id).first()
-
-    if not project_info:
-        # 프로젝트 정보가 없으면 예외 처리 (필수)
-        raise HTTPException(status_code=404, detail="Project not found")
+async def delete_project_completely(session: AsyncSession, project_id: int, user_id: int):
+    # 1. 프로젝트 정보 및 소유권 조회
+    stmt = select(ProjectInfo).where(ProjectInfo.id == project_id, ProjectInfo.user_id == user_id)
+    result = await session.execute(stmt)
+    project = result.scalar_one_or_none()
     
-    p_source_type = project_info.source_type.value
-    p_project_code = project_info.project_code
-    p_project_name = project_info.project_name
+    if not project:
+        return {"success": False, "message": "프로젝트를 찾을 수 없거나 삭제 권한이 없습니다."}
 
-    print(">>> p_source_type:", p_source_type, type(p_source_type))
-    # collection_code = f"{project_id}_{name.replace(' ', '_')}_{str(uuid.uuid4())[:4]}"
-    collection_code = generate_collection_code()
+    # 2. 관련 모델 ID 리스트 확보 (GPU 서버 폴더 삭제 시 참조용)
 
-    collection_info = session.query(CollectionInfo).filter(CollectionInfo.project_id==project_id).all()
-    total_collection = len(collection_info)
-    
-    # 2. 새 CollectionInfo 인스턴스 생성
-    new_collection = CollectionInfo(
-        user_id=user_id,
-        source_type=p_source_type,
-        project_id=project_id,
-        project_code=p_project_code,
-        project_name=p_project_name,
-        collection_name=name,
-        collection_category=total_collection+1,
-        collection_code=collection_code,
-        collection_data_num=0,
-        collection_data_ratio=0.0,
-        # updated_datetime=datetime.now()
-    )
+    direct_model_stmt = select(ModelInfo.id).where(ModelInfo.project_id == project_id)
+    direct_result = await session.execute(direct_model_stmt)
+    direct_model_ids = set(direct_result.scalars().all())
 
-    project_info.collection_num = total_collection+1
+    coll_stmt = select(CollectionInfo.id).where(CollectionInfo.project_id == project_id)
+    coll_result = await session.execute(coll_stmt)
+    coll_ids = coll_result.scalars().all()
+
+    shared_model_ids = set()
+    if coll_ids:
+        # 해당 project_id들을 참조하고 있는 모든 ModelInfo 찾기
+        shared_model_stmt = select(ModelInfo.id).where(ModelInfo.collection_id.in_(coll_ids))
+        shared_result = await session.execute(shared_model_stmt)
+        shared_model_ids = set(shared_result.scalars().all())
+    all_target_model_ids = list(direct_model_ids.union(shared_model_ids))
+    print(f"최종 삭제 대상 모델 IDs: {all_target_model_ids}")
+
+    try:
+        # 3. GPU 서버 통신 - 물리적 폴더 삭제 요청
+        async with httpx.AsyncClient() as client:
+            gpu_resp = await client.post(
+                f"{GPU_BACKEND_URL}/gpu/project/delete", 
+                json={
+                    "project_id": project_id,
+                    "project_code": project.project_code,
+                    "user_id": user_id,
+                    "model_ids": all_target_model_ids
+                },
+                timeout=30.0
+            )
+            
+            if gpu_resp.status_code != 200:
+                print(f"GPU 서버 삭제 요청 실패: {gpu_resp.text}")
+                # GPU 서버 삭제가 필수라면 여기서 return False 처리
+                # return {"success": False, "message": "GPU 서버 데이터 삭제 중 오류가 발생했습니다."}
+
+        # 4. 데이터베이스 레코드 삭제 (트랜잭션)
+        await session.execute(delete(ProjectData).where(ProjectData.project_id == project_id))
+        await session.execute(delete(CollectionInfo).where(CollectionInfo.project_id == project_id))
+        await session.execute(delete(ModelInfo).where(ModelInfo.project_id == project_id))
+        await session.execute(delete(ProjectInfo).where(ProjectInfo.id == project_id))
+
+        await session.commit()
+        return {"success": True}
+
+    except Exception as e:
+        await session.rollback()
+        print(f"프로젝트 삭제 에러: {str(e)}")
+        return {"success": False, "message": f"삭제 작업 중 오류 발생: {str(e)}"}
+
+async def delete_project_model(session: AsyncSession, project_id: int, model_id: int, user_id: int):
+    stmt = select(ModelInfo).where(ModelInfo.id == model_id, ModelInfo.user_id == user_id)
+    result = await session.execute(stmt)
+    model = result.scalar_one_or_none()
     
-    # 3. DB에 추가 및 커밋
-    session.add(new_collection)
-    session.commit()
-    session.refresh(new_collection)
-    
-    return new_collection
+    if not model:
+        return {"success": False, "message": "모델을 찾을 수 없거나 삭제 권한이 없습니다."}
+
+    try:
+        async with httpx.AsyncClient() as client:
+            gpu_resp = await client.post(
+                f"{GPU_BACKEND_URL}/gpu/project/model/delete", 
+                json={
+                    "project_id": project_id,
+                    "model_id": model_id,
+                    "user_id": user_id,
+                },
+                timeout=30.0
+            )
+            
+            if gpu_resp.status_code != 200:
+                print(f"GPU 서버 삭제 요청 실패: {gpu_resp.text}")
+
+        await session.execute(delete(ModelInfo).where(ModelInfo.id == model_id))
+        await session.commit()
+        
+        return {"success": True}
+
+    except Exception as e:
+        await session.rollback()
+        print(f"모델 삭제 에러: {str(e)}")
+        return {"success": False, "message": f"삭제 작업 중 오류 발생: {str(e)}"}
+
+async def create_collection(session: AsyncSession, user_id: int, project_id: int, name: str):
+    try:
+        # 1) 프로젝트 정보 조회
+        project_res = await session.execute(select(ProjectInfo).where(ProjectInfo.id == project_id))
+        project_info = project_res.scalar_one_or_none()
+        if not project_info: raise HTTPException(status_code=404, detail="Project not found")
+
+        # 2) 현재 컬렉션 수 확인
+        count_res = await session.execute(select(func.count(CollectionInfo.id)).where(CollectionInfo.project_id == project_id))
+        current_col_count = count_res.scalar() or 0
+
+        # 3) 새 컬렉션 생성 (기본값 0, 0.0)
+        new_col = CollectionInfo(
+            user_id=user_id, project_id=project_id,
+            project_code=project_info.project_code, project_name=project_info.project_name,
+            source_type=project_info.source_type.value,
+            collection_name=name, collection_code=generate_collection_code(),
+            collection_category=current_col_count + 1,
+            collection_data_num=0, collection_data_ratio=0.0,
+            created_datetime=datetime.now(), updated_datetime=datetime.now()
+        )
+        session.add(new_col)
+        
+        # 4) ProjectInfo의 컬렉션 수 업데이트
+        project_info.collection_num = current_col_count + 1
+        project_info.updated_datetime = datetime.now()
+
+        # * 추가 시에는 데이터 이동이 없다면 다른 컬렉션의 ratio가 변하지 않으므로 
+        # * 별도의 전체 ratio 재계산 로직은 생략해도 무방합니다. (0개 추가니까요)
+
+        await session.commit()
+        await session.refresh(new_col)
+        return new_col
+    except Exception as e:
+        await session.rollback()
+        raise e
+
+async def delete_collections_and_data(session: AsyncSession, user_id: int, project_id: int, items: list):
+    try:
+        collection_ids = [item.id for item in items]
+        collection_codes = [item.collection_code for item in items]
+
+        # 1) 데이터 및 컬렉션 삭제
+        await session.execute(delete(ProjectData).where(ProjectData.project_id == project_id, ProjectData.collection_code.in_(collection_codes)))
+        await session.execute(delete(CollectionInfo).where(CollectionInfo.id.in_(collection_ids), CollectionInfo.user_id == user_id))
+        await session.flush()
+
+        # 2) 통계 재계산 (기존 함수의 로직을 비동기로 구현)
+        # 전체 데이터 수 (used=1)
+        total_docs = (await session.execute(select(func.count(ProjectData.id)).where(ProjectData.project_id == project_id, ProjectData.used == 1))).scalar() or 0
+        
+        # 남은 컬렉션 목록
+        remaining_res = await session.execute(select(CollectionInfo).where(CollectionInfo.project_id == project_id))
+        remaining_collections = remaining_res.scalars().all()
+
+        for c in remaining_collections:
+            # 각 컬렉션의 실제 데이터 수 카운트
+            count_res = await session.execute(select(func.count(ProjectData.id)).where(ProjectData.project_id == project_id, ProjectData.collection_id == c.id, ProjectData.used == 1))
+            real_count = count_res.scalar() or 0
+            c.collection_data_num = real_count
+            c.collection_data_ratio = round(real_count / total_docs, 4) if total_docs > 0 else 0.0
+            c.updated_datetime = datetime.now()
+
+        # 3) ProjectInfo 업데이트
+        await session.execute(update(ProjectInfo).where(ProjectInfo.id == project_id).values(
+            collection_num=len(remaining_collections),
+            labeled_documents=total_docs,
+            updated_datetime=datetime.now()
+        ))
+
+        await session.commit()
+        return {"status": "success", "deleted_count": len(items)}
+    except Exception as e:
+        await session.rollback()
+        raise e
 
 # def list_projects(session: Session):
 #     return session.query(ProjectInfo).all()
@@ -113,13 +246,15 @@ def get_project(project_id: int, session: Session):
 
 def get_project_and_models(session: Session, user_id: int, project_id: int):
     project_info = session.query(ProjectInfo).get(project_id)
-    model_query = session.query(ModelInfo).filter(ModelInfo.data_id == project_id)
+    collection_info = session.query(CollectionInfo).filter(CollectionInfo.project_id==project_id).all()
+
+    model_query = session.query(ModelInfo).filter(ModelInfo.project_id == project_id)
     model_count =  model_query.count()
 
     model_info = (
         model_query.filter(
             ModelInfo.user_id==user_id, 
-            ModelInfo.data_id==project_id
+            ModelInfo.project_id==project_id
         )
         .order_by(
             ModelInfo.accuracy.desc()
@@ -127,18 +262,30 @@ def get_project_and_models(session: Session, user_id: int, project_id: int):
         .all()
     )
     mean_score = 0
+    model_records = []
+
     if model_info:
         model_records = [item.to_dict() for item in model_info]
-        scores = [item["accuracy"] for item in model_records]
-        mean_score = sum(scores) / len(scores)
+        # scores = [item["accuracy"] for item in model_records]
+        scores = [item["accuracy"] for item in model_records if item["accuracy"] is not None]
+        if len(scores) > 0:
+            mean_score = sum(scores) / len(scores)
+        elif model_count > 0:
+            mean_score = -0.01
 
+    project_records = {}
     if project_info:
         project_records = project_info.to_dict()
+        # project_records = {**project_records, "mean_score": mean_score * 100, "model_count": model_count}
         project_records = {**project_records, "mean_score": mean_score * 100, "model_count": model_count}
     
     # >>> 최근 활동 테이블 생성 및 로그 별도 관리 필요
     
-    return {"project_info": project_records, "models": None if not model_info else model_records}
+    return {
+        "project_info": project_records, 
+        "collection_info": [items.to_dict() for items in collection_info], 
+        "models": None if not model_info else model_records
+    }
     
 
 def get_project_models(session, user_id, project_id, page, limit, q):
@@ -154,7 +301,7 @@ def get_project_models(session, user_id, project_id, page, limit, q):
         )
 
     model_list = (
-        model_query.filter(ModelInfo.user_id==user_id, ModelInfo.data_id==project_id).order_by(ModelInfo.created_datetime.desc())
+        model_query.filter(ModelInfo.user_id==user_id, ModelInfo.project_id==project_id).order_by(ModelInfo.created_datetime.desc())
         .offset((page - 1) * limit)
         .limit(limit)
         .all()
@@ -172,9 +319,36 @@ def get_project_models(session, user_id, project_id, page, limit, q):
         "limit": limit,
     }
 
+async def update_project_name(session: httpx.AsyncClient, user_id: int, project_id: int, new_name: str):
+    # 1. 조회 방식 변경: session.query 대신 select()와 session.execute() 사용
+    stmt = select(ProjectInfo).where(
+        ProjectInfo.user_id == user_id, 
+        ProjectInfo.id == project_id
+    )
+    result = await session.execute(stmt)
+    
+    # 2. 결과 추출: .first() 대신 .scalar_one_or_none() 사용
+    project = result.scalar_one_or_none()
+
+    if not project:
+        return {"status": "error", "message": "Project not found or access denied"}
+
+    # 3. 데이터 수정
+    project.project_name = new_name
+    
+    try:
+        # 4. 저장 로직: 비동기 세션이므로 await 필수
+        await session.commit()
+        await session.refresh(project)
+        return {"status": "complete", "project_name": project.project_name}
+    except Exception as e:
+        # 에러 발생 시 롤백도 비동기로
+        await session.rollback()
+        return {"status": "error", "message": str(e)}
+
 def get_inference_results(session, user_id, project_id, model_id, page, limit, q):
     model_info = session.query(ModelInfo).filter(
-        ModelInfo.data_id==project_id
+        ModelInfo.project_id==project_id
     ).all()
     project_model_ids = [model_obj.id for model_obj in model_info]
     
@@ -267,6 +441,9 @@ def get_project_stats(session: Session, project_id: int):
     stats_raw = session.query(
         ProjectData.group_code,
         CollectionInfo.collection_name,
+        CollectionInfo.collection_data_ratio,
+        CollectionInfo.collection_data_num,
+        CollectionInfo.counter_data_num,
         func.count(ProjectData.id).label('doc_count')
     ).join(CollectionInfo, ProjectData.collection_id == CollectionInfo.id) \
      .filter(ProjectData.project_id == project_id) \
@@ -274,12 +451,11 @@ def get_project_stats(session: Session, project_id: int):
 
     # 프론트엔드에서 필터링하기 쉬운 구조로 변환
     group_distribution = {}
-    for g_code, c_name, count in stats_raw:
+    for g_code, c_name, c_ratio, c_correct, c_counter, g_total in stats_raw:
+        c_total = c_correct + c_counter
         if g_code not in group_distribution:
             group_distribution[g_code] = []
-        group_distribution[g_code].append({"name": c_name, "value": count})
-
-    print(">>> group_distribution:", group_distribution)
+        group_distribution[g_code].append({"name": c_name, "ratio": c_ratio, "used": c_correct, "unused": c_counter, "total": c_total})
 
     project_info = (
         session.query(ProjectInfo)
@@ -301,6 +477,7 @@ def get_project_stats(session: Session, project_id: int):
 
 def get_project_collections(session: Session, user_id: int, project_id: int, page: int, limit: int, q: str) -> Dict[str, Any]:
     project_info = session.query(ProjectInfo).filter(ProjectInfo.user_id == user_id, ProjectInfo.id == project_id).first()
+    model_info = session.query(ModelInfo).filter(ModelInfo.user_id == user_id, ModelInfo.project_id == project_id).all()
     # 1. 프로젝트 전체 컬렉션 데이터 수 계산
     # CollectionInfo.collection_data_num의 합계를 구합니다.
     total_data_num_query = session.query(
@@ -347,6 +524,7 @@ def get_project_collections(session: Session, user_id: int, project_id: int, pag
     
     return {
         "project_info": project_info.to_dict(),
+        "model_info": [items.to_dict() for items in model_info],
         "collection_info": collections_info,
         "total_collections": total_count,      # 페이지네이션을 위한 전체 컬렉션 수
         "total_data_num": total_data_num,      # 프로젝트의 전체 데이터 수 (통계)
@@ -414,16 +592,16 @@ def get_project_data_groups(session: Session, user_id, project_id, page: int = 1
         temp_groups[key].append(row)
     
     # 7-2. 최종 결과 구조 생성 (개수 포함)
-    for idx, (group_code, data_list) in enumerate(temp_groups.items()):
+    for idx, (group_code, correct_data) in enumerate(temp_groups.items()):
         grouped_data_with_count[group_code] = {
             "index": idx,
-            "count": len(data_list),
-            "data": data_list
+            "count": len(correct_data),
+            "data": correct_data
         }
     
     return {
         "collection_info": collection_info,
-        "project_info": project_info,
+        "project_info": project_info.to_dict(),
         "project_data_groups": grouped_data_with_count,
         "total_count": total_count,
         "page": page,
@@ -436,132 +614,172 @@ def insert_project_data(session: Session, user_id: int, project_id: int, group_c
         norm = np.linalg.norm(v)
         return v / norm if norm > 0 else v
 
-    # ---- 객체 리스트 사용 ----
-    collections_num, labeled_num, unlabeled_num = 0, 0, 0 
-    
     try:
-        project_info = session.query(ProjectInfo).filter(ProjectInfo.id==project_id, ProjectInfo.user_id==user_id).first()
+        now = datetime.now()
+        
+        # 1. 프로젝트 기본 정보 조회
+        project_info = session.query(ProjectInfo).filter(
+            ProjectInfo.id == project_id, 
+            ProjectInfo.user_id == user_id
+        ).first()
+        
         if not project_info:
             return {"message": "Project not found"}
 
-        # 1. Enum 타입 불일치 해결
-        source_type = project_info.source_type.value
-        project_code = project_info.project_code
-        project_name = project_info.project_name
-
-        # 데이터 추출
-        data_list = body.get("items", [])      # Positive 데이터 (used=1)
-        n_data_list = body.get("n_items", [])  # Negative 데이터 (used=0)
-
-        if not data_list and not n_data_list:
-            return {"message": "No data provided"}
+        correct_data = body.get("items", []) # used=1 데이터
+        counter_data = body.get("n_items", []) # used=0 데이터
+        all_incoming_data = correct_data + counter_data
         
-        # 1) 컬렉션 맵(ID 확보) 생성 로직
+        if not all_incoming_data: return {"message": "No data to process"}
+
+        # 3. 컬렉션 매핑 (프로젝트 내에 없는 레이블은 자동 생성)
+        all_col_names = {
+            (doc.get("label") or doc.get("collection_name", "미분류")).strip() 
+            for doc in all_incoming_data
+        }
+        all_col_names = {name for name in all_col_names if name.upper() != "COUNTER"}
+
         collection_map = {}
-        all_col_names = set([doc.get("label") or doc.get("collection_name") for doc in data_list if doc.get("label") or doc.get("collection_name")])
-
         for col_name in all_col_names:
-            collection = session.query(CollectionInfo).filter_by(project_id=project_id, collection_name=col_name).first()
+            col = session.query(CollectionInfo).filter_by(
+                project_id=project_id, 
+                collection_name=col_name
+            ).first()
             
-            if not collection:
-                collection = CollectionInfo(
-                    user_id=user_id, project_id=project_id, project_code=project_code,
-                    project_name=project_name, source_type=source_type,
-                    collection_code=generate_collection_code(),
+            if not col:
+                col = CollectionInfo(
+                    user_id=user_id,
+                    source_type=project_info.source_type.value,
+                    project_id=project_id,
+                    project_code=project_info.project_code,
+                    project_name=project_info.project_name,
+                    collection_code=generate_collection_code(), # 별도 정의된 유틸 함수
                     collection_name=col_name,
-                    collection_data_num=0, collection_data_ratio=0,
-                    created_datetime=datetime.now(), updated_datetime=datetime.now()
+                    collection_data_ratio=0,
+                    collection_data_num=0,
+                    counter_data_num=0,
+                    created_datetime=now,
+                    updated_datetime=now
                 )
-                session.add(collection)
-                session.flush()
+                session.add(col)
+                session.flush() # 생성된 ID 확보
+            collection_map[col_name] = (col.id, col.collection_code)
 
-            collection_map[col_name] = (collection.id, collection.collection_code)
-        
-        # 2) ProjectData 삽입/갱신 함수 (Upsert 방식)
-        def add_project_data(items, used_flag):
-            now = datetime.now()
-            for doc in items:
-                col = doc.get("label") or doc.get("collection_name")
-                app_num = doc.get("application_number")
-                if not app_num: continue
+        # 4. 데이터 신규 삽입 (Insert Only)
+        # 기존 데이터와의 동기화 없이, 현재 요청된 데이터를 새 레코드로 모두 저장합니다.
+        for doc in all_incoming_data:
+            col_name = (doc.get("label") or doc.get("collection_name", "미분류")).strip()
+            c_id, c_code = collection_map.get(col_name, (None, None))
+            
+            session.add(ProjectData(
+                group_code=group_code, # 새로운 그룹 식별자
+                user_id=user_id,
+                project_id=project_id,
+                project_code=project_info.project_code,
+                source_type=project_info.source_type.value,
+                collection_id=c_id,
+                collection_code=c_code,
+                collection_name=col_name,
+                application_number=doc.get("application_number"),
+                title=str(doc.get("title", "")).strip(),
+                abstract=str(doc.get("abstract", "")).strip(),
+                vector=json.dumps(doc["vector"]) if doc.get("vector") else None,
+                used=doc.get("used", 1),
+                created_datetime=now,
+                updated_datetime=now
+            ))
 
-                c_id, c_code = collection_map.get(col, (None, None))
-                
-                # 중복 확인
-                existing = session.query(ProjectData).filter_by(project_id=project_id, application_number=app_num).first()
-                
-                if existing:
-                    # 기존 데이터가 있으면 정보 업데이트 (used=0 -> 1 등)
-                    existing.collection_id = c_id
-                    existing.collection_code = c_code
-                    existing.collection_name = col
-                    existing.used = used_flag
-                    existing.updated_datetime = now
-                else:
-                    # 없으면 새로 삽입
-                    session.add(ProjectData(
-                        group_code=group_code, user_id=user_id, project_id=project_id,
-                        source_type=source_type, project_code=project_code,
-                        collection_id=c_id, collection_code=c_code, collection_name=col,
-                        application_number=app_num, title=doc.get("title"),
-                        abstract=doc.get("abstract"), used=used_flag,
-                        created_datetime=now, updated_datetime=now
-                    ))
+        session.flush()
 
-        # 3) 실제 데이터 삽입 실행
-        add_project_data(data_list, used_flag=1)
-        add_project_data(n_data_list, used_flag=0)
-        session.flush() # DB에 데이터 반영
-
-        # 4) 모든 컬렉션 통계 정보 갱신 (DB 실측 기반)
-        total_docs = session.query(ProjectData).filter_by(project_id=project_id, used=1).count()
+        # 5) 모든 컬렉션 통계 및 평균 벡터 갱신
+        # 전체 기준값 (used 상관 없이 이 프로젝트의 모든 데이터)
+        total_count = session.query(ProjectData).filter_by(project_id=project_id).count()
         all_collections = session.query(CollectionInfo).filter_by(project_id=project_id).all()
 
         for c in all_collections:
-            real_count = session.query(ProjectData).filter_by(project_id=project_id, collection_id=c.id, used=1).count()
-            c.collection_data_num = real_count
-            c.collection_data_ratio = (real_count / total_docs) if total_docs > 0 else 0
-            c.updated_datetime = datetime.now()
+            # 이 컬렉션에 속한 모든 아이템 조회
+            col_items = session.query(ProjectData).filter_by(project_id=project_id, collection_id=c.id).all()
+            real_count = len(col_items)
             
-            # (선택) 벡터가 있는 경우 평균 벡터 갱신 로직을 여기에 추가할 수 있습니다.
+            # 수치 업데이트
+            correct_items = [item for item in col_items if item.used == 1]
+            counter_items = [item for item in col_items if item.used == 0]
 
-        session.commit()
+            c_data_num = len(correct_items)
+            n_data_num = len(counter_items)
 
-        # 5) 최종 응답 데이터 계산
-        collections_num = len(all_collections)
-        labeled_num = total_docs
+            c.collection_data_ratio = (c_data_num / total_count) if total_count > 0 else 0
+            c.collection_data_num = c_data_num
+            c.counter_data_num = n_data_num
+            
+            # [평균 벡터 계산] - COUNTER는 제외
+            if c.collection_name != "COUNTER":
+                vectors = []
+                for idx, item in enumerate(col_items):
+                    if item.vector and item.used != 0:
+                        try:
+                            v = json.loads(item.vector)
+                            print(f"Collection: {c.collection_name}, Index: {idx}, Vector Dim: {len(v)}")
+                            # if v: vectors.append(v)
+                            if isinstance(v, list) and len(v) > 0:
+                                v_np = np.array(v, dtype=np.float32)
+                                vectors.append(v_np)
+                        except: continue
+                
+                if vectors:
+                    first_shape = vectors[0].shape
+                    valid_vectors = [v for v in vectors if v.shape == first_shape]
+
+                    if len(valid_vectors) != len(vectors):
+                        print(f"⚠️ Warning: {c.collection_name} 컬렉션에서 {len(vectors) - len(valid_vectors)}개의 유효하지 않은 벡터 차원 발견")
+                    
+                    if valid_vectors:
+                        # 2. 유효한 벡터들로만 평균 계산 (이제 inhomogeneous shape 에러가 발생하지 않음)
+                        mean_v = np.mean(valid_vectors, axis=0)
+                        norm_v = normalize_vector(mean_v)
+                        c.mean_vector = json.dumps(norm_v.tolist())
+                    else:
+                        c.mean_vector = None
+                else:
+                    c.mean_vector = None
+            else:
+                c.mean_vector = None
+            
+            c.updated_datetime = datetime.now()
+
+        # 6) ProjectInfo 최종 요약 정보 반영
+        labeled_num = session.query(ProjectData).filter_by(project_id=project_id, used=1).count()
         unlabeled_num = session.query(ProjectData).filter_by(project_id=project_id, used=0).count()
+        has_counter = unlabeled_num > 0
 
         session.query(ProjectInfo).filter(ProjectInfo.id == project_id).update({
             ProjectInfo.project_status: 2,
-            ProjectInfo.collection_num: collections_num,
+            ProjectInfo.collection_num: len(all_collections),
             ProjectInfo.labeled_documents: labeled_num,
             ProjectInfo.unlabeled_documents: unlabeled_num,
+            ProjectInfo.is_counter_used: has_counter,
             ProjectInfo.updated_datetime: datetime.now(),
         })
+        
         session.commit()
-        
-        return {
-            "message": "Success",
-            "collections": collections_num, "labeled": labeled_num, "unlabeled": unlabeled_num
-        }
-        
+        return {"message": "Success", "collection_num": len(all_collections), "labeled": labeled_num, "unlabeled": unlabeled_num}
+
     except Exception as e:
-        print(f"Error: {str(e)}")
         session.rollback()
-        return {"message": f"Error: {str(e)}", "collections": 0, "labeled": 0, "unlabeled": 0}
+        # print(f"Error: {str(e)}")
+
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         
-    except Exception as e:
-        print(f"Error during data processing: {str(e)}")
-        session.rollback() # 오류 발생 시 롤백
-        
-        # 최종 반환 시점의 변수 값을 사용하여 메시지를 구성합니다.
-        return {
-            "message": f"Error during data processing: {str(e)}",
-            "collections": collections_num,
-            "labeled": labeled_num,
-            "unlabeled": unlabeled_num
-        }
+        print("=> Error!")
+        print(f"=> Location: {fname}")
+        print(f"=> Line: {exc_tb.tb_lineno}")
+        print(f"=> Address: {exc_tb}")
+        print(f"=> Error: {exc_type}")
+        print(f"=> Content: {exc_obj}")
+        print(f"=> Information: {sys.exc_info()}")
+
+        return {"message": f"Error: {str(e)}", "collection_num": 0, "labeled": 0, "unlabeled": 0}
 
 def insert_project_data_v1(session: Session, user_id: int, project_id: int, body: dict):
     # ---- 개별 리스트 데이터 사용 ----
@@ -804,6 +1022,7 @@ def insert_project_data_v1(session: Session, user_id: int, project_id: int, body
 
 
 # ---- 데이터 수정 ----
+# 1. 기존 동기 함수
 def update_project_statistics(session: Session, project_id: int, updated: int):
     # 1. 현재 존재하는 컬렉션 목록 조회
     existing_collections = (
@@ -858,6 +1077,34 @@ def update_project_statistics(session: Session, project_id: int, updated: int):
 
     session.commit()
 
+# 2. 새로운 비동기 전용 함수
+async def update_project_statistics_async(session: AsyncSession, project_id: int):
+    """비동기 환경 전용 통계 업데이트 로직"""
+    # 1) 전체 데이터 수 조회
+    res = await session.execute(select(func.count(ProjectData.id)).where(ProjectData.project_id == project_id, ProjectData.used == 1))
+    total_count = res.scalar() or 0
+
+    # 2) 남은 컬렉션 목록 조회
+    res = await session.execute(select(CollectionInfo).where(CollectionInfo.project_id == project_id))
+    collections = res.scalars().all()
+
+    # 3) 각 컬렉션별 비율 계산 및 업데이트
+    for col in collections:
+        c_res = await session.execute(select(func.count(ProjectData.id)).where(
+            ProjectData.project_id == project_id, 
+            ProjectData.collection_id == col.id, 
+            ProjectData.used == 1
+        ))
+        data_num = c_res.scalar() or 0
+        col.collection_data_num = data_num
+        col.collection_data_ratio = round(data_num / total_count, 4) if total_count > 0 else 0.0
+
+    # 4) 프로젝트 요약 정보 업데이트
+    await session.execute(update(ProjectInfo).where(ProjectInfo.id == project_id).values(
+        collection_num=len(collections),
+        labeled_documents=total_count
+    ))
+
 def update_project_data(session: Session, project_id: int, data: dict):
     items = data.get("items", [])
     
@@ -909,7 +1156,7 @@ async def handle_uploaded_file(db: Session, user_id: int, project_id: int, proje
     """
     try:
         # 1️⃣ 파일 저장
-        base_dir = f"/app/users/{user_id}/data/classification/{project_id}"
+        base_dir = f"/app/app/storage/users/{user_id}/data/classification/{project_id}"
         os.makedirs(base_dir, exist_ok=True)
 
         save_path = os.path.join(base_dir, f"{project_id}_{upload_file.filename}")

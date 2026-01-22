@@ -42,23 +42,23 @@ def generate_data_group_code() -> str:
 #     date_str = datetime.now().strftime("%Y%m%d")
 #     return f"{prefix}_{date_str}_{short_token(6)}"
 
-def generate_model_code(session, user_id: int, target_id: int, data_scope: str, task_type: str) -> str:
+def generate_model_code(session, user_id: int, data_scope: str, task_type: str, project_id: int=None, collection_id: int=None) -> str:
     """프로젝트/컬렉션 단위별 모델 코드 생성"""
     if data_scope == "project":
-        project = session.query(ProjectInfo).filter_by(id=target_id, user_id=user_id).first()
+        project = session.query(ProjectInfo).filter_by(id=project_id, user_id=user_id).first()
         if not project:
             raise ValueError("project not found")
         return f"cls_{project.project_code}", project.project_code, project.source_type
 
     elif data_scope == "collection":
-        collection = session.query(CollectionInfo).filter_by(id=target_id, user_id=user_id).first()
+        collection = session.query(CollectionInfo).filter_by(id=collection_id, user_id=user_id).first()
         if not collection:
             raise ValueError("collection not found")
         prefix = "cls" if task_type == "classification" else "rec"
         return f"{prefix}_{collection.collection_code}", collection.collection_code, collection.source_type.value
 
     else:
-        project = session.query(ProjectInfo).filter_by(id=target_id, user_id=user_id).first()
+        project = session.query(ProjectInfo).filter_by(id=project_id, user_id=user_id).first()
         if not project:
             raise ValueError("project not found")
         return f"model_{project.project_code}", project.project_code, project.source_type

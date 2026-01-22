@@ -56,7 +56,8 @@ class CustomDataset(Dataset):
 # ----- DB fetch -----
 def fetch_train_data(config):
     user_id = config["user_id"]
-    target_id = config["target_id"]
+    project_id = config["project_id"]
+    collection_id = config["collection_id"]
     target_code = config["target_code"]
     group_code = config["group_code"]
     
@@ -77,10 +78,10 @@ def fetch_train_data(config):
             params = [user_id]
 
             if data_scope == "project":
-                if not target_id:
-                    raise ValueError("target_id(project_id) must be provided when data_scope='project'")
+                if not project_id:
+                    raise ValueError("project_id must be provided when data_scope='project'")
                 where = " AND project_id=%s AND group_code=%s"
-                params.append(target_id)
+                params.append(project_id)
                 params.append(group_code)
 
             elif data_scope == "collection":
@@ -105,13 +106,13 @@ def fetch_train_data(config):
 
         elif task_type == "recommendation":
             # positive / COUNTER 데이터를 구성
-            if not target_id:
-                raise ValueError("target_id(collection_id) must be provided when task_type='recommendation'")
+            if not collection_id:
+                raise ValueError("collection_id must be provided when task_type='recommendation'")
 
             # 1️⃣ 기준이 되는 컬렉션 정보 조회
             cursor.execute(
                 "SELECT collection_code FROM COLLECTION_INFO_TB WHERE id=%s AND user_id=%s",
-                (target_id, user_id)
+                (collection_id, user_id)
             )
             collection_info = cursor.fetchone()
             if not collection_info:
@@ -149,7 +150,7 @@ def fetch_train_data(config):
                     AND user_id = %s
                     {extra}
                 """
-                cursor.execute(query, (target_id, user_id, *params))
+                cursor.execute(query, (collection_id, user_id, *params))
 
             else:
                 raise ValueError(f"Unknown source_type: {source_type}")
@@ -174,7 +175,7 @@ def fetch_train_data(config):
     return result
 
 # ----- 분류용 전처리 -----
-def set_classification_data(raw_rows, data_scope, source_type):
+def set_classification_data(raw_rows, config):
     """
     raw_rows: list[dict] from DB
     returns: pd.DataFrame with columns ['source','target']
@@ -183,21 +184,42 @@ def set_classification_data(raw_rows, data_scope, source_type):
         return pd.DataFrame(columns=['source','target'])
 
     df = pd.DataFrame(raw_rows)
+
+    data_scope = str(config.get("data_scope", "")).lower()
+    source_type = str(config.get("source_type", "")).lower()
+    print(">>> is_counter_used:", config)
+    is_counter_used = config.get("is_counter_used", False)
+    
     # 안전하게 문자열화
-    df['title'] = df.get('title', '').map(safe_encode_decode)
-    df['abstract'] = df.get('abstract', '').map(safe_encode_decode)
+    df['title'] = df.get('title', '').fillna('').map(safe_encode_decode)
+    df['abstract'] = df.get('abstract', '').fillna('').map(safe_encode_decode)
     df['collection_name'] = df.get('collection_name', '').fillna('').map(safe_encode_decode)
-
     df['source'] = (df['title'] + "\n" + df['abstract']).str.strip()
-    # 기본 라벨 셋팅
-    df.loc[(df['collection_name'] != ''), 'target'] = df['collection_name']
 
-    # 프로젝트+DB(=search)에서 used==0 → COUNTER
+    # 기본 라벨
+    df['target'] = df['collection_name']
+   
+    # 1. DB 검색(search) 방식일 때
     if str(data_scope).lower() == "project" and str(source_type).lower() == 'search':
+        if 'used' in df.columns:
+            df.loc[df['used'] == 1, 'target'] = df['collection_name']
+            
+            if is_counter_used:
+                # 2. 카운터 사용 ON: used=0 데이터를 "COUNTER" 레이블로 포함
+                df.loc[df['used'] == 0, 'target'] = "COUNTER"
+            else:
+                # 3. 카운터 사용 OFF: used=0 데이터는 학습에서 제외
+                df = df[df['used'] == 1]
+                
+        df.loc[df['used'] == 1, 'target'] = df['collection_name']
         if 'used' in df.columns:
             df.loc[df['used'] == 0, 'target'] = "COUNTER"
 
-    return df[['source', 'target']]
+    else:
+        df['target'] = df['collection_name']
+    
+    return df[['source', 'target']].dropna().query("source != '' and target != ''")
+
 
 # ----- 추천용 전처리 -----
 def set_recommendation_data(raw_rows, config):
@@ -216,7 +238,7 @@ def set_recommendation_data(raw_rows, config):
         return pd.DataFrame(columns=['source','target'])
     
     # --- 기본 변수 ---
-    source_type = str(config.get('source_type', '')).lower()
+    source_type = str(config.get('source_type', '')).lower() # search or upload
     target_collection_name = config.get('collection_name')  # optional
     df = pd.DataFrame(raw_rows).copy()
 
@@ -246,7 +268,7 @@ def set_recommendation_data(raw_rows, config):
     # ===================================================================
     # target_collection 지정된 경우, 그 컬렉션은 Positive로,
     # 나머지 used=0 또는 다른 컬렉션은 COUNTER로 처리
-    elif source_type == 'file':
+    elif source_type in ("file", "upload"):
         # 파일 기반일 때 특정 컬렉션만 양성으로, 나머지는 COUNTER로 샘플링하는 전략
         # target_collection_name이 없으면 균형잡힌 COUNTER 샘플링을 생략하고 전체 COUNTER로 단순 처리
         if not target_collection_name:
@@ -339,7 +361,6 @@ def log_used_distribution(df, label="train"):
 # ----- 메인: 학습 데이터 -----
 def get_train_data(config):
     user_id = config["user_id"]
-    target_id = config["target_id"]
     """
     반환: ({'train': df_train, 'valid': df_valid, 'mapping': mapping}, lengths)
     - Sklearn 트레이너: df 사용
@@ -353,9 +374,10 @@ def get_train_data(config):
         source_type = config.get('source_type')
         
         if task_type == 'classification':
-            df = set_classification_data(raw, data_scope, source_type)
+            df = set_classification_data(raw, config)
         elif task_type == 'recommendation':
             df = set_recommendation_data(raw, config)
+            print(">>> recommendation df:", df)
         else:
             raise ValueError("Unknown task_type")
         
@@ -391,8 +413,9 @@ def get_train_data(config):
 
         lengths = {'train': len(df_train), 'valid': len(df_valid)}
         packaged = {'train': df_train, 'valid': df_valid, 'mapping': mapping}
-        print(">>> train data:", df_train.head())
-        # print(">>> train data:", df_train.shape, df_valid.shape)
+        # print(">>> train data:", df_train.head())
+        # print(">>> valid data:", df_train.head())
+        # print(">>> dataset shape:", df_train.shape, df_valid.shape)
         
         return packaged, lengths
 
@@ -411,7 +434,7 @@ def prepare_dataframe(config: dict, raw_data: list[dict]) -> tuple[pd.DataFrame,
     df.loc[df['collection_name'].notnull(), 'label'] = df['collection_name']
 
     # 프로젝트/소스 유형 규칙 (플라스크 로직 이식)
-    if config.get('data_type') == 'project' and str(config.get('source_type','')).lower() == 'serch':
+    if config.get('data_type') == 'project' and str(config.get('source_type','')).lower() == 'search':
         # 사용 안 된 데이터 COUNTER로
         if 'used' in df.columns:
             df.loc[df['used'] == 0, 'label'] = "COUNTER"

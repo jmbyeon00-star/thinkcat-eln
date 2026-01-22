@@ -8,9 +8,9 @@ load_dotenv()
 DEFAULT_PATH = os.getenv("DEFAULT_PATH", "/app")
 
 def get_classification_history(config):
-    default_path  = f"{DEFAULT_PATH}/users/{config['user_id']}/models/{config['task_type']}/{config['model_id']}/inference/{config['file_id']}"
+    default_path  = f"{DEFAULT_PATH}/app/storage/users/{config['user_id']}/models/{config['task_type']}/{config['model_id']}/inference/{config['file_id']}"
     result_path = os.path.join(default_path, f"result_{config['task_type']}.json")
-    mapping_path  = f"{DEFAULT_PATH}/users/{config['user_id']}/models/{config['task_type']}/{config['model_id']}/mapping.json"
+    mapping_path  = f"{DEFAULT_PATH}/app/storage/users/{config['user_id']}/models/{config['task_type']}/{config['model_id']}/mapping.json"
     
     if not os.path.exists(result_path):
         return None

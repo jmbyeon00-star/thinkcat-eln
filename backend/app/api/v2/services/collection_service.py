@@ -1,11 +1,14 @@
-from sqlalchemy.orm import Session
 from sqlalchemy import or_, func, distinct
+from sqlalchemy.orm import Session
 from app.models.collection_model import CollectionInfo, CollectionData
 from app.models.project_model import ProjectData, ProjectInfo
 from app.models.patent_model import PatentLiti, PatentData
+from app.utils.common import generate_data_group_code
 
-import pandas as pd
+import json
 import numpy as np
+import pandas as pd
+from datetime import datetime
 from typing import List, Dict, Union, Optional
 from pymilvus import connections, Collection
 from umap.umap_ import UMAP
@@ -20,6 +23,60 @@ connections.connect(alias="default", host="175.125.94.218", port="19530")
 def get_collections(session: Session, user_id: int, page: int = 1, limit: int = 10, q: str | None = None):
     """컬렉션 목록 조회 (페이지네이션 + 검색)"""
     query = session.query(CollectionInfo).filter(CollectionInfo.user_id == user_id)
+
+    if q:
+        query = query.filter(
+            or_(
+                CollectionInfo.collection_name.ilike(f"%{q}%"),
+                CollectionInfo.collection_code.ilike(f"%{q}%"),
+                CollectionInfo.collection_category.ilike(f"%{q}%"),
+            )
+        )
+
+    total = query.count()
+    items = (
+        query.order_by(CollectionInfo.created_datetime.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
+
+    result = []
+    for c in items:
+        # ✅ project_names (JOIN)
+        project_names = (
+            session.query(distinct(ProjectInfo.project_name))
+            .join(ProjectData, ProjectInfo.id == ProjectData.project_id)
+            .filter(ProjectInfo.user_id == user_id)
+            .filter(ProjectData.collection_name == c.collection_name)
+            .all()
+        )
+        project_names = [p[0] for p in project_names if p[0]]
+
+        # ✅ data_count (ProjectData 내 같은 collection_name의 데이터 수)
+        data_count = (
+            session.query(func.count(ProjectData.id))
+            .filter(ProjectData.user_id == user_id)
+            .filter(ProjectData.collection_name == c.collection_name)
+            .scalar()
+        )
+
+        result.append({
+            **to_dict_safe(c),
+            "project_names": project_names,
+            "data_count": data_count,
+        })
+
+    return {
+        "items": result,
+        "total": total,
+        "page": page,
+        "limit": limit,
+    }
+
+def get_collections_from_project(session: Session, user_id: int, project_id: int, page: int = 1, limit: int = 10, q: str | None = None):
+    """컬렉션 목록 조회 (페이지네이션 + 검색)"""
+    query = session.query(CollectionInfo).filter(CollectionInfo.user_id==user_id, CollectionInfo.project_id==project_id)
 
     if q:
         query = query.filter(
@@ -121,7 +178,8 @@ def get_collection_detail_with_analysis(
 
     # 6️⃣ 결과 반환
     return {
-        "collection": to_dict_safe(collection),
+        # "collection": to_dict_safe(collection),
+        "collection": collection.to_dict(),
         "items": [to_dict_data(d) for d in data_list],
         "total": total,
         "page": page,
@@ -132,6 +190,87 @@ def get_collection_detail_with_analysis(
         "business_result": analysis_data.get("business_result", []),
     }
 
+async def insert_project_data(session, user_id: int, collection_id: int, project_id: int, payload: dict):
+    try:
+        now = datetime.now()
+        group_code = generate_data_group_code()
+        items = payload.get("items", [])
+        # start = time.perf_counter()
+        
+        if not items:
+            return {"status": "success", "message": "저장할 데이터가 없습니다."}
+
+        # 1. 컬렉션 정보 미리 가져오기 (매핑용)
+        target_col = session.query(CollectionInfo).filter_by(id=collection_id).first()
+        if not target_col:
+            return {"status": "failed", "error": "Collection not found"}
+
+        # 2. 데이터 벌크 삽입 (Insert)
+        for doc in items:
+            new_data = ProjectData(
+                group_code=group_code,
+                user_id=user_id,
+                project_id=project_id,
+                project_code=target_col.project_code,
+                collection_id=collection_id,
+                collection_code=target_col.collection_code,
+                collection_name=target_col.collection_name,
+                source_type=target_col.source_type.value if hasattr(target_col.source_type, 'value') else target_col.source_type,
+                application_number=doc.get("application_number"),
+                title=doc.get("title"),
+                abstract=doc.get("abstract"),
+                # 추천 결과의 벡터가 있다면 저장 (리스트인 경우 json 변환)
+                vector=json.dumps(doc["vector"]) if doc.get("vector") else None,
+                used=1,
+                created_datetime=now,
+                updated_datetime=now
+            )
+            session.add(new_data)
+
+        # DB에 먼저 반영 (그래야 count 쿼리에 잡힘)
+        session.flush()
+
+        # 3. 프로젝트 전체 데이터 수 계산 (used=1 기준)
+        total_count = session.query(ProjectData).filter_by(project_id=project_id, used=1).count()
+        
+        # 4. 모든 컬렉션 통계 및 비율 재계산 (ProjectService 방식 적용)
+        all_collections = session.query(CollectionInfo).filter_by(project_id=project_id).all()
+        
+        for col in all_collections:
+            # 해당 컬렉션의 실제 데이터 수 카운트
+            col_data_count = session.query(ProjectData).filter_by(
+                project_id=project_id, 
+                collection_id=col.id, 
+                used=1
+            ).count()
+            
+            # 수치 업데이트
+            col.collection_data_num = col_data_count
+            col.collection_data_ratio = round(col_data_count / total_count, 4) if total_count > 0 else 0.0
+            col.updated_datetime = now
+
+        # 5. ProjectInfo 최종 요약 정보 반영
+        labeled_num = total_count
+        unlabeled_num = session.query(ProjectData).filter_by(project_id=project_id, used=0).count()
+
+        session.query(ProjectInfo).filter(ProjectInfo.id == project_id).update({
+            ProjectInfo.labeled_documents: labeled_num,
+            ProjectInfo.unlabeled_documents: unlabeled_num,
+            ProjectInfo.updated_datetime: now,
+        })
+
+        session.commit()
+        return {
+            "status": "success", 
+            "inserted_count": len(items),
+            "total_labeled": labeled_num
+        }
+
+    except Exception as e:
+        session.rollback()
+        print(f"Error in insert_project_data: {str(e)}")
+        return {"status": "failed", "error": str(e)}
+    
 
 # ==========================================
 # 📊 분석 데이터 생성

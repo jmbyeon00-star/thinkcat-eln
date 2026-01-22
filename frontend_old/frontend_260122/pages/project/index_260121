@@ -1,0 +1,195 @@
+import { useEffect, useState, useCallback } from "react";
+import { Database, UploadCloud, Search, ChevronLeft, ChevronRight, Trash2, Loader2, AlertCircle } from "lucide-react";
+import { Session } from "next-auth";
+import { useSession } from "next-auth/react";
+import { authHeader } from "@/utils/common";
+import { api } from "@/lib/apiClient";
+import { withMessages } from '@/lib/i18n/withMessages';
+
+export const getServerSideProps = withMessages();
+
+type Project = {
+  id: number;
+  project_name: string;
+  project_description?: string;
+  source_type: "search" | "upload";
+  project_status: number;
+  task_type: string;
+  created_datetime?: string;
+};
+
+const taskMapper: Record<string, string> = {
+  classification: "이진분류",
+  "multi-label": "다중분류",
+  regression: "회귀",
+  etc: "기타",
+};
+
+const statusMapper: Record<number, { label: string; color: string }> = {
+  0: { label: "1/5단계", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  1: { label: "2/5단계", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
+  2: { label: "3/5단계", color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
+  3: { label: "4/5단계", color: "bg-purple-100 text-purple-700 border-purple-200" },
+  4: { label: "생성완료", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+};
+
+export default function ProjectListPage() {
+  const { data: session } = useSession() as {
+    data: (Session & { access_token?: string }) | null;
+  };
+  const token = session?.access_token;
+
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null); // 현재 삭제 중인 ID
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit] = useState(6);
+  const [total, setTotal] = useState(0);
+
+  // 데이터 로드 함수 분리 (삭제 후 재호출 용도)
+  const loadProjects = useCallback(async (isSilent = false) => {
+    if (!token) return;
+    try {
+      if (!isSilent) setLoading(true);
+      const res = await api.get(`/api/project`, {
+        params: { page, limit, query },
+        headers: authHeader(token),
+      });
+      setProjects(res.data.items || []);
+      setTotal(res.data.total || 0);
+    } catch (e) {
+      console.error("로드 실패:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, page, limit, query]);
+
+  useEffect(() => {
+    const debounce = setTimeout(loadProjects, 300);
+    return () => clearTimeout(debounce);
+  }, [loadProjects]);
+
+  // ✅ 1. 프로젝트 삭제 핸들러 (GPU 서버 폴더 삭제 트리거용)
+  const handleDelete = async (e: React.MouseEvent, project: Project) => {
+    e.preventDefault();
+    e.stopPropagation(); // 카드 상세 이동 방지
+
+    if (!confirm(`'${project.project_name}' 프로젝트를 삭제하시겠습니까?\nGPU 서버 내의 모든 하위 폴더와 데이터가 영구 삭제됩니다.`)) {
+      return;
+    }
+
+    try {
+      setIsDeleting(project.id);
+      // 백엔드 엔드포인트는 실제 프로젝트에 맞춰 수정하세요.
+      // 백엔드에서 GPU 서버로의 삭제 요청(SSH 또는 API)을 수행해야 합니다.
+      await api.delete(`/api/project/${project.id}/delete`, {
+        headers: authHeader(token),
+      });
+
+      alert("프로젝트와 GPU 서버 내 데이터가 모두 삭제되었습니다.");
+      loadProjects(true); // 목록 갱신
+    } catch (err: any) {
+      console.error("삭제 실패:", err);
+      alert(err.response?.data?.message || "삭제 중 오류가 발생했습니다. 권한을 확인하세요.");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const totalPages = Math.ceil(total / limit);
+  const getPageNumbers = () => {
+    const pages: number[] = [];
+    const start = Math.max(1, page - 2);
+    const end = Math.min(totalPages, page + 2);
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  };
+
+  return (
+    <div className="min-h-screen bg-white p-8 relative">
+      {/* 2. 전역 오버레이 로딩 (삭제 처리 중일 때) */}
+      {isDeleting && (
+        <div className="fixed inset-0 z-[100] bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center">
+          <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4" />
+          <p className="font-bold text-zinc-800">GPU 서버 내 프로젝트 데이터를 삭제하는 중...</p>
+        </div>
+      )}
+
+      <div className="max-w-5xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-black text-zinc-900 mb-2">프로젝트 관리</h1>
+          <p className="text-zinc-500 font-medium">등록된 프로젝트와 GPU 서버 리소스를 모니터링하세요</p>
+        </div>
+
+        <div className="mb-6"><div className="relative"><Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-300" /><input type="text" placeholder="프로젝트 이름으로 검색..." value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} className="w-full rounded-2xl border border-zinc-200 pl-12 pr-4 py-4 text-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all outline-none" /></div></div>
+
+        <div className="mb-8 bg-zinc-50 rounded-2xl p-5 border flex items-center justify-between"><div className="flex items-center gap-3"><div className="p-2 bg-blue-600 rounded-lg"><Database className="w-5 h-5 text-white" /></div><span className="text-sm font-bold text-zinc-600">전체 프로젝트 개수</span></div><span className="text-3xl font-black text-blue-600">{total.toLocaleString()}</span></div>
+
+        {loading ? (
+          <div className="grid gap-6 md:grid-cols-2">
+            {[...Array(6)].map((_, i) => <div key={i} className="h-44 bg-zinc-50 rounded-2xl animate-pulse border" />)}
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="bg-zinc-50 border-dashed border-2 border-zinc-200 rounded-[2rem] p-20 text-center flex flex-col items-center"><AlertCircle className="w-12 h-12 text-zinc-300 mb-4" /><p className="text-lg font-bold text-zinc-400">데이터가 존재하지 않습니다.</p></div>
+        ) : (
+          <>
+            <div className="grid gap-6 md:grid-cols-2 mb-10">
+              {projects.map((p) => {
+                const statusInfo = statusMapper[p.project_status] || { label: "알 수 없음", color: "bg-zinc-100 text-zinc-700" };
+                return (
+                  <a key={p.id} href={`/project/${p.id}`} className="group relative">
+                    <div className="bg-white rounded-[2rem] shadow-sm border border-zinc-100 p-7 hover:shadow-2xl hover:border-blue-200 transition-all duration-300 relative overflow-hidden h-full flex flex-col">
+                      <div className="flex items-start gap-5">
+                        <div className="rounded-2xl bg-zinc-50 p-4 ring-1 ring-zinc-100 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                          {p.source_type === "search" ? <Database className="h-7 w-7" /> : <UploadCloud className="h-7 w-7" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-2 pr-10">
+                            <h2 className="text-xl font-black text-zinc-900 group-hover:text-blue-600 transition-colors truncate">{p.project_name}</h2>
+                          </div>
+                          <p className="text-sm text-zinc-500 mb-5 line-clamp-2 font-medium">{p.project_description || "프로젝트 상세 설명이 등록되지 않았습니다."}</p>
+                        </div>
+                      </div>
+
+                      {/* ✅ 3. 삭제 버튼 (Trash 아이콘) */}
+                      <button
+                        onClick={(e) => handleDelete(e, p)}
+                        disabled={isDeleting !== null}
+                        className="absolute top-7 right-7 p-2.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all z-10"
+                        title="프로젝트 및 GPU 서버 폴더 삭제"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+
+                      <div className="mt-auto flex items-center justify-between pt-5 border-t border-zinc-50">
+                        <div className="flex items-center gap-3 text-xs font-bold text-zinc-400">
+                          <span className="bg-zinc-100 px-2 py-1 rounded text-zinc-500">{taskMapper[p.task_type] ?? p.task_type}</span>
+                          <span>{p.created_datetime && new Date(p.created_datetime).toLocaleDateString()}</span>
+                        </div>
+                        <span className={`px-3 py-1 rounded-lg text-xs font-black border uppercase ${statusInfo.color}`}>{statusInfo.label}</span>
+                      </div>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+
+            {/* Pagination 생략 (사용자 기존 코드 유지) */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2">
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="w-12 h-12 rounded-xl border border-zinc-200 flex items-center justify-center hover:bg-zinc-50 disabled:opacity-30 transition-all"><ChevronLeft className="w-5 h-5" /></button>
+                <div className="flex gap-2">
+                  {getPageNumbers().map((num) => (
+                    <button key={num} onClick={() => setPage(num)} className={`w-12 h-12 rounded-xl text-sm font-black transition-all ${num === page ? "bg-blue-600 text-white shadow-xl shadow-blue-100" : "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"}`}>{num}</button>
+                  ))}
+                </div>
+                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-12 h-12 rounded-xl border border-zinc-200 flex items-center justify-center hover:bg-zinc-50 disabled:opacity-30 transition-all"><ChevronRight className="w-5 h-5" /></button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

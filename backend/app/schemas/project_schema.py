@@ -9,6 +9,9 @@ class ProjectCreate(BaseModel):
     source_type: str
     task_type: str
 
+class RenameRequest(BaseModel):
+    project_name: str
+
 class ProjectResponse(BaseModel):
     id: int
     project_code: str

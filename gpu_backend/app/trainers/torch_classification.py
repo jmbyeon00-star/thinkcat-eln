@@ -40,6 +40,8 @@ class TorchTextClassifierTrainer(BaseTrainer):
         self.model_id = int(self.config["model_id"])
         self.model_code = self.config.get("model_code", f"model_{self.model_id}")
 
+        self.last_reported_progress = 0
+        self.steps_completed = 0
         self.n_epochs = int(self.config.get("epoch", 10))
         self.max_length = int(self.config.get("max_length", 256))
         self.batch_size = int(self.config.get("batch_size", 128))
@@ -52,7 +54,7 @@ class TorchTextClassifierTrainer(BaseTrainer):
         self.ckpt_model = self.config.get("model_path", None) + "/best_model" if self.run_type == "retrain" or self.run_type == "infer" else f"{self.default_path}/models/PI_v1.0"
         self.progress_type = self.config.get("progress_type", "train")
 
-        self.user_path = f"{self.default_path}/users/{self.user_id}"
+        self.user_path = f"{self.default_path}/app/storage/users/{self.user_id}"
         self.model_path = f"{self.user_path}/models/{self.task_type}/{self.model_id}"
         self.result_path = f"{self.user_path}/models/{self.task_type}/{self.model_id}/inference/{self.file_id}"
         os.makedirs(self.model_path, exist_ok=True)
@@ -74,7 +76,8 @@ class TorchTextClassifierTrainer(BaseTrainer):
         try:
             self.model = BertForSequenceClassification.from_pretrained(
                 self.ckpt_model,
-                num_labels=self.num_labels+1 if self.source_type == "search" else self.num_labels,
+                num_labels=self.num_labels,
+                # num_labels=self.num_labels+1 if self.source_type == "search" else self.num_labels,
                 use_safetensors=True,
                 device_map=None,
                 torch_dtype=torch.float32
@@ -83,7 +86,8 @@ class TorchTextClassifierTrainer(BaseTrainer):
             # safetensors 미제공 체크포인트일 경우 fallback
             self.model = BertForSequenceClassification.from_pretrained(
                 self.ckpt_model,
-                num_labels=self.num_labels+1 if self.source_type == "search" else self.num_labels
+                num_labels=self.num_labels
+                # num_labels=self.num_labels+1 if self.source_type == "search" else self.num_labels,
             )
         self.model.to(self.device)
         self.optimizer = AdamW(self.model.parameters(), lr=self.learning_rate)
@@ -91,6 +95,8 @@ class TorchTextClassifierTrainer(BaseTrainer):
     async def _status(self, json: dict):
         """FastAPI 백엔드로 상태 전송 (비동기 안전 버전)"""
         run_type = "train" if self.run_type == "retrain" else self.run_type
+        if "run_type" in json.keys(): 
+            run_type = json["run_type"]
         try:
             async with httpx.AsyncClient(timeout=3.0) as client:
                 await client.post(
@@ -104,6 +110,8 @@ class TorchTextClassifierTrainer(BaseTrainer):
         """FastAPI 백엔드로 진행률 전송 (비동기 안전 버전)"""
         try:
             run_type = "train" if self.run_type == "retrain" else self.run_type
+            if "run_type" in json.keys(): 
+                run_type = json["run_type"]
             target_id = self.model_id if run_type == "train" else self.file_id
             async with httpx.AsyncClient(timeout=3.0) as client:
                 await client.post(
@@ -194,6 +202,7 @@ class TorchTextClassifierTrainer(BaseTrainer):
             # 이미 전처리된 df 구조 허용
             df_train, df_valid = data["train"], data["valid"]
             mapping = data["mapping"]
+            print(">>> mapping", mapping)
             self.lengths = {"train": len(df_train), "valid": len(df_valid)}
         else:
             df_train, df_valid, mapping, self.lengths = prepare_dataframe(self.config, raw or [])
@@ -258,8 +267,8 @@ class TorchTextClassifierTrainer(BaseTrainer):
                 est_total = elapsed / max(1e-9, self.steps_completed / max(1, self.total_steps))
                 remaining = str(timedelta(seconds=int(est_total - elapsed)))
 
-                safe_create_task(self._progress({"progress": min(prog, 95), "status": "RUNNING", "remaining_time": remaining }))
-
+                safe_create_task(self._progress({"progress": min(prog, 99), "status": "RUNNING", "remaining_time": remaining }))
+            
             train_loss = t_loss / max(1, t_count)
             train_acc = t_correct / max(1, t_count)
 
@@ -363,8 +372,8 @@ class TorchTextClassifierTrainer(BaseTrainer):
         correct_count = 0
         total_count = len(texts)
 
-        # safe_create_task(self._progress({"progress": 1, "status": "INFERRING", "remaining_time": None}))
-        safe_create_task(self._status({"model_id": self.model_id, "progress": 1, "task": "classification", "status": "INFERRING", "remaining_time": "0:00:00"}))
+        safe_create_task(self._progress({"progress": 0, "run_type": "infer", "status": "INFERRING", "remaining_time": None}))
+        safe_create_task(self._status({"model_id": self.model_id, "run_type": "infer", "progress": 1, "task": "classification", "status": "INFERRING", "remaining_time": "0:00:00"}))
         
         # 배치 단위로 추론 수행
         for i in range(0, len(texts), self.batch_size):
@@ -420,8 +429,10 @@ class TorchTextClassifierTrainer(BaseTrainer):
             progress = min(100, int((i + len(batch_texts)) / total_count * 100))
             safe_create_task(self._progress({
                 "progress": progress, 
+                "run_type": "infer",
                 "status": "INFERRING", 
-                "remaining_time": None
+                "remaining_time": None,
+                "run_type": "infer",
             }))
         
         # 평가 지표 계산 (정답이 있는 경우)
@@ -461,11 +472,13 @@ class TorchTextClassifierTrainer(BaseTrainer):
         # 완료 상태 업데이트
         safe_create_task(self._progress({
             "progress": 100, 
+            "run_type": "infer",
             "status": "COMPLETED", 
             "remaining_time": "0:00:00",
+            "run_type": "infer",
             # "evaluation": evaluation_metrics  # 평가 지표 추가
         }))
-        safe_create_task(self._status({"model_id": self.model_id, "progress": -1, "task": "classification", "status": "COMPLETED", "remaining_time": "0:00:00"}))
+        safe_create_task(self._status({"model_id": self.model_id, "run_type": "infer", "progress": -1, "task": "classification", "status": "COMPLETED", "remaining_time": "0:00:00"}))
         
         # 메모리 정리
         gc.collect()
@@ -476,6 +489,37 @@ class TorchTextClassifierTrainer(BaseTrainer):
     def save(self, path: str) -> None:
         # 토치에서는 최종 best는 위에서 저장됨; 여기선 심플 아카이브(옵션)
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        meta = {"saved": True, "model_id": self.model_id, "when": time.time()}
-        with open(path, "w") as f:
-            json.dump(meta, f, ensure_ascii=False)
+        # meta = {"saved": True, "model_id": self.model_id, "when": time.time()}
+        # with open(path, "w") as f:
+        #     json.dump(meta, f, ensure_ascii=False)
+
+        # 1. 학습 시 저장된 lengths 정보 가져오기 (없을 경우를 대비해 기본값 설정)
+        data_info = getattr(self, "lengths", {"train": 0, "valid": 0})
+
+        # 2. 메타데이터 구성
+        meta = {
+            "saved": True, 
+            "model_id": self.model_id, 
+            "model_code": self.model_code,
+            "task_type": self.task_type,
+            "when": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())),
+            "unix_timestamp": time.time(),
+            # 데이터 개수 정보 추가
+            "data_info": data_info,
+            "total_samples": sum(data_info.values()) if isinstance(data_info, dict) else 0,
+            # 주요 하이퍼파라미터 기록 (추후 추론 시 참조용)
+            "config": {
+                "epoch": self.n_epochs,
+                "batch_size": self.batch_size,
+                "learning_rate": self.learning_rate,
+                "max_length": self.max_length
+            }
+        }
+
+        # 3. JSON 저장
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(meta, f, ensure_ascii=False, indent=4)
+            print(f">>>>> Artifact 및 데이터 통계 저장 완료: {path}")
+        except Exception as e:
+            print(f">>>>> Artifact 저장 중 오류 발생: {e}")

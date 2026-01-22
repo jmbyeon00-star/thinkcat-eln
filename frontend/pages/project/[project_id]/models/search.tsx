@@ -7,17 +7,8 @@ import { useSession } from "next-auth/react";
 import { Session } from "next-auth";
 
 import { withMessages } from '@/lib/i18n/withMessages';
+import { ProjectInfo } from "@/types/project";
 export const getServerSideProps = withMessages();
-
-type Project = {
-    id: number;
-    project_code: string;
-    project_name: string;
-    project_description?: string;
-    source_type: string;
-    task_type: string;
-    created_datetime?: string;
-};
 
 type Collections = {
     collection_ids: number[];
@@ -36,7 +27,7 @@ export default function ProjectSearchPage() {
     };
     const token = session?.access_token;
 
-    const [project, setProject] = useState<Project | null>(null);
+    const [project, setProject] = useState<ProjectInfo | null>(null);
     const [collections, setCollections] = useState<Collections | null>(null);
     const [inputValue, setInputValue] = useState("");
     const [inputLocked, setInputLocked] = useState(false);
@@ -302,7 +293,11 @@ export default function ProjectSearchPage() {
             projectNo={project?.id}
             projectName={project?.project_name}
             projectDesc={project?.project_description}
+            taskType={project?.task_type}
             sourceType={project?.source_type}
+            collectionNum={project?.collection_num}
+            CreatedDatetime={project?.created_datetime}
+            UpdatedDatetime={project?.updated_datetime}
         >
             <Head>
                 <title>프로젝트 #{project_id} | DB 검색 | IPFORCE</title>

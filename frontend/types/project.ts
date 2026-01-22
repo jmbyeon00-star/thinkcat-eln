@@ -22,12 +22,20 @@ export type ProjectInfo = {
     project_name: string;
     project_description: string;
     collection_num: number;
+    is_counter_used: number;
     labeled_documents: number;
     unlabeled_document: number;
+    model_count: number;
+    mean_score: number;
     temp_category: string;
     modified: string;
     created_datetime: string;
     updated_datetime: string;
+};
+
+export type Activity = {
+    action: string;
+    time: string;
 };
 export type ProjectData = {
     sourceId?: string;
@@ -35,9 +43,11 @@ export type ProjectData = {
     user_id?: number;
     source_type?: string;
     group_code?: string;
+    project_code?: string;
     project_id?: number;
     collection_id?: number;
     collection_name?: string;
+    class_name?: string;
     label?: string;
     title?: string;
     abstract?: string;
@@ -50,9 +60,19 @@ export type ProjectData = {
     ipc_code?: string;
     cpc_code?: string;
     probability?: number;
+    data_status?: 'NEW' | 'EDITED' | 'ORIGINAL' | string;
     created_datetime?: string;
     updated_datetime?: string;
+
+    status?: "진행중",
+    recentActivities?: Activity[];
+    // recentActivities?: [
+    //     { action: "모델 '100-13' 학습 완료", time: "2시간 전" },
+    //     { action: "데이터 50개 추가", time: "1일 전" },
+    //     { action: "프로젝트 생성", time: "3일 전" },
+    // ],
 };
+
 export interface ProjectGroupItems {
     id: number;
     group_code: string;
@@ -61,6 +81,7 @@ export interface ProjectGroupItems {
     last_updated: string;
     group_items: ProjectData[];
 }
+
 export interface ProjectDataGroups {
     total_count: number;
     group_count: number;
@@ -86,6 +107,7 @@ export type DataSourceInfo = {
     type: DataSourceType;
     sourceId?: string | number;
     isUsed?: boolean;
+    isCounterUsed?: boolean;
 };
 export type DataSummary = {
     totalItemsCount: number;

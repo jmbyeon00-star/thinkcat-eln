@@ -29,8 +29,9 @@ class CollectionInfo(Base):
     collection_code: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=False)
     collection_name: Mapped[str | None] = mapped_column(String(255), nullable=False)
     collection_category: Mapped[str | None] = mapped_column(Integer, nullable=True)
-    collection_data_num: Mapped[int | None] = mapped_column(Integer)
     collection_data_ratio: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    collection_data_num: Mapped[int | None] = mapped_column(Integer)
+    counter_data_num: Mapped[int | None] = mapped_column(Integer, nullable=True)
     mean_vector : Mapped[str | None] = mapped_column(Text)
     created_datetime: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_datetime: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -46,8 +47,9 @@ class CollectionInfo(Base):
             "collection_code": self.collection_code,
             "collection_name": self.collection_name,
             "collection_category": self.collection_category,
-            "collection_data_num": self.collection_data_num,
             "collection_data_ratio": self.collection_data_ratio,
+            "collection_data_num": self.collection_data_num,
+            "counter_data_num": self.counter_data_num,
             "mean_vector": self.mean_vector,
             "created_datetime": self.created_datetime.isoformat(),
             "updated_datetime": self.updated_datetime.isoformat() if self.updated_datetime else None,

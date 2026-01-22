@@ -6,6 +6,8 @@ import { AlertTriangle, ChevronDown, BarChart3, FileText, CheckCircle, XCircle, 
 import { useSession } from "next-auth/react";
 
 import { withMessages } from '@/lib/i18n/withMessages';
+import { ProjectInfo } from "@/types/project";
+import { CollectionInfo } from "@/types/collection";
 export const getServerSideProps = withMessages();
 
 // --- 타입 정의 ---
@@ -19,33 +21,12 @@ type GroupInfo = {
   total: number;
 };
 
-type ProjectInfo = {
-  id: number;
-  project_code: string;
-  project_name: string;
-  project_description: string;
-  project_status: number;
-  source_type: string;
-  task_type: string;
-  collection_num: number;
-  labeled_documents: number;
-  unlabeled_documents: number;
-  created_datetime: string;
-};
-
-type CollectionInfo = {
-  id: number;
-  collection_name: string;
-  collection_data_num: number;
-  collection_data_ratio: number;
-  collection_category: number;
-};
 
 type StatsResponse = {
   project_info: ProjectInfo;
-  collection_info: CollectionInfo[]; // 전체 컬렉션 마스터 정보
-  group_list: GroupInfo[];           // SELECT 박스용 그룹 목록
-  group_distribution: Record<string, GroupStatItem[]>; // 그룹별 컬렉션 분포 데이터
+  collection_info: CollectionInfo[];
+  group_list: GroupInfo[];
+  group_distribution: Record<string, GroupStatItem[]>;
 };
 
 const COLORS = ['#3b82f6', '#06b6d4', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1'];
@@ -164,7 +145,11 @@ export default function ProjectStatsPage() {
       projectNo={stats.project_info.id}
       projectName={stats.project_info.project_name}
       projectDesc={stats.project_info.project_description}
-      sourceType={stats.project_info.source_type}
+      taskType={stats.project_info?.task_type}
+      sourceType={stats.project_info?.source_type}
+      collectionNum={stats.project_info?.collection_num}
+      CreatedDatetime={stats.project_info.created_datetime}
+      UpdatedDatetime={stats.project_info.updated_datetime}
     >
       <div className="min-h-screen bg-white p-8">
         {/* 헤더 섹션 */}

@@ -14,7 +14,7 @@ def get_data_groups_by_id(session: Session, model_id, page: int = 1, limit: int 
     if model_info.data_scope == "project":
         rows = (
             session.query(ProjectData)
-            .filter(ProjectData.project_id == model_info.data_id)
+            .filter(ProjectData.project_id == model_info.project_id)
             .all()
         )
 

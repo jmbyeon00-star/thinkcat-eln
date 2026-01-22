@@ -55,7 +55,7 @@ def infer_classification(config: dict):
     source_type = model_info["source_type"]
     collection_num = model_info .get("collection_num")
 
-    user_path  = f"{DEFAULT_PATH}/users/{user_id}"
+    user_path  = f"{DEFAULT_PATH}/app/storage/users/{user_id}"
     model_path = f"{user_path}/models/classification/{model_id}"
     model_path = f"{user_path}/models/{task_type}/{model_id}"
     infer_path = f"{model_path}/inference/{file_id}"
@@ -78,8 +78,6 @@ def infer_classification(config: dict):
         "BACKEND_URL": BACKEND_URL,
         "DEFAULT_PATH": DEFAULT_PATH,
     }
-
-    print("infer config 1:", config)
 
     # 4) 데이터 적재
     data_pack, lengths = get_inference_classification_data(config)
@@ -182,8 +180,6 @@ def infer_recommendation(config: dict):
     model_id = config["model_id"]
     collection_id = config["collection_id"]
 
-    print("config:", config)
-
     if not user_id or not model_id or not config:
         print("[GPU BACKEND] infer_recommendation missing config")
         return {"error": "missing config"}, 400
@@ -210,7 +206,7 @@ def infer_recommendation(config: dict):
     task_type   = "recommendation"
     source_type = (model_info["source_type"] or "").lower()
     collection_num = model_info.get("collection_num")
-    user_path  = f"{DEFAULT_PATH}/users/{user_id}"
+    user_path  = f"{DEFAULT_PATH}/app/storage/users/{user_id}"
     model_path = f"{user_path}/models/{task_type}/{model_id}"
 
     config = {

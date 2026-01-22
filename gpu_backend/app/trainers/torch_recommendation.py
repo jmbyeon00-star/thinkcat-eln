@@ -27,12 +27,12 @@ class TorchRecommendationTrainer(BaseTrainer):
         self.task_type = "recommendation"
         self.run_type = self.config.get("run_type", "train")
         self.backend_url = self.config.get("BACKEND_URL", "http://backend:8000")
-        self.default_path = self.config.get("DEFAULT_PATH", "/app/data")
+        self.default_path = self.config.get("DEFAULT_PATH", "/app")
         self.user_id = int(self.config["user_id"])
         self.model_id = int(self.config["model_id"])
         self.model_path = self.config.get(
             "model_path",
-            f"{self.default_path}/users/{self.user_id}/models/{self.task_type}/{self.model_id}",
+            f"{self.default_path}/app/storage/users/{self.user_id}/models/{self.task_type}/{self.model_id}",
         )
         self.ckpt_model = self.config.get("check_point_model", f"{self.default_path}/models/PI_v1.0")
         self.ckpt_tok = self.config.get("check_point_tokenizer", f"{self.default_path}/models/bert-base-multilingual-trained")
@@ -64,6 +64,10 @@ class TorchRecommendationTrainer(BaseTrainer):
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate)
         os.makedirs(self.model_path, exist_ok=True)
 
+        self.last_reported_progress = 0
+        self.steps_completed = 0
+        self.total_steps = 0
+
     # def _status(self, json: dict):
     #     """FastAPI 백엔드로 진행률 전송"""
     #     try:
@@ -79,6 +83,8 @@ class TorchRecommendationTrainer(BaseTrainer):
         """FastAPI 백엔드로 상태 전송 (비동기 안전 버전)"""
         try:
             run_type = "train" if self.run_type == "retrain" else self.run_type
+            if "run_type" in json.keys(): 
+                run_type = json["run_type"]
             async with httpx.AsyncClient(timeout=3.0) as client:
                 await client.post(
                     f"{self.backend_url}/api/status/{run_type}/{self.user_id}",
@@ -87,23 +93,12 @@ class TorchRecommendationTrainer(BaseTrainer):
         except Exception:
             pass
 
-    # def _progress(self, json_data: dict):
-    #     """FastAPI 백엔드로 진행률 전송"""
-    #     target_id = self.user_id
-    #     target_id = self.model_id
-    #     try:
-    #         httpx.post(
-    #             f"{self.backend_url}/api/status/progress/{self.run_type}/{target_id}",
-    #             json=json_data,
-    #             timeout=3.0,
-    #         )
-    #     except Exception:
-    #         pass
-
     async def _progress(self, json: dict):
         """FastAPI 백엔드로 진행률 전송 (비동기 안전 버전)"""
         try:
             run_type = "train" if self.run_type == "retrain" else self.run_type
+            if "run_type" in json.keys(): 
+                run_type = json["run_type"]
             target_id = self.model_id if run_type == "train" else self.file_id
             async with httpx.AsyncClient(timeout=3.0) as client:
                 await client.post(
@@ -134,9 +129,9 @@ class TorchRecommendationTrainer(BaseTrainer):
         labels_valid = (df_valid["target"] != "COUNTER").astype(int).tolist()
 
         history = {"train_loss": [], "train_acc": [], "valid_loss": [], "valid_acc": []}
-        total_steps = self.n_epochs * max(1, len(texts_train) // self.batch_size)
         step = 0
         best_acc = -1.0
+        self.total_steps = self.n_epochs * max(1, len(texts_train) // self.batch_size)
 
         for epoch in range(self.n_epochs):
             self.model.train()
@@ -165,12 +160,18 @@ class TorchRecommendationTrainer(BaseTrainer):
                 t_total += len(batch_labels)
 
                 step += 1
-                prog = int(step / total_steps * 100)
-                elapsed = time.time() - start
-                est_total = elapsed / max(1e-9, step / total_steps)
-                remaining = str(timedelta(seconds=int(est_total - elapsed)))
-            
-            # safe_create_task(self._progress({"progress": min(prog, 95), "status": "RUNNING", "remaining_time": remaining}))
+                prog = int(step / self.total_steps * 100)
+                self.steps_completed += 1
+                prog = int(self.steps_completed / max(1, self.total_steps) * 100)
+                
+                if prog > self.last_reported_progress:
+                    self.last_reported_progress = prog
+
+                    elapsed = time.time() - start
+                    est_total = elapsed / max(1e-9, self.steps_completed / max(1, self.total_steps))
+                    remaining = str(timedelta(seconds=int(est_total - elapsed)))
+
+                    safe_create_task(self._progress({"progress": min(prog, 99), "status": "RUNNING", "remaining_time": remaining }))
 
             train_loss = t_loss / max(1, t_total)
             train_acc = t_correct / max(1, t_total)
@@ -219,7 +220,7 @@ class TorchRecommendationTrainer(BaseTrainer):
             json.dump(history, f, ensure_ascii=False, indent=2)
 
         safe_create_task(self._progress({"progress": -1, "status": "COMPLETED", "remaining_time": "0:00:00", "accuracy": valid_acc}))
-        safe_create_task(self._status({"model_id": self.model_id, "progress": -1, "task": "recommend", "status": "COMPLETED", "remaining_time": "0:00:00"}))
+        safe_create_task(self._status({"model_id": self.model_id, "progress": -1, "task": "recommend", "status": "COMPLETED"}))
         
         gc.collect()
         torch.cuda.empty_cache()
@@ -228,17 +229,12 @@ class TorchRecommendationTrainer(BaseTrainer):
     # INFERENCE
     # -------------------------------------------------------
     def infer(self, packaged):
-        print(">>>>> batch_size", self.batch_size)
-        print(">>>>> max_length", self.max_length)
-        print(">>>>> tokenizer:", self.ckpt_tok)
-        print(">>>>> model:", self.ckpt_model)
-
         data = packaged["data"]
         mapping = packaged.get("mapping", {})
         label_names = list(mapping.values()) or ["COUNTER", "POSITIVE"]
 
         # safe_create_task(self._progress({"progress": 1, "status": "INFERRING"}))
-        safe_create_task(self._status({"model_id": self.model_id, "progress": 1, "task": "recommend", "status": "INFERRING", "remaining_time": "0:00:00"}))
+        safe_create_task(self._status({"model_id": self.model_id, "run_type": "infer", "progress": 1, "task": "recommend", "status": "INFERRING", "remaining_time": "0:00:00"}))
         start = time.time()
 
         tokenizer = BertTokenizerFast.from_pretrained(f"{self.model_path}/best_model")
@@ -266,7 +262,7 @@ class TorchRecommendationTrainer(BaseTrainer):
                 est_total = elapsed / max(1e-9, (batch_idx + 1) / total_batches)
                 remaining = str(timedelta(seconds=int(est_total - elapsed)))
                 
-        # safe_create_task(self._progress({ "progress": min(progress, 95), "status": "INFERRING", "remaining_time": remaining }))
+                safe_create_task(self._progress({ "progress": min(progress, 99), "run_type": "infer", "status": "INFERRING", "remaining_time": remaining }))
 
         scores = np.concatenate(all_scores, axis=0)
         pred_labels = np.argmax(scores, axis=1)
@@ -281,9 +277,11 @@ class TorchRecommendationTrainer(BaseTrainer):
         result_path = f"{self.model_path}/inference_result.json"
         topk.to_json(result_path, orient="records", force_ascii=False, indent=2)
 
-        safe_create_task(self._progress({"progress": -1, "status": "COMPLETED", "remaining_time": "0:00:00"}))
-        safe_create_task(self._status({"model_id": self.model_id, "progress": -1, "task": "recommend", "status": "COMPLETED", "remaining_time": "0:00:00"}))
+
+        safe_create_task(self._progress({"run_type": "infer", "progress": -1, "status": "COMPLETED", "remaining_time": "0:00:00"}))
+        safe_create_task(self._status({"model_id": self.model_id, "run_type": "infer", "progress": -1, "task": "recommend", "status": "COMPLETED", "remaining_time": "0:00:00"}))
         print(f"✅ 추천 결과 저장 완료 → {result_path}")
+        print(">>> infer self.run_type:", self.run_type)
 
         gc.collect()
         torch.cuda.empty_cache()

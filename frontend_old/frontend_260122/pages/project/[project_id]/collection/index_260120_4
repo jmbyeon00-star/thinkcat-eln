@@ -1,0 +1,541 @@
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/router";
+import { useSession } from "next-auth/react";
+import { Session } from "next-auth";
+import Head from "next/head";
+import {
+  Folder, Database, FileText, Search, LayoutGrid, Table,
+  ChevronLeft, ChevronRight, BarChart3, PieChart as PieChartIcon,
+  Plus, XCircle, Loader2, Edit3, ChevronDown, ChevronUp, Save, ArrowRight
+} from "lucide-react";
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
+} from "recharts";
+
+import ProjectLayout from "@/components/layouts/ProjectLayout";
+import AddCollectionModal from "@/components/collection/AddCollectionModal";
+import { useCollectionActions } from "@/hooks/project/useCollectionActions";
+import { withMessages } from '@/lib/i18n/withMessages';
+import { CollectionInfo } from "@/types/collection";
+import { ProjectInfo } from "@/types/project";
+import { ModelInfo } from "@/lib/types";
+
+export const getServerSideProps = withMessages();
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF19A6', '#19FFD1', '#5B86E5', '#A52A2A', '#004D40'];
+
+type PreviewItem = {
+  pdid: number;
+  application_number: string;
+  title: string;
+  abstract?: string;
+  collection_name?: string;
+};
+
+export default function IntegratedProjectPage() {
+  const router = useRouter();
+  const { project_id } = router.query;
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  const { data: session } = useSession() as {
+    data: (Session & { access_token?: string }) | null;
+  };
+  const token = session?.access_token;
+
+  // --- UI 상태 ---
+  const [viewMode, setViewMode] = useState<"grid" | "table" | "stats" | "preview">("table");
+  const [chartType, setChartType] = useState<'bar' | 'pie'>('bar');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // --- 컬렉션 데이터 상태 ---
+  const [collections, setCollections] = useState<CollectionInfo[]>([]);
+  const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
+  const [total, setTotal] = useState(0);
+  const [totalDataNum, setTotalDataNum] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit] = useState(6);
+  const [selectedCollections, setSelectedCollections] = useState<{ id: number, code: string }[]>([]);
+
+  // --- 미리보기(데이터 편집) 상태 ---
+  const [previewItems, setPreviewItems] = useState<PreviewItem[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [editingCell, setEditingCell] = useState<{ row: number; key: keyof PreviewItem } | null>(null);
+  const [modified, setModified] = useState<Record<number, Partial<PreviewItem>>>({});
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [previewPage, setPreviewPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+
+  // --- 권한 체크 변수 ---
+  const hasModel = useMemo(() => Array.isArray(modelInfo) ? modelInfo.length > 0 : !!modelInfo, [modelInfo]);
+  const isEditDisabled = hasModel;
+
+  // --- 데이터 로딩 함수 (컬렉션) ---
+  const loadCollections = useCallback(async () => {
+    if (!project_id || !token) return;
+    try {
+      setLoading(true);
+      const res = await fetch(
+        `${API_BASE}/api/project/${project_id}/collection?page=${page}&limit=${limit}&q=${encodeURIComponent(query)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      setCollections(data.collection_info || []);
+      setModelInfo(data.model_info);
+      setTotal(data.total_collections || 0);
+      setTotalDataNum(data.total_data_num || 0);
+    } catch (e) {
+      console.error("컬렉션 로드 실패", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [project_id, token, page, limit, query, API_BASE]);
+
+  // --- 데이터 로딩 함수 (미리보기) ---
+  const loadPreview = useCallback(async () => {
+    if (!project_id || !token) return;
+    try {
+      setPreviewLoading(true);
+      const res = await fetch(`${API_BASE}/api/project/${project_id}/preview`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setPreviewItems(data.items || []);
+    } catch (e) {
+      alert("데이터를 불러오지 못했습니다.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [project_id, token, API_BASE]);
+
+  useEffect(() => {
+    const debounce = setTimeout(loadCollections, 300);
+    return () => clearTimeout(debounce);
+  }, [loadCollections]);
+
+  useEffect(() => {
+    if (viewMode === "preview") loadPreview();
+  }, [viewMode, loadPreview]);
+
+  // 커스텀 훅 (추가/삭제)
+  const { addCollection, deleteCollections, isActionLoading } = useCollectionActions(
+    project_id as string,
+    token,
+    loadCollections
+  );
+
+  // --- 핸들러 함수들 ---
+  const handleCollectionClick = (name: string) => {
+    // URL에 컬렉션명을 추가하여 페이지 이동 효과
+    router.push({
+      pathname: router.pathname,
+      query: { ...router.query, collection_name: name }
+    }, undefined, { shallow: true });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedCollections.length === collections.length) setSelectedCollections([]);
+    else setSelectedCollections(collections.map(c => ({ id: c.id, code: c.collection_code })));
+  };
+
+  const handleSelectOne = (id: number, code: string) => {
+    setSelectedCollections(prev => {
+      const isSelected = prev.some(item => item.id === id);
+      return isSelected ? prev.filter(item => item.id !== id) : [...prev, { id, code }];
+    });
+  };
+
+  const handleDeleteSelected = async () => {
+    if (isEditDisabled || selectedCollections.length === 0) return;
+    if (!confirm(`선택한 ${selectedCollections.length}개의 컬렉션을 삭제하시겠습니까?`)) return;
+    const success = await deleteCollections(selectedCollections);
+    if (success) {
+      setSelectedCollections([]);
+      alert("삭제 완료");
+    }
+  };
+
+  const handleAnalyze = () => {
+    if (selectedCollections.length === 0) {
+      alert("분석할 컬렉션을 선택해주세요.");
+      return;
+    }
+    const codes = selectedCollections.map(s => s.code).join(',');
+    router.push(`/project/${project_id}/collection/analysis?codes=${codes}`);
+  };
+
+  const handleDataChange = (row: number, key: keyof PreviewItem, value: string) => {
+    if (isEditDisabled) return;
+    const pdid = previewItems[row].pdid;
+    setPreviewItems((prev) => prev.map((item, idx) => idx === row ? { ...item, [key]: value } : item));
+    setModified((prev) => ({ ...prev, [pdid]: { ...prev[pdid], [key]: value } }));
+  };
+
+  const handleSaveData = async () => {
+    if (isEditDisabled) return;
+    const updates = Object.entries(modified).map(([pdid, fields]) => ({
+      pdid: parseInt(pdid),
+      ...fields,
+    }));
+    try {
+      const res = await fetch(`${API_BASE}/api/project/${project_id}/data/update`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ items: updates }),
+      });
+      if (res.ok) {
+        alert("저장 성공");
+        setModified({});
+      }
+    } catch (e) { alert("저장 실패"); }
+  };
+
+  // --- 서브 렌더링: 통계 뷰 ---
+  const renderStatsView = () => {
+    const chartData = [...collections]
+      .sort((a, b) => (b.collection_data_num || 0) - (a.collection_data_num || 0))
+      .slice(0, 10)
+      .map((col, index) => ({
+        name: col.collection_name,
+        value: col.collection_data_num || 0,
+        color: COLORS[index % COLORS.length]
+      }));
+
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-blue-50 border-l-4 border-blue-600 p-6 rounded-xl shadow-sm">
+            <p className="text-sm font-medium text-blue-600">전체 컬렉션</p>
+            <p className="text-3xl font-bold text-zinc-900">{total}개</p>
+          </div>
+          <div className="bg-indigo-50 border-l-4 border-indigo-600 p-6 rounded-xl shadow-sm">
+            <p className="text-sm font-medium text-indigo-600">총 데이터 수</p>
+            <p className="text-3xl font-bold text-zinc-900">{totalDataNum.toLocaleString()}건</p>
+          </div>
+          <div className="bg-emerald-50 border-l-4 border-emerald-600 p-6 rounded-xl shadow-sm">
+            <p className="text-sm font-medium text-emerald-600">학습 모델 상태</p>
+            <p className="text-xl font-bold text-zinc-900">{hasModel ? "보유 (편집제한)" : "미보유"}</p>
+          </div>
+        </div>
+
+        <div className="bg-white border border-zinc-200 p-6 rounded-2xl shadow-sm">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-blue-600" /> 데이터 분포 (Top 10)
+            </h3>
+            <div className="flex gap-2 bg-zinc-100 p-1 rounded-lg">
+              <button onClick={() => setChartType('bar')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${chartType === 'bar' ? 'bg-white shadow-sm text-blue-600' : 'text-zinc-500'}`}>막대</button>
+              <button onClick={() => setChartType('pie')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${chartType === 'pie' ? 'bg-white shadow-sm text-blue-600' : 'text-zinc-500'}`}>파이</button>
+            </div>
+          </div>
+
+          <div className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              {chartType === 'bar' ? (
+                <BarChart data={chartData} layout="vertical" margin={{ left: 40, right: 40 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(value: number) => [`${value.toLocaleString()}건`, '데이터 수']} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                    {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                  </Bar>
+                </BarChart>
+              ) : (
+                <PieChart>
+                  <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={120} label>
+                    {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => `${value.toLocaleString()}건`} />
+                  <Legend />
+                </PieChart>
+              )}
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // --- 서브 렌더링: 미리보기(편집) 뷰 ---
+  const renderPreviewView = () => {
+    const totalPages = Math.ceil(previewItems.length / perPage);
+    const pagedItems = previewItems.slice((previewPage - 1) * perPage, previewPage * perPage);
+
+    return (
+      <div className="bg-white rounded-2xl border shadow-xl overflow-hidden">
+        <div className="bg-zinc-900 px-8 py-5 flex justify-between items-center text-white">
+          <div className="flex items-center gap-3">
+            <FileText className="w-5 h-5" />
+            <h2 className="text-lg font-bold">데이터 상세 {isEditDisabled ? '조회' : '편집'}</h2>
+          </div>
+          {!isEditDisabled && (
+            <button
+              onClick={handleSaveData}
+              disabled={Object.keys(modified).length === 0}
+              className="flex items-center gap-2 bg-blue-600 px-5 py-2 rounded-xl text-sm font-bold disabled:bg-zinc-700"
+            >
+              <Save className="w-4 h-4" /> 저장하기 ({Object.keys(modified).length})
+            </button>
+          )}
+        </div>
+        <table className="w-full text-sm">
+          <thead className="bg-zinc-50 border-b text-zinc-500">
+            <tr>
+              <th className="p-4 w-16 text-center">#</th>
+              <th className="p-4 text-left w-40">출원번호</th>
+              <th className="p-4 text-left">특허명</th>
+              <th className="p-4 w-20 text-center">확장</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {pagedItems.map((item, idx) => {
+              const globalIdx = (previewPage - 1) * perPage + idx;
+              const isExpanded = expandedRow === globalIdx;
+              return (
+                <React.Fragment key={item.pdid}>
+                  <tr className={`hover:bg-blue-50/50 ${modified[item.pdid] ? 'bg-yellow-50' : ''}`}>
+                    <td className="p-4 text-center">{globalIdx + 1}</td>
+                    <td className="p-4 font-mono">{item.application_number}</td>
+                    <td className="p-4 cursor-pointer" onClick={() => !isEditDisabled && setEditingCell({ row: globalIdx, key: 'title' })}>
+                      {editingCell?.row === globalIdx && editingCell.key === 'title' ? (
+                        <input
+                          autoFocus
+                          className="w-full border-2 border-blue-500 rounded p-1"
+                          value={item.title}
+                          onChange={(e) => handleDataChange(globalIdx, 'title', e.target.value)}
+                          onBlur={() => setEditingCell(null)}
+                        />
+                      ) : (
+                        <span className="truncate block max-w-lg">{item.title}</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-center">
+                      <button onClick={() => setExpandedRow(isExpanded ? null : globalIdx)}>
+                        {isExpanded ? <ChevronUp /> : <ChevronDown />}
+                      </button>
+                    </td>
+                  </tr>
+                  {isExpanded && (
+                    <tr className="bg-zinc-50">
+                      <td colSpan={4} className="p-6">
+                        <label className="text-xs font-bold text-zinc-400">요약문 수정</label>
+                        <textarea
+                          readOnly={isEditDisabled}
+                          className="w-full mt-2 p-3 border rounded-xl h-32 outline-none focus:ring-2 focus:ring-blue-500"
+                          value={item.abstract || ""}
+                          onChange={(e) => handleDataChange(globalIdx, 'abstract', e.target.value)}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+        <div className="p-4 bg-zinc-50 border-t flex justify-between items-center">
+          <div className="flex gap-2">
+            <button onClick={() => setPreviewPage(p => Math.max(1, p - 1))} className="p-2 border rounded bg-white"><ChevronLeft className="w-4 h-4" /></button>
+            <span className="px-4 py-2 text-sm font-bold">{previewPage} / {totalPages}</span>
+            <button onClick={() => setPreviewPage(p => Math.min(totalPages, p + 1))} className="p-2 border rounded bg-white"><ChevronRight className="w-4 h-4" /></button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <ProjectLayout projectNo={project_id as string} token={token} API_BASE={API_BASE}>
+      <Head><title>컬렉션 관리 시스템</title></Head>
+      <div className="min-h-screen bg-zinc-50/50 p-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Header & View Switcher */}
+          <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-8">
+            <div>
+              <h1 className="text-3xl font-black text-zinc-900 mb-2">컬렉션 관리</h1>
+              <p className="text-zinc-500">데이터 탐색, 통계 확인 및 편집을 한 곳에서 수행하세요.</p>
+            </div>
+            <div className="flex bg-white p-1 rounded-xl border shadow-sm">
+              {[
+                { id: 'grid', label: '카드', icon: LayoutGrid },
+                { id: 'table', label: '목록', icon: Table },
+                { id: 'stats', label: '통계', icon: BarChart3 },
+                { id: 'preview', label: '편집', icon: Edit3 }
+              ].map(mode => (
+                <button
+                  key={mode.id}
+                  onClick={() => setViewMode(mode.id as any)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition ${viewMode === mode.id ? 'bg-blue-600 text-white shadow-md' : 'text-zinc-400 hover:text-zinc-600'}`}
+                >
+                  <mode.icon className="w-4 h-4" /> {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Alert */}
+          {hasModel && (
+            <div className="mb-6 flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800">
+              <XCircle className="w-5 h-5" />
+              <p className="text-sm font-bold">모델이 존재하여 추가/삭제 및 데이터 수정이 제한됩니다.</p>
+            </div>
+          )}
+
+          {/* Action Toolbar */}
+          {(viewMode === 'grid' || viewMode === 'table') && (
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <input
+                  className="w-full rounded-xl border border-zinc-200 pl-12 pr-4 py-3 focus:ring-2 focus:ring-blue-100 outline-none"
+                  placeholder="컬렉션 검색..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2">
+                {!isEditDisabled && (
+                  <button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-md">
+                    <Plus className="w-5 h-5" /> 추가
+                  </button>
+                )}
+                {selectedCollections.length > 0 && (
+                  <>
+                    <button onClick={handleAnalyze} className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-md">
+                      <BarChart3 className="w-5 h-5" /> 클러스터 분석
+                    </button>
+                    {!isEditDisabled && (
+                      <button onClick={handleDeleteSelected} className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl font-bold">
+                        <XCircle className="w-5 h-5" /> 삭제 ({selectedCollections.length})
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Content Rendering */}
+          {loading ? (
+            <div className="py-20 text-center bg-white rounded-3xl border border-dashed">
+              <Loader2 className="w-10 h-10 animate-spin mx-auto text-blue-600 mb-4" />
+              <p>데이터 로딩 중...</p>
+            </div>
+          ) : (
+            <>
+              {viewMode === 'stats' && renderStatsView()}
+              {viewMode === 'preview' && renderPreviewView()}
+              {viewMode === 'grid' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {collections.map(c => (
+                    <div
+                      key={c.id}
+                      onClick={() => handleSelectOne(c.id, c.collection_code)}
+                      className={`p-6 bg-white rounded-3xl border transition-all cursor-pointer ${selectedCollections.some(s => s.id === c.id) ? 'border-blue-500 ring-4 ring-blue-50' : 'border-zinc-100 hover:shadow-lg'}`}
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="p-3 bg-blue-50 rounded-xl text-blue-600"><Folder /></div>
+                        {!isEditDisabled && (
+                          <input type="checkbox" checked={selectedCollections.some(s => s.id === c.id)} readOnly className="w-5 h-5 rounded border-zinc-300" />
+                        )}
+                      </div>
+                      <h3 className="font-bold text-zinc-900 truncate">{c.collection_name}</h3>
+                      <p className="text-xs text-zinc-400 font-mono mb-4">{c.collection_code}</p>
+                      <div className="flex justify-between items-center pt-4 border-t">
+                        <span className="text-sm font-bold text-blue-600">{c.collection_data_num?.toLocaleString()}건</span>
+                        <button onClick={(e) => { e.stopPropagation(); setViewMode('preview'); }} className="text-xs font-bold text-zinc-300 hover:text-blue-600 flex items-center gap-1">미리보기 <ArrowRight className="w-3 h-3" /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {viewMode === 'table' && (
+                <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                  <table className="w-full text-left">
+                    <thead className="bg-zinc-50 border-b text-xs font-bold text-zinc-400">
+                      <tr>
+                        <th className="p-4 w-12">
+                          <input
+                            type="checkbox"
+                            onChange={handleSelectAll}
+                            checked={collections.length > 0 && selectedCollections.length === collections.length}
+                          />
+                        </th>
+                        <th className="p-4">컬렉션 명 / 코드</th>
+                        <th className="p-4 text-right">데이터 건수</th>
+                        <th className="p-4 text-center">작업</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {collections.map(c => (
+                        <tr key={c.id} className="hover:bg-zinc-50/50">
+                          <td className="p-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedCollections.some(s => s.id === c.id)}
+                              onChange={() => handleSelectOne(c.id, c.collection_code)}
+                            />
+                          </td>
+                          <td className="p-4">
+                            <p className="font-bold text-zinc-800">{c.collection_name}</p>
+                            <p className="text-xs font-mono text-zinc-300">{c.collection_code}</p>
+                          </td>
+                          <td className="p-4 text-right font-bold text-blue-600">
+                            {c.collection_data_num?.toLocaleString()}건
+                          </td>
+                          <td className="p-4 text-center">
+                            {/* ✅ 이 버튼을 클릭하면 해당 컬렉션명으로 URL을 변경하고 편집 모드로 진입합니다. */}
+                            <button
+                              onClick={() => handleCollectionClick(c.collection_name)}
+                              className="text-xs font-bold border rounded-lg px-4 py-1.5 bg-white hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm"
+                            >
+                              편집하기
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Pagination */}
+          {!loading && total > limit && viewMode !== "stats" && viewMode !== "preview" && (
+            <div className="mt-10 flex justify-center items-center gap-4">
+              <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="p-2 border rounded-lg bg-white disabled:opacity-30"><ChevronLeft /></button>
+              <span className="text-sm font-bold">{page} / {Math.ceil(total / limit)}</span>
+              <button disabled={page * limit >= total} onClick={() => setPage(p => p + 1)} className="p-2 border rounded-lg bg-white disabled:opacity-30"><ChevronRight /></button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Action Overlays */}
+      {isActionLoading && (
+        <div className="fixed inset-0 z-[100] bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center">
+          <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-2" />
+          <p className="font-bold text-zinc-700">처리 중...</p>
+        </div>
+      )}
+
+      {isAddModalOpen && (
+        <AddCollectionModal
+          project_id={project_id as string}
+          onClose={() => setIsAddModalOpen(false)}
+          onSave={async (name: string) => {
+            const success = await addCollection(name);
+            if (success) { loadCollections(); setIsAddModalOpen(false); }
+          }}
+        />
+      )}
+    </ProjectLayout>
+  );
+}
+
+// React.Fragment 사용을 위한 import 보완 (필요 시)
+import React from "react";

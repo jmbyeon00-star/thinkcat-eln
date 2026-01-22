@@ -10,8 +10,10 @@ class ModelInfo(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("USER_INFO_TB.id"))
-    data_id: Mapped[int] = mapped_column(Integer)
     # project_id: Mapped[int] = mapped_column(Integer, ForeignKey("PROJECT_INFO_TB.id"))
+    project_id: Mapped[int] = mapped_column(Integer)
+    collection_id: Mapped[int] = mapped_column(Integer)
+    train_status: Mapped[str] = mapped_column(Integer, nullable=True, default=0)
     model_status: Mapped[str] = mapped_column(Integer, nullable=True, default=0)
     model_name: Mapped[str] = mapped_column(String(50), nullable=False)
     # user_email: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -50,7 +52,8 @@ class ModelInfo(Base):
         return {
             "id": self.id,
             "user_id": self.user_id,
-            "data_id": self.data_id,
+            "project_id": self.project_id,
+            "collection_id": self.collection_id,
             "task_type": self.task_type,
             "source_type": self.source_type,
             "data_scope": self.data_scope,
@@ -61,7 +64,7 @@ class ModelInfo(Base):
             "model_name": self.model_name,
             "model_desc": self.model_desc,
             "model_message": self.model_message,
-            "train_status": self.model_status,
+            "train_status": self.train_status,
             "elapsed_time": self.elapsed_time,
             "progress_status": self.progress_status,
             "collection_num": self.collection_num,
