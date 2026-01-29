@@ -157,9 +157,6 @@ async def update_model_name(session: httpx.AsyncClient, user_id: int, model_id: 
         return {"status": "error", "message": str(e)}
 
 async def run_training(session, payload: dict, user_id: int, project_id: int=None, collection_id: int=None):
-    print(f">>> [TRAIN] 프로젝트 {project_id} 학습 세션 시작")
-    print(">>> payload:", payload)
-
     start = time.perf_counter()
 
     project_info = session.query(ProjectInfo).filter(
@@ -170,12 +167,17 @@ async def run_training(session, payload: dict, user_id: int, project_id: int=Non
     if not project_info:
         return {"status": "failed", "error": "Project not found"}
 
-    is_counter_used = bool(project_info.is_counter_used)
+    print(f">>> [TRAIN] 프로젝트 {project_id} 학습 세션 시작")
     data_scope = payload.get("data_scope", "project").lower()
     source_type = project_info.source_type
-    task_type = payload.get("task_type", project_info.task_type)
+    task_type = project_info.task_type
+    print("source_type:", source_type, task_type)
     run_type = payload.get("run_type", "train")
 
+    group_code = payload.get("group_code", None)
+    is_counter_used = bool(project_info.is_counter_used)
+
+    # 공통 변수 초기화
     model_id = None
     model_code = None
     target_code = None
@@ -269,7 +271,14 @@ async def run_training(session, payload: dict, user_id: int, project_id: int=Non
     #     elif model_info.source_type == "search":
     #         print(f"[ERROR] 검색 데이터에 대한 재학습 처리가 준비되지 않았습니다")
     #         return {"status": "failed", "error": "검색 데이터에 대한 재학습 처리가 준비되지 않았습니다"}
-    
+
+    data_scope = payload.get("data_scope", None)
+    if task_type == "recommendation":
+        group_code = None
+        final_collection_num = 2
+        model_info.collection_num = final_collection_num
+        session.commit()
+
     gpu_payload = {
         "start": start,
         "user_id": user_id,
@@ -278,7 +287,7 @@ async def run_training(session, payload: dict, user_id: int, project_id: int=Non
         "model_id": model_id,
         "model_code": model_code,
         "target_code": target_code,
-        "group_code": payload.get("group_code", None) if task_type == "classification" else None,
+        "group_code": group_code,
         "run_type": run_type,
         "updated_datetime": datetime.now().isoformat(),
         # "updated_datetime": payload.get("updated_datetime", None),
@@ -291,8 +300,6 @@ async def run_training(session, payload: dict, user_id: int, project_id: int=Non
         "shuffle": payload.get('shuffle', "1") == 1 or payload.get('shuffle', "1") == "1", # 문자열 "1"을 bool로 변환
         "task_type": task_type
     }
-
-    print(">>> GPU Payload:", gpu_payload)
 
     try:
         async with httpx.AsyncClient() as client:
@@ -412,8 +419,16 @@ async def run_auto_recommend(session: Session, user_id: int, collection_id: int,
             .order_by(ModelInfo.id.desc())
             .first()
         )
-        
-        # 1. 신규 모델 학습 시작
+        project_info = session.query(ProjectInfo).filter(ProjectInfo.id==project_id, ProjectInfo.user_id==user_id).first()
+        print(project_info.to_dict())
+        # project_data = session.query(ProjectData).filter(ProjectData.project_id==project_id, ProjectData.collection_id==collection_id).all()
+        # project_data_list = [item.to_dict() for item in project_data]
+        body["dataset"] = {
+            # "items": project_data_list,
+            "is_counter_used":  project_info.is_counter_used,
+        }
+
+        # 1️⃣ 신규 모델 학습 시작
         if not latest_model:
             print("추천 모델 없음 -> 신규 학습 시작")
             try:
@@ -421,7 +436,7 @@ async def run_auto_recommend(session: Session, user_id: int, collection_id: int,
             except Exception as e:
                 print(">>> Error", str(e))
         
-        # 2-1. 기존 모델이 있으면 추론만 진행
+        # 2️⃣ 기존 모델이 있으면 추론만 진행
         else:
             print("추천 모델 있음")
             # 신규 데이터 개수 확인
@@ -447,7 +462,7 @@ async def run_auto_recommend(session: Session, user_id: int, collection_id: int,
 
                 return await run_inference_recommendation(session, user_id, clean_infer_body)
             
-            # 2-2. 추가된 데이터가 n개 이상인 경우 추가 학습 진행
+            # 3️⃣ 추가된 데이터가 n개 이상인 경우 추가 학습 진행
             else:
                 body["run_type"] = "retrain"
                 print("추가 학습 시작")

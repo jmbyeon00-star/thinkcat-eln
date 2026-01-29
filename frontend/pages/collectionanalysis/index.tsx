@@ -193,8 +193,8 @@ const CollectionAnalysis = () => {
               key={collection.collection_code}
               onClick={(e) => handleCardClick(collection.collection_code, e)}
               className={`bg-white rounded-lg shadow hover:shadow-lg transition-all cursor-pointer border-2 p-6 ${selectedCollections.includes(collection.collection_code)
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-blue-300'
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-200 hover:border-blue-300'
                 }`}
             >
               {/* 체크박스와 인덱스 */}

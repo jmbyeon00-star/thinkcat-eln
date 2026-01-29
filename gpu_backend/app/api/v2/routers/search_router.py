@@ -59,8 +59,15 @@ def get_patent_detail(application_number: str):
 # MCP를 활용한 엘라스틱서치 라이브러리 검색
 # -----------------------------
 @router.post("/mcp")
-async def search_with_mcp(payload: dict):
+async def get_patents_with_mcp(payload: dict):
     try:
         return await search_service.search_with_mcp(payload)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Detail fetch error: {str(e)}")
+
+@router.post("/standard")
+async def get_patents(payload: dict):
+    try:
+        return await search_service.search_standard(payload)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Detail fetch error: {str(e)}")

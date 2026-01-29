@@ -1,0 +1,372 @@
+import React, { useState, useCallback } from 'react';
+import { useRouter } from 'next/router';
+import { useSession } from "next-auth/react";
+import { Session } from "next-auth"
+import Head from 'next/head';
+import { SearchOptions, SearchResultItem } from '@/types/search';
+import { ArrowUp, Calendar, Info, Search, Hash, XCircle, ChevronRight } from 'lucide-react'; // 아이콘 추가
+
+import { useTranslations } from 'next-intl';
+import { withMessages } from '@/lib/i18n/withMessages';
+
+export const getServerSideProps = withMessages();
+
+// 🎨 공통 입력 필드 스타일 (현대적인 Pill Shape + 포커스 링)
+const inputClassName = "w-full px-5 py-3 bg-slate-100 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all font-medium text-slate-800 placeholder:text-slate-400";
+
+export default function SearchPage() {
+    const router = useRouter();
+    const translator = useTranslations();
+
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const { data: session } = useSession() as {
+        data: (Session & { access_token?: string }) | null;
+        status: "loading" | "authenticated" | "unauthenticated";
+    };
+    const token = session?.access_token;
+
+    const [options, setOptions] = useState<SearchOptions>({
+        search_type: null,
+        use_vector: true,
+        filters: {},
+        exact_match: {},
+        text_query: {
+            fields: [],
+            keyword: [],
+        },
+    });
+
+    const [query, setQuery] = useState('');
+    const [summary, setSummary] = useState('검색 결과의 핵심 키워드가 이곳에 요약됩니다.');
+    const [results, setResults] = useState<SearchResultItem[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // 행 클릭 핸들러
+    const handleRowClick = (appNum: string) => {
+        if (!appNum) return;
+        router.push(`/search/detail/application/${appNum}?keyword=${encodeURIComponent(summary)}`);
+    };
+
+    const handleSearch = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+
+        const hasQuery = query.trim().length > 0;
+        // 🎯 키워드 입력창에 값이 있는지 확인
+        const hasKeyword = (options.text_query?.text_query ?? "").trim().length > 0;
+
+        const hasFilters = Object.values(options.filters).some(value =>
+            value !== null && value !== "" && (typeof value !== 'object' || Object.keys(value).length > 0)
+        );
+        const hasExactMatch = Object.values(options.exact_match).some(value =>
+            value !== null && value !== ""
+        );
+
+        // 🎯 질문도 없고 키워드도 없으면 검색 막기
+        if (!hasQuery && !hasKeyword && !hasFilters && !hasExactMatch) {
+            setError('검색어, 키워드 또는 필터 옵션 중 하나 이상을 입력해 주세요.');
+            setResults([]);
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        // setSummary(''); // 기존 요약을 유지하는게 나을 수도 있음
+        setResults([]);
+
+        try {
+            const response = await fetch(`${API_BASE}/api/search/mcp`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                credentials: "include",
+                body: JSON.stringify({ query: query, options: options }),
+            });
+
+            if (!response.ok) throw new Error(`HTTP 오류: ${response.status} ${response.statusText}`);
+
+            const data = await response.json();
+
+            // 🎯 요약문 업데이트 (문자열로 조합)
+            const keywordsStr = Array.isArray(data.intent.text_query?.keywords)
+                ? data.intent.text_query.keywords.join(', ')
+                : (data.intent.text_query?.text_query ?? "");
+
+            setSummary(data.intent.text_query?.llm_summary || '검색 결과에 사용된 키워드가 없습니다.');
+
+            setResults(Array.isArray(data.results.data.results.hits.hits) ? data.results.data.results.hits.hits : []);
+
+            // 🎯 옵션 상태 업데이트 (백엔드 분석값 주입 - 키워드 포함)
+            setOptions(prev => ({
+                ...prev,
+                filters: data.intent.filters ?? {},
+                exact_match: data.intent.exact_match ?? {},
+                text_query: {
+                    ...prev.text_query,
+                    text_query: keywordsStr // Input창에 다시 반영
+                }
+            }));
+
+        } catch (err: any) {
+            setError(`검색에 실패했습니다: ${err.message}`);
+            // setSummary('검색 실패');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [query, options, API_BASE, token]);
+
+    return (
+        <div className="min-h-screen bg-slate-100 py-12 font-sans selection:bg-indigo-100 selection:text-indigo-900">
+            <Head>
+                <title>AI Patent Search | IP-FORCE</title>
+            </Head>
+
+            {/* 메인 컨테이너: 더 넓고 부드러운 그림자 적용 */}
+            <div className="max-w-5xl mx-auto bg-white p-10 rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-50">
+
+                {/* 헤더 타이틀 */}
+                <div className="mb-10 text-center">
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-3">
+                        {translator('search.title')}
+                        <span className="text-indigo-600">.</span>
+                    </h1>
+                    <p className="text-slate-500 text-lg font-medium">
+                        LLM 기반의 스마트한 특허 검색을 경험하세요.
+                    </p>
+                </div>
+
+                {/* 검색 메인 폼 */}
+                <form onSubmit={handleSearch} className="mb-12">
+                    <div className="relative flex items-center">
+                        <div className="absolute left-6 text-slate-400">
+                            <Search size={24} />
+                        </div>
+                        <input
+                            type="text"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder="무엇을 찾고 계신가요? (예: 2013 ~ 2014년 자흡식 미세기포 발생장치)"
+                            className={`w-full pl-16 pr-36 py-5 bg-slate-100 rounded-full border-2 border-transparent outline-none text-xl font-bold text-slate-800 placeholder:text-slate-400 placeholder:font-medium transition-all
+                                focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 disabled:opacity-60 shadow-inner shadow-slate-200/50`}
+                            disabled={isLoading}
+                        />
+                        {query && (
+                            <button
+                                type="button"
+                                onClick={() => setQuery('')}
+                                className="absolute right-32 p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <XCircle size={20} />
+                            </button>
+                        )}
+                        <button
+                            type="submit"
+                            disabled={isLoading || (!query && !(options.text_query?.text_query))}
+                            className="absolute right-2 top-2 bottom-2 px-8 bg-indigo-600 text-white font-bold rounded-full text-lg shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 hover:shadow-indigo-500/50 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed"
+                        >
+                            {isLoading ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="animate-spin">✦</span>
+                                </div>
+                            ) : <ArrowUp size={24} strokeWidth={3} />}
+                        </button>
+                    </div>
+                </form>
+
+                <div className="h-px bg-slate-100 w-full mb-10" /> {/* 구분선 */}
+
+                {/* 필터 및 옵션 섹션 (박스 형태 제거, 깔끔한 섹션 구분) */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 mb-12">
+
+                    {/* 왼쪽: 키워드 및 요약 (4칸) */}
+                    <div className="lg:col-span-4 space-y-8">
+                        {/* 🎯 키워드 입력 섹션 */}
+                        <section>
+                            <h3 className="flex items-center gap-2 text-sm font-black text-slate-500 uppercase tracking-wider mb-4">
+                                <Hash size={16} className="text-indigo-500" />
+                                검색어
+                            </h3>
+                            <div className="relative group">
+                                <textarea
+                                    placeholder="검색 결과 상단에 노출할 핵심 단어를 입력하세요. (콤마 구분)"
+                                    rows={3}
+                                    className={`${inputClassName} resize-none font-bold text-indigo-900 bg-indigo-50/50 border-indigo-100 focus:bg-white`}
+                                    value={options.text_query?.text_query ?? ""}
+                                    onChange={(e) => setOptions(prev => ({ ...prev, text_query: { ...prev.text_query, text_query: e.target.value } }))}
+                                />
+
+                                <button
+                                    type="button"
+                                    onClick={(e: any) => handleSearch(e)}
+                                    disabled={isLoading || (!query && !(options.text_query?.text_query))}
+                                    // className="absolute bottom-3 right-3 w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-md hover:bg-indigo-700 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:bg-slate-200"
+                                    // className={`${inputClassName} pr-14 resize-none font-bold text-indigo-900 bg-indigo-50/50 border-indigo-100 focus:bg-white`}
+                                    className="absolute bottom-3 right-3 w-14 h-10 flex items-center justify-center bg-blue-500 text-white rounded-xl shadow-md hover:bg-blue-600 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:bg-slate-200 disabled:shadow-none"
+                                >
+                                    {isLoading ? (
+                                        <div className="w-5 h-5 border-4 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
+                                    ) : (
+                                        "검색"
+                                    )}
+                                </button>
+
+                            </div>
+                            <p className="text-[11px] text-slate-500 font-medium mt-2 px-2">
+                                * 입력한 단어가 포함된 결과가 최우선으로 표시됩니다.
+                            </p>
+                        </section>
+
+                        {/* 요약 섹션 */}
+                        <section className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
+                            <h3 className="flex items-center gap-2 text-sm font-black text-slate-500 uppercase tracking-wider mb-4">
+                                <Info size={16} className="text-slate-400" />
+                                AI 분석 요약
+                            </h3>
+                            <p className={`text-sm font-medium leading-relaxed ${summary.includes('없습니다') ? 'text-slate-400 italic' : 'text-slate-700'}`}>
+                                {summary}
+                            </p>
+                        </section>
+                    </div>
+
+                    {/* 오른쪽: 상세 필터 (8칸) */}
+                    <div className="lg:col-span-8 space-y-8">
+                        {/* 출원 연도 */}
+                        <section>
+                            <h3 className="flex items-center gap-2 text-sm font-black text-slate-500 uppercase tracking-wider mb-4">
+                                <Calendar size={16} className="text-slate-400" />
+                                출원 연도 범위
+                            </h3>
+                            <div className="flex items-center gap-4">
+                                <input
+                                    type="number" placeholder="시작 연도 (예: 2015)" className={inputClassName}
+                                    value={options.filters.filing_year?.gte ?? options.filters.filing_year?.from ?? ""}
+                                    onChange={(e) => setOptions(prev => ({ ...prev, filters: { ...prev.filters, filing_year: { ...prev.filters.filing_year, gte: e.target.value ? Number(e.target.value) : undefined } } }))}
+                                />
+                                <span className="text-slate-300 font-black text-xl">~</span>
+                                <input
+                                    type="number" placeholder="종료 연도 (예: 2023)" className={inputClassName}
+                                    value={options.filters.filing_year?.lte ?? options.filters.filing_year?.to ?? ""}
+                                    onChange={(e) => setOptions(prev => ({ ...prev, filters: { ...prev.filters, filing_year: { ...prev.filters.filing_year, lte: e.target.value ? Number(e.target.value) : undefined } } }))}
+                                />
+                            </div>
+                        </section>
+
+                        {/* 상세 정보 필터 */}
+                        <section>
+                            <h3 className="flex items-center gap-2 text-sm font-black text-slate-500 uppercase tracking-wider mb-4">
+                                <Search size={16} className="text-slate-400" />
+                                상세 조건 필터
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input
+                                    type="text" placeholder="출원인 (Applicant Name)" className={inputClassName}
+                                    value={options.filters.applicant_name ?? ""}
+                                    onChange={(e) => setOptions(prev => ({ ...prev, filters: { ...prev.filters, applicant_name: e.target.value } }))}
+                                />
+                                <input
+                                    type="text" placeholder="발명인 (Inventor)" className={inputClassName}
+                                    value={options.filters.inventor_name ?? ""}
+                                    onChange={(e) => setOptions(prev => ({ ...prev, filters: { ...prev.filters, inventor_name: e.target.value } }))}
+                                />
+                                <input
+                                    type="text" placeholder="출원번호 (Application Number)" className={`${inputClassName} md:col-span-2`}
+                                    value={options.exact_match?.application_number ?? ""}
+                                    onChange={(e) => setOptions(prev => ({ ...prev, exact_match: { ...prev.exact_match, application_number: e.target.value } }))}
+                                />
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                {/* 에러 메시지 */}
+                {error && (
+                    <div className="mb-8 p-4 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center gap-3 font-bold animate-shake">
+                        <XCircle size={20} />
+                        {error}
+                    </div>
+                )}
+
+                {/* 검색 결과 섹션 */}
+                <section>
+                    <div className="flex items-center justify-between mb-6 pb-2 border-b border-slate-100">
+                        <h2 className="text-xl font-black text-slate-800 tracking-tight">
+                            검색 결과 <span className="text-indigo-600">{results.length}</span>건
+                        </h2>
+                    </div>
+
+                    {isLoading && (
+                        <div className="py-20 text-center text-slate-400 flex flex-col items-center justify-center gap-4">
+                            <div className="w-12 h-12 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
+                            <p className="font-medium text-lg animate-pulse">AI가 특허 데이터를 분석하고 있습니다...</p>
+                        </div>
+                    )}
+
+                    {!isLoading && results.length === 0 && !error && (
+                        <div className="py-20 text-center text-slate-400 flex flex-col items-center justify-center gap-4 border-2 border-dashed border-slate-200 rounded-[2rem]">
+                            <Search size={48} className="text-slate-200" />
+                            <p className="font-medium text-lg">검색 결과가 없습니다.<br />다른 키워드나 필터를 시도해보세요.</p>
+                        </div>
+                    )}
+
+                    <div className="space-y-4">
+                        {results.map((item, idx) => {
+                            const appNum = item._source.application_number ?? item._source.address;
+                            return (
+                                <div
+                                    key={idx}
+                                    onClick={() => handleRowClick(appNum)}
+                                    // 🎨 결과 카드 스타일: 둥근 모서리, 부드러운 그림자, 호버 시 떠오르는 효과
+                                    className="group p-6 bg-white border border-slate-100 rounded-[2rem] shadow-sm hover:shadow-xl hover:shadow-indigo-100/50 hover:-translate-y-1 hover:border-indigo-200 transition-all cursor-pointer relative overflow-hidden"
+                                >
+                                    <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity text-indigo-500">
+                                        <ChevronRight size={24} />
+                                    </div>
+
+                                    <div className="flex flex-col gap-3">
+                                        {/* 상태 뱃지 */}
+                                        <div className="flex items-center gap-2">
+                                            <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${item._source.end_status === '등록' ? 'bg-green-100 text-green-700' :
+                                                item._source.end_status === '거절' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'
+                                                }`}>
+                                                {item._source.end_status || '상태미상'}
+                                            </span>
+                                            <span className="text-xs font-bold text-slate-400">#{appNum}</span>
+                                        </div>
+
+                                        {/* 제목 */}
+                                        <h3 className="text-lg font-bold text-slate-900 leading-snug group-hover:text-indigo-700 transition-colors line-clamp-2 pr-8">
+                                            {item._source.title}
+                                        </h3>
+
+                                        {/* 상세 정보 그리드 */}
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2 pt-4 border-t border-slate-50 text-sm">
+                                            <div>
+                                                <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">출원인</p>
+                                                <p className="font-semibold text-slate-700 truncate">{item._source.applicant_name}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">발명인</p>
+                                                <p className="font-semibold text-slate-700 truncate">{item._source.inventor_name}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">출원일</p>
+                                                <p className="font-semibold text-slate-700">{item._source.filing_date}</p>
+                                            </div>
+                                            {/* 요약 (모바일 hidden, 데스크탑 보여줌) */}
+                                            <div className="hidden md:block">
+                                                <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">요약</p>
+                                                <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed italic">"{item._source.abstract?.substring(0, 50)}..."</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
+            </div>
+        </div>
+    );
+}

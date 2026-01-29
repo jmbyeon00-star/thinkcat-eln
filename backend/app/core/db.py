@@ -1,4 +1,4 @@
-# app/core/db.py (효율적인 정리 버전)
+# app/core/db.py
 
 import os
 from sqlalchemy import create_engine
@@ -35,8 +35,9 @@ ASYNC_DB_URL = f"mysql+aiomysql://{DB_URL_BASE}"
 # 비동기 엔진 생성
 async_engine = create_async_engine(
     ASYNC_DB_URL, 
+    pool_recycle=3600,     # 1시간마다 연결 재활용 (끊김 방지)
+    pool_pre_ping=True, # 연결 사용 전 살아있는지 확인 (이번 에러의 직접적 해결책)
     echo=True, 
-    pool_pre_ping=True,
     pool_size=20, 
     max_overflow=0
 )

@@ -135,7 +135,6 @@ export const Step1Content: React.FC<{
         const hasExistingModel = modelInfo?.model_list && modelInfo.model_list.length > 0;
         const isCounterUsed = projectInfo?.is_counter_used
         const shouldUseCounter = !hasExistingModel || isCounterUsed;
-        console.log("isCounterUsed:", projectInfo)
 
         const [isAddModalOpen, setIsAddModalOpen] = useState(false);
         const [selectedSources, setSelectedSources] = useState<DataSourceInfo[]>([]);

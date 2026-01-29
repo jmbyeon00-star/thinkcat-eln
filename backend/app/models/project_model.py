@@ -64,6 +64,7 @@ class ProjectData(Base):
     collection_id = Column(Integer)
     project_code = Column(String(100))
     group_code = Column(String(100))
+    group_name = Column(String(255))
     collection_code = Column(String(100))
     source_type = Column(Enum(ProjectType), default=ProjectType.search) # search / upload
     title = Column(String(100))
@@ -89,6 +90,7 @@ class ProjectData(Base):
             "project_id": self.project_id,
             "project_code": self.project_code,
             "group_code": self.group_code,
+            "group_name": self.group_name,
             "collection_code": self.collection_code,
             "collection_id": self.collection_id,
             "source_type": self.source_type,

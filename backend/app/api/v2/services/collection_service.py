@@ -168,6 +168,7 @@ def get_collection_detail_with_analysis(
     total = query.count()
     data_list = (
         query.order_by(ProjectData.created_datetime.desc())
+        # query.order_by(ProjectData.created_datetime.asc())
         .offset((page - 1) * limit)
         .limit(limit)
         .all()
@@ -190,11 +191,12 @@ def get_collection_detail_with_analysis(
         "business_result": analysis_data.get("business_result", []),
     }
 
-async def insert_project_data(session, user_id: int, collection_id: int, project_id: int, payload: dict):
+async def save_recommended_data(session, user_id: int, collection_id: int, project_id: int, payload: dict):
     try:
         now = datetime.now()
-        group_code = generate_data_group_code()
         items = payload.get("items", [])
+        group_code = generate_data_group_code()
+        group_name = payload.get("group_name", None)
         # start = time.perf_counter()
         
         if not items:
@@ -209,6 +211,7 @@ async def insert_project_data(session, user_id: int, collection_id: int, project
         for doc in items:
             new_data = ProjectData(
                 group_code=group_code,
+                group_name=group_name,
                 user_id=user_id,
                 project_id=project_id,
                 project_code=target_col.project_code,
@@ -268,7 +271,7 @@ async def insert_project_data(session, user_id: int, collection_id: int, project
 
     except Exception as e:
         session.rollback()
-        print(f"Error in insert_project_data: {str(e)}")
+        print(f"Error in save_recommended_data: {str(e)}")
         return {"status": "failed", "error": str(e)}
     
 

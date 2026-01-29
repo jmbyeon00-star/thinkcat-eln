@@ -99,7 +99,7 @@ class TorchRecommendationTrainer(BaseTrainer):
             run_type = "train" if self.run_type == "retrain" else self.run_type
             if "run_type" in json.keys(): 
                 run_type = json["run_type"]
-            target_id = self.model_id if run_type == "train" else self.file_id
+            target_id = self.model_id if self.task_type == "recommendation" or run_type == "train" else self.file_id
             async with httpx.AsyncClient(timeout=3.0) as client:
                 await client.post(
                     f"{self.backend_url}/api/status/progress/{run_type}/{target_id}",

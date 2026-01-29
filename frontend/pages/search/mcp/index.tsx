@@ -1,361 +1,362 @@
-// app/page.js (혹은 pages/index.js)
-
 import React, { useState, useCallback } from 'react';
+import { useRouter } from 'next/router';
 import { useSession } from "next-auth/react";
-import { Session } from "next-auth"
 import Head from 'next/head';
 import { SearchOptions, SearchResultItem } from '@/types/search';
-import { Calendar, Info } from 'lucide-react';
+import { ArrowUp, ChevronLeft, ChevronRight, Search, Filter, Database, Sparkles, Settings, Hash } from 'lucide-react';
 
-import { useTranslations } from 'next-intl';
-import { withMessages } from '@/lib/i18n/withMessages';
-export const getServerSideProps = withMessages();
+const inputClassName = "w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-semibold text-slate-700 placeholder:text-slate-300 text-sm";
 
 export default function SearchPage() {
-    const translator = useTranslations();
-
+    const router = useRouter();
+    const { project_id } = router.query;
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-    const { data: session } = useSession() as {
-        data: (Session & { access_token?: string }) | null;
-        status: "loading" | "authenticated" | "unauthenticated";
-    };
+    const { data: session } = useSession();
     const token = session?.access_token;
+
+    // --- [상태 관리] ---
+    const [hasSearched, setHasSearched] = useState(false);
+    const [searchTab, setSearchTab] = useState<'ai' | 'standard'>('ai');
+    const [isLoading, setIsLoading] = useState(false);
+    const [standardLoading, setStandardLoading] = useState(false);
+    const [AiLoading, setAiLoading] = useState(false);
+    const [query, setQuery] = useState('');
+    const [targetKeyword, setTargetKeyword] = useState('');
+    const [results, setResults] = useState<SearchResultItem[]>([]);
+    const [error, setError] = useState<string | null>(null);
+
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalHits, setTotalHits] = useState(0);
+    const [pageSize, setPageSize] = useState(10);
 
     const [options, setOptions] = useState<SearchOptions>({
         search_type: null,
         use_vector: true,
-        filters: {},
-        exact_match: {},
-        text_query: {
-            fields: [],
-        },
+        filters: { filing_year: { gte: undefined, lte: undefined }, applicant_name: '', inventor_name: '' },
+        exact_match: { application_number: '' },
+        text_query: { fields: [], keyword: [] },
     });
 
-    const [query, setQuery] = useState('');
-    const [summary, setSummary] = useState('여기에 LLM이 생성한 요약이 표시됩니다.');
-    const [results, setResults] = useState<SearchResultItem[]>([]);
-    const [response, setResponse] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    // --- [검색 핸들러] ---
+    const handleAISearch = async () => {
+        if (!query.trim()) return;
+        setIsLoading(true);
+        setAiLoading(true);
+        setHasSearched(true);
+        try {
+            const response = await fetch(`${API_BASE}/api/search/mcp`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ query, options }),
+            });
 
-    const handleSearch = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        // console.log("target:", e.target)
-        // console.log("currentTarget:", e.currentTarget)
+            const data = await response.json();
+            const aiKeywords = data.intent.text_query?.keywords?.join(' ') || data.intent.text_query?.text_query || '';
+            setTargetKeyword(aiKeywords);
+            setResults(data.results.data.results.hits.hits || []);
+            setOptions(prev => ({
+                ...prev,
+                filters: {
+                    applicant_name: prev.filters.applicant_name || data.intent.filters?.applicant_name || '',
+                    inventor_name: prev.filters.inventor_name || data.intent.filters?.inventor_name || '',
+                    filing_year: {
+                        gte: prev.filters.filing_year?.gte || data.intent.filters?.filing_year?.gte,
+                        lte: prev.filters.filing_year?.lte || data.intent.filters?.filing_year?.lte,
+                    }
+                },
+                exact_match: { application_number: prev.exact_match?.application_number || data.intent.exact_match?.application_number || '' }
+            }));
+        } catch (err) {
+            setError('AI 검색 실패');
+        } finally {
+            setIsLoading(false);
+            setAiLoading(false);
+        }
+    };
 
-        // if (!query.trim()) return;
-        const hasQuery = query.trim().length > 0;
-        const hasFilters = Object.values(options.filters).some(value =>
-            value !== null && value !== "" && (typeof value !== 'object' || Object.keys(value).length > 0)
-        );
-        const hasExactMatch = Object.values(options.exact_match).some(value =>
-            value !== null && value !== ""
-        );
-        if (!hasQuery && !hasFilters && !hasExactMatch) {
-            setSummary('검색어 또는 필터 옵션을 입력해 주세요.');
-            setResults([]);
+    const handleStandardSearch = useCallback(async (pageParam = 1) => {
+        const currentKeyword = targetKeyword.trim() || query.trim();
+
+        if (!currentKeyword) {
+            setError('검색어를 입력해주세요.');
             return;
         }
 
+        const page = typeof pageParam === 'number' ? pageParam : 1;
+
+        setIsLoading(true);
+        setStandardLoading(true);
+        setHasSearched(true);
         setIsLoading(true);
         setError(null);
-        setSummary('');
-        setResults([]);
-
-        const initialOptions = {
-            ...options,
-            filters: {},
-            exact_match: {}
-        };
-        console.log(">>> options:", initialOptions)
+        setCurrentPage(page);
 
         try {
-            // 1. FastAPI 백엔드에 POST 요청 전송
-            const response = await fetch(`${API_BASE}/api/search/mcp`, {
+            console.log("start")
+            const response = await fetch(`${API_BASE}/api/search/standard`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                credentials: "include",
-                body: JSON.stringify({ query: query, options: options }),
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ query: currentKeyword, page: page, size: pageSize, options: options }),
             });
-
-            if (!response.ok) {
-                // HTTP 오류 처리
-                throw new Error(`HTTP 오류: ${response.status} ${response.statusText}`);
-            }
-
-            // 2. 응답 데이터 파싱
             const data = await response.json();
-            console.log(">>> response:", data)
+            console.log("data:", data)
 
-            // 3. 상태 업데이트
-            setSummary(
-                Array.isArray(data.intent.text_query.keywords)
-                    ? data.intent.text_query.keywords.join(', ')
-                    : '검색 결과에 사용된 키워드가 없습니다.'
-            );
+            const hitsData = data.results.data.results.hits;
+            setResults(hitsData.hits || []);
+            setTotalHits(hitsData.total.value || 0);
+            setTargetKeyword(currentKeyword);
+            setHasSearched(true);
 
-            // 결과 데이터는 배열 형태를 예상
-            setResults(Array.isArray(data.results.data.results.hits.hits) ? data.results.data.results.hits.hits : []);
-            setOptions(prev => ({
-                ...prev,
-                filters: data.intent.filters ?? {},
-                exact_match: data.intent.exact_match ?? {}
-            }));
+            // 검색 후 상단으로 부드럽게 스크롤
+            window.scrollTo({ top: 0, behavior: 'smooth' });
 
-        } catch (err: any) {
-            setOptions(prev => ({
-                ...prev,
-                filters: {},
-                exact_match: {}
-            }));
-
-            console.error('검색 중 오류 발생:', err);
-            setError(`검색에 실패했습니다: ${err.message}. 백엔드(FastAPI) 서버가 실행 중인지 확인해 주세요.`);
-            setSummary('검색 실패');
+        } catch (err) {
+            setError('검색 실패');
         } finally {
             setIsLoading(false);
+            setStandardLoading(false);
         }
-    }, [query, options]); // query가 변경될 때만 함수를 재생성
+    }, [query, targetKeyword, options, API_BASE, token]);
+
+    const handleRowClick = (appNum: string) => {
+        if (!appNum) return;
+        // 상세 페이지로 이동 (프로젝트 ID가 있을 경우와 없을 경우 분기 처리 가능)
+        const targetPath = project_id
+            ? `/project/${project_id}/collection/${appNum}`
+            : `/search/detail/application/${appNum}`;
+        router.push(targetPath);
+    };
 
     return (
-        <div className="min-h-screen bg-slate-50 py-10">
-            <Head>
-                <title>Elasticsearch 검색</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            </Head>
-            <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-lg">
-                <h1 className="text-lg font-semibold mb-2 pb-1">{translator('search.title')}</h1>
+        <div className="min-h-screen bg-white font-sans">
+            <Head><title>Patent Intelligence | Search</title></Head>
 
-                {/* 검색창 */}
-                <form onSubmit={handleSearch} className="flex gap-2 mb-8">
-                    <div className="relative flex-1">
-                        <input
-                            type="text"
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            placeholder="질문을 입력하세요 (예: 2013 ~ 2014년 자흡식 미세기포 발생장치)"
-                            disabled={isLoading}
-                            className="
-                w-full px-4 py-3 pr-10
-                border-2 border-slate-200
-                rounded-l-lg
-                text-base
-                focus:outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100
-                disabled:bg-slate-100
-              "
-                        />
+            {/* 🎯 레이아웃: 검색 전에는 중앙 정렬, 검색 후에는 상단 정렬 */}
+            <main className={`flex flex-col items-center w-full transition-all duration-700 ${!hasSearched ? 'justify-center min-h-[90vh]' : 'pt-20 pb-40'}`}>
 
-                        {query && (
-                            <span
-                                onClick={() => setQuery('')}
-                                className="
-                  absolute right-3 top-1/2 -translate-y-1/2
-                  cursor-pointer select-none
-                  text-slate-400 hover:text-slate-600
-                "
-                            >
-                                ×
-                            </span>
-                        )}
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="
-              px-6 py-3
-              bg-indigo-600 text-white font-semibold
-              rounded-r-lg
-              hover:bg-indigo-700
-              disabled:bg-slate-400 disabled:cursor-not-allowed
-            "
-                    >
-                        {isLoading ? '검색 중...' : '검색'}
-                    </button>
-                </form>
-
-                {/* 필터 카드 */}
-                <div className="mb-10 bg-slate-50 border-2 border-slate-200 rounded-xl p-6">
-
-                    {/* 출원 연도 */}
-                    <section className="mb-6">
-                        <h3 className="flex items-center gap-2 font-semibold text-slate-700 mb-3">
-                            <Calendar size={18} className="text-slate-500" />
-                            출원 연도 범위
-                        </h3>
-
-                        <div className="flex items-center gap-4">
-                            <input
-                                type="number"
-                                placeholder="시작 연도"
-                                className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-lg focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100"
-                                value={options.filters.filing_year?.gte ?? options.filters.filing_year?.from ?? ""}
-                                // onChange={(e) =>
-                                //     setOptions(prev => ({
-                                //         ...prev,
-                                //         filters: {
-                                //             ...prev.filters,
-                                //             filing_year: {
-                                //                 ...(typeof prev.filters.filing_year === 'object' ? prev.filters.filing_year : {}),
-                                //                 gte: e.target.value,
-                                //                 from: e.target.value,
-                                //             }
-                                //         }
-                                //     }))
-                                // }
-                                onChange={(e) =>
-                                    setOptions(prev => ({
-                                        ...prev,
-                                        filters: {
-                                            ...prev.filters,
-                                            filing_year: {
-                                                ...prev.filters.filing_year,
-                                                gte: e.target.value
-                                                    ? Number(e.target.value)
-                                                    : undefined,
-                                            },
-                                        },
-                                    }))
-                                }
-
-                            />
-
-                            <span className="text-slate-500 font-semibold">~</span>
-
-                            <input
-                                type="number"
-                                placeholder="종료 연도"
-                                className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-lg focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100"
-                                value={options.filters.filing_year?.lte ?? options.filters.filing_year?.to ?? ""}
-                                // onChange={(e) =>
-                                //     setOptions(prev => ({
-                                //         ...prev,
-                                //         filters: {
-                                //             ...prev.filters,
-                                //             filing_year: {
-                                //                 ...(typeof prev.filters.filing_year === 'object' ? prev.filters.filing_year : {}),
-                                //                 lte: e.target.value,
-                                //                 to: e.target.value,
-                                //             }
-                                //         }
-                                //     }))
-                                // }
-                                onChange={(e) =>
-                                    setOptions(prev => ({
-                                        ...prev,
-                                        filters: {
-                                            ...prev.filters,
-                                            filing_year: {
-                                                ...prev.filters.filing_year,
-                                                lte: e.target.value
-                                                    ? Number(e.target.value)
-                                                    : undefined,
-                                            },
-                                        },
-                                    }))
-                                }
-
-                            />
-                        </div>
-                    </section>
-
-                    {/* 발명자 정보 */}
-                    <section>
-                        <h3 className="flex items-center gap-2 font-semibold text-slate-700 mb-3">
-                            <Info size={18} className="text-slate-500" />
-                            출원 정보
-                        </h3>
-
-                        <div className="flex gap-4">
-                            <input
-                                type="text"
-                                placeholder="출원번호(Application Number)"
-                                className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-lg focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100"
-                                value={options.exact_match?.application_number ?? ""}
-                                onChange={(e) =>
-                                    setOptions(prev => ({
-                                        ...prev,
-                                        exact_match: { ...prev.exact_match, application_number: e.target.value }
-                                    }))
-                                }
-                            />
-                            <input
-                                type="text"
-                                placeholder="출원인(Applicant)"
-                                className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-lg focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100"
-                                value={options.filters.applicant_name ?? ""}
-                                onChange={(e) =>
-                                    setOptions(prev => ({
-                                        ...prev,
-                                        filters: { ...prev.filters, applicant_name: e.target.value }
-                                    }))
-                                }
-                            />
-
-                            <input
-                                type="text"
-                                placeholder="발명인(Inventor)"
-                                className="flex-1 px-4 py-3 border-2 border-slate-200 rounded-lg focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100"
-                                value={options.filters.inventor_name ?? ""}
-                                onChange={(e) =>
-                                    setOptions(prev => ({
-                                        ...prev,
-                                        filters: { ...prev.filters, inventor_name: e.target.value }
-                                    }))
-                                }
-                            />
-
-                        </div>
-                    </section>
-
-                </div>
-
-                {/* 에러 */}
-                {error && (
-                    <div className="mb-6 p-4 rounded-lg bg-red-100 text-red-700 border border-red-300">
-                        🚨 {error}
+                {/* [1] 초기 가이드 문구: AI 탭이고 검색 전일 때만 노출 */}
+                {!hasSearched && searchTab === 'ai' && (
+                    <div className="text-center mb-10 animate-in fade-in zoom-in duration-1000">
+                        <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-4">어떤 특허를 찾으시나요?</h1>
+                        <p className="text-slate-500 text-lg font-medium">인공지능이 당신의 검색 의도를 완벽하게 이해합니다.</p>
                     </div>
                 )}
 
-                {/* 요약 */}
-                <section className="mb-8">
-                    <h2 className="text-lg font-semibold mb-2 border-b pb-1">검색에 사용된 키워드</h2>
-                    <div className="p-4 bg-indigo-50 border-l-4 border-indigo-600 rounded">
-                        {summary}
-                    </div>
-                </section>
+                {/* [2] 탭 스위처: 초기 화면 중앙 & 결과 페이지 상단 공통 노출 */}
+                <div className={`flex bg-slate-100 p-1.5 rounded-2xl mb-10 z-10 transition-all ${!hasSearched ? 'scale-110' : 'scale-100'}`}>
+                    <button onClick={() => setSearchTab('ai')} className={`flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-black transition-all ${searchTab === 'ai' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>
+                        <Sparkles size={16} /> AI 검색
+                    </button>
+                    <button onClick={() => setSearchTab('standard')} className={`flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-black transition-all ${searchTab === 'standard' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>
+                        <Settings size={16} /> 일반 검색
+                    </button>
+                </div>
 
-                {/* 결과 */}
-                <section>
-                    <h2 className="text-lg font-semibold mb-4 border-b pb-1">검색된 데이터</h2>
+                {/* [3] 상세 설정창: '일반 검색' 탭을 눌렀거나, 이미 검색을 했을 때 무조건 노출 */}
+                {(searchTab === 'standard' || hasSearched) && (
+                    <div className="max-w-6xl w-full mx-auto px-6 mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                    {isLoading && (
-                        <p className="text-center text-slate-500 italic">
-                            검색 중... 데이터를 불러오는 중입니다.
-                        </p>
-                    )}
-
-                    {!isLoading && results.length === 0 && !error && (
-                        <p className="text-slate-500">검색어를 입력하고 검색을 실행하세요.</p>
-                    )}
-
-                    <div className="space-y-4">
-                        {results.map((item, idx) => (
-                            <div key={idx} className="p-4 border rounded-lg shadow-sm">
-                                <p><strong>특허명:</strong> {item._source.title}</p>
-                                <p><strong>출원번호:</strong> {item._source.application_number ?? item._source.address}</p>
-                                <p><strong>출원인:</strong> {item._source.applicant_name}</p>
-                                <p><strong>출원일:</strong> {item._source.filing_date}</p>
-                                <p><strong>발명인:</strong> {item._source.inventor_name}</p>
-                                <p><strong>상태:</strong> {item._source.end_status}</p>
+                            {/* 필터 설정 영역 (좌측 7) - 유저가 강조한 핵심 기능 */}
+                            <div className="lg:col-span-7 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+                                <h3 className="flex items-center gap-2 text-[11px] font-black text-slate-400 uppercase tracking-widest px-2">
+                                    <Filter size={14} /> 상세 필터 설정
+                                </h3>
+                                <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-left">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">출원 연도(Filing Year)</label>
+                                        <div className="flex items-center gap-2">
+                                            <input type="number" placeholder="From" className={inputClassName} value={options.filters.filing_year?.gte ?? ""} onChange={(e) => setOptions(prev => ({ ...prev, filters: { ...prev.filters, filing_year: { ...prev.filters.filing_year, gte: e.target.value ? Number(e.target.value) : undefined } } }))} />
+                                            <input type="number" placeholder="To" className={inputClassName} value={options.filters.filing_year?.lte ?? ""} onChange={(e) => setOptions(prev => ({ ...prev, filters: { ...prev.filters, filing_year: { ...prev.filters.filing_year, lte: e.target.value ? Number(e.target.value) : undefined } } }))} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">출원번호(Application No.)</label>
+                                        <input type="text" placeholder="번호 입력" className={inputClassName} value={options.exact_match?.application_number ?? ""} onChange={(e) => setOptions(prev => ({ ...prev, exact_match: { ...prev.exact_match, application_number: e.target.value } }))} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">출원인(Applicant)</label>
+                                        <input type="text" placeholder="Applicant Name" className={inputClassName} value={options.filters.applicant_name ?? ""} onChange={(e) => setOptions(prev => ({ ...prev, filters: { ...prev.filters, applicant_name: e.target.value } }))} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">발명인(Inventor)</label>
+                                        <input type="text" placeholder="Inventor Name" className={inputClassName} value={options.filters.inventor_name ?? ""} onChange={(e) => setOptions(prev => ({ ...prev, filters: { ...prev.filters, inventor_name: e.target.value } }))} />
+                                    </div>
+                                </div>
                             </div>
-                        ))}
-                    </div>
-                </section>
 
+                            {/* 키워드 최적화 (우측 5) */}
+                            <div className="lg:col-span-5">
+                                <section className="bg-zinc-50/50 p-8 rounded-[2.5rem] border border-zinc-100 shadow-sm flex flex-col h-full text-left">
+                                    <h3 className="flex items-center gap-2 text-[11px] font-black text-zinc-600 uppercase tracking-widest mb-4">
+                                        <Database size={14} /> 키워드 최적화
+                                    </h3>
+                                    <textarea
+                                        value={targetKeyword}
+                                        onChange={(e) => setTargetKeyword(e.target.value)}
+                                        className="flex-1 w-full bg-white border border-zinc-100 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-zinc-200/50 transition-all resize-none min-h-[150px]"
+                                        placeholder="키워드를 직접 입력하거나 수정하세요..."
+                                    />
+                                    <button onClick={() => handleStandardSearch(currentPage)} className="mt-4 w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2 hover:bg-black transition-all active:scale-[0.98] shadow-xl shadow-slate-200">
+
+                                        {standardLoading ? <div className="w-4 h-4 border-2 border-slate-300 border-t-white rounded-full animate-spin" /> : <><Search size={14} /> 키워드 검색</>}
+                                    </button>
+                                </section>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* [4] 검색 결과 영역 */}
+                {hasSearched && (
+                    <div className="max-w-6xl w-full mx-auto px-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        <div className="flex items-center justify-between px-2 pt-10 border-t border-slate-100 text-left">
+                            <h2 className="text-2xl font-black text-slate-900">검색 결과 <span className="text-indigo-600">{isLoading ? 0 : totalHits}</span></h2>
+                        </div>
+                        {/* <div className="grid gap-3">
+                            {results.map((item, idx) => (
+                                <div key={idx} onClick={() => router.push(`/search/detail/application/${item._source.application_number}`)} className="group p-6 bg-white border border-slate-100 rounded-[2rem] hover:shadow-xl hover:border-indigo-200 transition-all cursor-pointer flex justify-between items-center text-left">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{item._source.application_number} | {item._source.applicant_name}</p>
+                                        <h4 className="text-lg font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{item._source.title}</h4>
+                                    </div>
+                                    <ChevronRight size={20} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />
+                                </div>
+                            ))}
+                        </div> */}
+                        {isLoading ?
+                            <div className="flex flex-col items-center justify-center gap-4">
+                                <div className="relative w-12 h-12">
+                                    {/* 배경 원 (흐릿한 효과) */}
+                                    <div className="absolute inset-0 rounded-full border-4 border-slate-100/50"></div>
+                                    {/* 실제 돌아가는 그라데이션 원 */}
+                                    <div className="absolute inset-0 rounded-full border-4 border-t-indigo-600 border-r-transparent border-b-transparent border-l-transparent animate-spin shadow-lg"></div>
+                                </div>
+                                <p className="text-sm font-bold text-slate-400 animate-pulse">특허 데이터를 불러오는 중...</p>
+                            </div>
+                            :
+                            <div className="space-y-4">
+                                {results.map((item: any, idx: number) => {
+                                    const appNum = item._source.application_number ?? item._source.address;
+                                    return (
+                                        <div
+                                            key={idx}
+                                            onClick={() => handleRowClick(appNum)}
+                                            // 결과 카드 스타일: 둥근 모서리, 부드러운 그림자, 호버 시 떠오르는 효과
+                                            className="group p-6 bg-white border border-slate-100 rounded-[2rem] shadow-sm hover:shadow-xl hover:shadow-indigo-100/50 hover:-translate-y-1 hover:border-indigo-200 transition-all cursor-pointer relative overflow-hidden"
+                                        >
+                                            <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity text-indigo-500">
+                                                <ChevronRight size={24} />
+                                            </div>
+
+                                            <div className="flex flex-col gap-3">
+                                                {/* 상태 뱃지 */}
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${item._source.end_status === '등록' ? 'bg-green-100 text-green-700' :
+                                                        item._source.end_status === '거절' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'
+                                                        }`}>
+                                                        {item._source.end_status || '상태미상'}
+                                                    </span>
+                                                    <span className="text-xs font-bold text-slate-400">#{appNum}</span>
+                                                </div>
+
+                                                <h3 className="text-lg font-bold text-slate-900 leading-snug group-hover:text-indigo-700 transition-colors line-clamp-2 pr-8">
+                                                    {item._source.title}
+                                                </h3>
+
+                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2 pt-4 border-t border-slate-50 text-sm">
+                                                    <div>
+                                                        <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">출원인</p>
+                                                        <p className="font-semibold text-slate-700 truncate">{item._source.applicant_name}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">발명인</p>
+                                                        <p className="font-semibold text-slate-700 truncate">{item._source.inventor_name}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">출원일</p>
+                                                        <p className="font-semibold text-slate-700">{item._source.filing_date}</p>
+                                                    </div>
+
+                                                    <div className="hidden md:block">
+                                                        <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">요약</p>
+                                                        <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed italic">"{item._source.abstract?.substring(0, 50)}..."</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {hasSearched && totalHits > 0 && (
+                                    <div className="flex flex-col items-center gap-4 mt-12 mb-20">
+                                        <div className="flex items-center gap-2">
+                                            {/* 이전 페이지 버튼 */}
+                                            <button
+                                                disabled={currentPage === 1 || isLoading}
+                                                onClick={() => handleStandardSearch(currentPage - 1)}
+                                                className="p-2 rounded-xl hover:bg-slate-100 disabled:opacity-20 transition-all text-slate-600"
+                                            >
+                                                <ChevronLeft size={20} />
+                                            </button>
+
+                                            {/* 페이지 번호들 (최대 1,000개/10개 = 100페이지까지만 노출) */}
+                                            {Array.from({ length: Math.min(10, Math.ceil(Math.min(totalHits, 1000) / pageSize)) }).map((_, i) => {
+                                                const pageNum = i + 1; // 💡 실제 서비스에선 현재 페이지 기준 5개씩 보여주는 로직이 들어가면 좋습니다.
+                                                return (
+                                                    <button
+                                                        key={pageNum}
+                                                        onClick={() => handleStandardSearch(pageNum)}
+                                                        className={`w-10 h-10 rounded-xl font-black text-xs transition-all ${currentPage === pageNum
+                                                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+                                                            : 'text-slate-400 hover:bg-slate-50'
+                                                            }`}
+                                                    >
+                                                        {pageNum}
+                                                    </button>
+                                                );
+                                            })}
+
+                                            {/* 다음 페이지 버튼 */}
+                                            <button
+                                                disabled={currentPage >= Math.ceil(Math.min(totalHits, 1000) / pageSize) || isLoading}
+                                                onClick={() => handleStandardSearch(currentPage + 1)}
+                                                className="p-2 rounded-xl hover:bg-slate-100 disabled:opacity-20 transition-all text-slate-600"
+                                            >
+                                                <ChevronRight size={20} />
+                                            </button>
+                                        </div>
+
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                            Total {totalHits.toLocaleString()} Results • Page {currentPage}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        }
+                    </div>
+                )}
+            </main>
+
+            {/* [5] 하단 제미나이 스타일 챗바 (고정) */}
+            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-4xl px-6 z-50">
+                <div className="bg-[#f0f4f9] rounded-[32px] p-4 shadow-2xl flex items-end gap-2 focus-within:bg-white transition-all border border-transparent focus-within:border-slate-200">
+                    <textarea
+                        rows={3}
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder={searchTab === 'ai' ? "특허 의도를 입력하세요 (예: 2020년 이후 삼성전자의 자율주행 특허)" : "일반 검색어를 입력하세요"}
+                        className="bg-transparent border-none outline-none text-slate-800 text-[17px] font-medium placeholder:text-slate-400 w-full resize-none py-2 px-2"
+                    />
+                    <button onClick={handleAISearch} disabled={isLoading || !query.trim()} className={`w-14 h-12 flex items-center justify-center rounded-full transition-all ${query.trim() && !isLoading ? (searchTab === 'ai' ? 'bg-indigo-600' : 'bg-slate-800') + ' text-white shadow-lg' : 'text-slate-300 bg-transparent'}`}>
+                        {AiLoading ? <span className="animate-spin text-lg">✦</span> : <ArrowUp size={24} strokeWidth={2.5} />}
+                    </button>
+                </div>
+                {query && !results.length && (
+                    <div className="absolute -top-12 left-10 bg-indigo-600 text-white text-[10px] font-black px-4 py-2 rounded-full shadow-xl animate-bounce">
+                        질문을 입력하셨나요? 검색을 눌러보세요!
+                    </div>
+                )}
             </div>
         </div>
     );

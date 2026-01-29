@@ -112,6 +112,15 @@
     "components/charts/ModelAccuracyLineChart_260121",
     "components/charts/BarChart_260121",
     "components/project/train/TrainingSettings_260116",
+    "pages/project/[project_id]/models/new_260122",
+    "pages/project/[project_id]/collection/index_260122",
+    "components/project/train/TrainingSettings_260122",
+    "pages/search/mcp/index_260127",
+    "components/project/UploadComponent_260127",
+    "pages/collection/[id]_260129",
+    "components/project/train/TrainingSettings",
+    "pages/search/mcp/index_260128_2",
+    "pages/search/mcp/index_260128",
   ],
   "exclude": [
     "node_modules"

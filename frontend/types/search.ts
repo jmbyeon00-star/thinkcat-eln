@@ -30,6 +30,7 @@ export type SearchOptions = {
 
     text_query: {
         fields: string[]; // ["title", "abstract", "claim"]
+        keyword: string[];
     };
 };
 

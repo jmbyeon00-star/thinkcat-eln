@@ -138,11 +138,6 @@ export default function CollectionDetailIntegratedPage() {
     setExpandedRow(prev => prev === rowId ? null : rowId);
   };
 
-  const truncateText = (text: string | undefined, maxLength: number = 100) => {
-    if (!text) return "-";
-    return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
-  };
-
   const getYearChartData = () => {
     if (!analysisData?.date_result) return [];
     return Object.entries(analysisData.date_result)
@@ -168,17 +163,6 @@ export default function CollectionDetailIntegratedPage() {
       router.push(`/search/company/${code}`);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex items-center gap-3 text-zinc-500">
-          <Loader2 className="animate-spin h-6 w-6" />
-          <span className="text-lg">불러오는 중...</span>
-        </div>
-      </div>
-    );
-  }
 
   if (!collection) {
     return (
@@ -207,6 +191,14 @@ export default function CollectionDetailIntegratedPage() {
 
   return (
     <ProjectLayout projectNo={project_id as string} token={token} API_BASE={API_BASE}>
+      {loading && (
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <div className="flex items-center gap-3 text-zinc-500">
+            <Loader2 className="animate-spin h-6 w-6" />
+            <span className="text-lg">불러오는 중...</span>
+          </div>
+        </div>
+      )}
       <div className="min-h-screen bg-white p-8">
         <div className="max-w-6xl mx-auto">
 
@@ -468,8 +460,9 @@ export default function CollectionDetailIntegratedPage() {
                         disabled={page === 1}
                         className="p-2 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                       >
-                        <ChevronLeft className="w-4 h-4" />
-                        <ChevronLeft className="w-4 h-4 -ml-2" />
+                        {/* <ChevronLeft className="w-4 h-4" />
+                        <ChevronLeft className="w-4 h-4 -ml-2" /> */}
+                        처음
                       </button>
 
                       {/* 이전 */}
@@ -527,8 +520,9 @@ export default function CollectionDetailIntegratedPage() {
                         disabled={page === totalPages}
                         className="p-2 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                       >
-                        <ChevronRight className="w-4 h-4" />
-                        <ChevronRight className="w-4 h-4 -ml-2" />
+                        {/* <ChevronRight className="w-4 h-4" />
+                        <ChevronRight className="w-4 h-4 -ml-2" /> */}
+                        맨끝
                       </button>
                     </div>
 
@@ -558,7 +552,7 @@ export default function CollectionDetailIntegratedPage() {
 
           {/* AI Model Training Section */}
           {collection.mean_vector && (
-            <RecommendationPanel collection={collection} dataItems={dataItems} setDataItems={setDataItems} token={token} />
+            <RecommendationPanel collection={collection} dataItems={dataItems} onRefresh={() => fetchCollection(page)} token={token} />
           )}
 
           {!collection.mean_vector && (

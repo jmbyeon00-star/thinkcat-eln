@@ -336,11 +336,20 @@ async def update_project_name(session: httpx.AsyncClient, user_id: int, project_
     # 3. 데이터 수정
     project.project_name = new_name
     
+    # 4. 프로젝트의 컬렉션별 프로젝트명 변경
+    stmt = (
+            update(CollectionInfo)
+            .where(CollectionInfo.project_id == project_id)
+            .values(project_name=new_name)
+        )
+    await session.execute(stmt)
+
+    # 5. 커밋
     try:
-        # 4. 저장 로직: 비동기 세션이므로 await 필수
+        # 저장 로직: 비동기 세션이므로 await 필수
         await session.commit()
         await session.refresh(project)
-        return {"status": "complete", "project_name": project.project_name}
+        return {"status": "complete", "projet_id": project.id, "project_name": project.project_name}
     except Exception as e:
         # 에러 발생 시 롤백도 비동기로
         await session.rollback()
@@ -395,7 +404,7 @@ def get_project_data(session: Session, project_id: int):
         ProjectInfo.project_name
     ).filter_by(id=project_id).first()
 
-    rows = session.query(ProjectData).filter_by(project_id=project_id, used=1).all()
+    rows = session.query(ProjectData).filter_by(project_id=project_id).all()
     items = [
         {
             "pdid": r.id,
@@ -403,6 +412,7 @@ def get_project_data(session: Session, project_id: int):
             "title": r.title,
             "abstract": r.abstract,
             "collection_name": r.collection_name,
+            "used": r.used,
         }
         for r in rows
     ]
@@ -617,7 +627,6 @@ def insert_project_data(session: Session, user_id: int, project_id: int, group_c
     try:
         now = datetime.now()
         
-        # 1. 프로젝트 기본 정보 조회
         project_info = session.query(ProjectInfo).filter(
             ProjectInfo.id == project_id, 
             ProjectInfo.user_id == user_id
@@ -626,93 +635,110 @@ def insert_project_data(session: Session, user_id: int, project_id: int, group_c
         if not project_info:
             return {"message": "Project not found"}
 
-        correct_data = body.get("items", []) # used=1 데이터
-        counter_data = body.get("n_items", []) # used=0 데이터
+        correct_data = body.get("items", [])
+        counter_data = body.get("n_items", [])
+        is_counter_used = bool(body.get("is_counter_used", False))
+        group_name = body.get("group_name")
+
+        if not counter_data and not is_counter_used:
+            print(f">>> [CLEANUP] Project {project_id}: Counter 미사용으로 인한 기존 used=0 데이터 삭제")
+            session.query(ProjectData).filter(
+                ProjectData.project_id == project_id,
+                ProjectData.used == 0
+            ).delete(synchronize_session=False)
+            final_counter_status = False
+        else:
+            # 신규 데이터가 있거나 토글이 켜져 있으면 사용 상태로 간주
+            final_counter_status = is_counter_used
+
         all_incoming_data = correct_data + counter_data
-        
         if not all_incoming_data: return {"message": "No data to process"}
 
-        # 3. 컬렉션 매핑 (프로젝트 내에 없는 레이블은 자동 생성)
-        all_col_names = {
-            (doc.get("label") or doc.get("collection_name", "미분류")).strip() 
-            for doc in all_incoming_data
-        }
-        all_col_names = {name for name in all_col_names if name.upper() != "COUNTER"}
-
-        collection_map = {}
-        for col_name in all_col_names:
-            col = session.query(CollectionInfo).filter_by(
-                project_id=project_id, 
-                collection_name=col_name
-            ).first()
+        if all_incoming_data:
             
-            if not col:
-                col = CollectionInfo(
+            col_section_map = {}
+            for doc in all_incoming_data:
+                name = (doc.get("label") or doc.get("collection_name", "미분류")).strip()
+                if name.upper() == "COUNTER":
+                    continue
+                
+                section_val = doc.get("section", None)
+                if name not in col_section_map:
+                    col_section_map[name] = section_val
+
+            # all_col_names = {
+            #     (doc.get("label") or doc.get("collection_name", "미분류")).strip() 
+            #     for doc in all_incoming_data
+            # }
+            # all_col_names = {name for name in all_col_names if name.upper() != "COUNTER"}
+
+            collection_map = {}
+            # for col_name in all_col_names:
+            for col_name, col_section in col_section_map.items():
+                col = session.query(CollectionInfo).filter_by(
+                    project_id=project_id, 
+                    collection_name=col_name
+                ).first()
+                
+                if not col:
+                    col = CollectionInfo(
+                        user_id=user_id,
+                        source_type=project_info.source_type.value,
+                        project_id=project_id,
+                        project_code=project_info.project_code,
+                        project_name=project_info.project_name,
+                        collection_category=col_section,
+                        collection_code=generate_collection_code(),
+                        collection_name=col_name,
+                        collection_data_ratio=0,
+                        collection_data_num=0,
+                        counter_data_num=0,
+                        created_datetime=now,
+                        updated_datetime=now
+                    )
+                    session.add(col)
+                    session.flush()
+                collection_map[col_name] = (col.id, col.collection_code)
+
+            # 프로젝트 데이터 입력
+            for doc in all_incoming_data:
+                col_name = (doc.get("label") or doc.get("collection_name", "미분류")).strip()
+                c_id, c_code = collection_map.get(col_name, (None, None))
+                
+                session.add(ProjectData(
+                    group_code=group_code,
+                    group_name=group_name,
                     user_id=user_id,
-                    source_type=project_info.source_type.value,
                     project_id=project_id,
                     project_code=project_info.project_code,
-                    project_name=project_info.project_name,
-                    collection_code=generate_collection_code(), # 별도 정의된 유틸 함수
+                    source_type=project_info.source_type.value,
+                    collection_id=c_id,
+                    collection_code=c_code,
                     collection_name=col_name,
-                    collection_data_ratio=0,
-                    collection_data_num=0,
-                    counter_data_num=0,
+                    application_number=doc.get("application_number") if doc.get("application_number") else None,
+                    title=str(doc.get("title", "")).strip(),
+                    abstract=str(doc.get("abstract", "")).strip(),
+                    vector=json.dumps(doc["vector"]) if doc.get("vector") else None,
+                    used=doc.get("used", 1),
                     created_datetime=now,
                     updated_datetime=now
-                )
-                session.add(col)
-                session.flush() # 생성된 ID 확보
-            collection_map[col_name] = (col.id, col.collection_code)
+                ))
+            session.flush()
 
-        # 4. 데이터 신규 삽입 (Insert Only)
-        # 기존 데이터와의 동기화 없이, 현재 요청된 데이터를 새 레코드로 모두 저장합니다.
-        for doc in all_incoming_data:
-            col_name = (doc.get("label") or doc.get("collection_name", "미분류")).strip()
-            c_id, c_code = collection_map.get(col_name, (None, None))
-            
-            session.add(ProjectData(
-                group_code=group_code, # 새로운 그룹 식별자
-                user_id=user_id,
-                project_id=project_id,
-                project_code=project_info.project_code,
-                source_type=project_info.source_type.value,
-                collection_id=c_id,
-                collection_code=c_code,
-                collection_name=col_name,
-                application_number=doc.get("application_number"),
-                title=str(doc.get("title", "")).strip(),
-                abstract=str(doc.get("abstract", "")).strip(),
-                vector=json.dumps(doc["vector"]) if doc.get("vector") else None,
-                used=doc.get("used", 1),
-                created_datetime=now,
-                updated_datetime=now
-            ))
-
-        session.flush()
-
-        # 5) 모든 컬렉션 통계 및 평균 벡터 갱신
-        # 전체 기준값 (used 상관 없이 이 프로젝트의 모든 데이터)
+        # 컬렉션 통계 및 평균 벡터 갱신
         total_count = session.query(ProjectData).filter_by(project_id=project_id).count()
         all_collections = session.query(CollectionInfo).filter_by(project_id=project_id).all()
 
         for c in all_collections:
-            # 이 컬렉션에 속한 모든 아이템 조회
             col_items = session.query(ProjectData).filter_by(project_id=project_id, collection_id=c.id).all()
-            real_count = len(col_items)
-            
-            # 수치 업데이트
             correct_items = [item for item in col_items if item.used == 1]
             counter_items = [item for item in col_items if item.used == 0]
-
-            c_data_num = len(correct_items)
-            n_data_num = len(counter_items)
-
-            c.collection_data_ratio = (c_data_num / total_count) if total_count > 0 else 0
-            c.collection_data_num = c_data_num
-            c.counter_data_num = n_data_num
             
-            # [평균 벡터 계산] - COUNTER는 제외
+            c.collection_data_num = len(correct_items)
+            c.counter_data_num = len(counter_items)
+            c.collection_data_ratio = (len(correct_items) / total_count) if total_count > 0 else 0
+            
+            # [평균 벡터 계산] (COUNTER 제외)
             if c.collection_name != "COUNTER":
                 vectors = []
                 for idx, item in enumerate(col_items):
@@ -750,19 +776,28 @@ def insert_project_data(session: Session, user_id: int, project_id: int, group_c
         # 6) ProjectInfo 최종 요약 정보 반영
         labeled_num = session.query(ProjectData).filter_by(project_id=project_id, used=1).count()
         unlabeled_num = session.query(ProjectData).filter_by(project_id=project_id, used=0).count()
-        has_counter = unlabeled_num > 0
+
+        actual_is_counter_used = final_counter_status and (unlabeled_num > 0)
+        final_num_classes = len(all_collections) + (1 if actual_is_counter_used else 0)
 
         session.query(ProjectInfo).filter(ProjectInfo.id == project_id).update({
             ProjectInfo.project_status: 2,
-            ProjectInfo.collection_num: len(all_collections),
+            ProjectInfo.collection_num: final_num_classes,
             ProjectInfo.labeled_documents: labeled_num,
             ProjectInfo.unlabeled_documents: unlabeled_num,
-            ProjectInfo.is_counter_used: has_counter,
+            ProjectInfo.is_counter_used: actual_is_counter_used,
             ProjectInfo.updated_datetime: datetime.now(),
         })
         
         session.commit()
-        return {"message": "Success", "collection_num": len(all_collections), "labeled": labeled_num, "unlabeled": unlabeled_num}
+        return {
+            "message": "Success", 
+            "group_code": group_code, 
+            "collection_num": len(all_collections), 
+            "labeled": labeled_num, 
+            "unlabeled": unlabeled_num,
+            "is_counter_used": actual_is_counter_used
+        }
 
     except Exception as e:
         session.rollback()

@@ -258,7 +258,7 @@ export default function ProjectModelDetailPage() {
                             className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-blue-600 font-medium transition-colors"
                         >
                             <ArrowLeft className="h-4 w-4" />
-                            모델 목록으로 돌아가기
+                            뒤로가기
                         </Link>
 
                         <div className={`px-4 py-1.5 rounded-full text-sm font-bold shadow-sm flex items-center gap-2 ${model.progress_status === "COMPLETED" ? "bg-white text-green-600 border border-green-100" :

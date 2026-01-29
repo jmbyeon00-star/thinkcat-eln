@@ -155,6 +155,7 @@ def fetch_train_data(config):
             else:
                 raise ValueError(f"Unknown source_type: {source_type}")
 
+            print(">>>", query % (collection_id, user_id, *params))
             result = cursor.fetchall()
             
         else:
@@ -187,7 +188,6 @@ def set_classification_data(raw_rows, config):
 
     data_scope = str(config.get("data_scope", "")).lower()
     source_type = str(config.get("source_type", "")).lower()
-    print(">>> is_counter_used:", config)
     is_counter_used = config.get("is_counter_used", False)
     
     # 안전하게 문자열화

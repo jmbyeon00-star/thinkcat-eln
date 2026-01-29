@@ -9,19 +9,21 @@ import { CollectionInfo } from "@/types/collection";
 export default function RecommendationPanel({
     collection,
     dataItems,
-    setDataItems,
+    // setDataItems,
+    onRefresh,
     token
 }: {
     collection: CollectionInfo;
     dataItems: any[];
-    setDataItems: React.Dispatch<React.SetStateAction<any[]>>;
+    // setDataItems: React.Dispatch<React.SetStateAction<any[]>>;
+    onRefresh: () => void;
     token?: string;
 }) {
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
     const { isBusy, progress: storeProgress, status: storeStatus, setState } = useUserTaskStore();
 
     // 상태 관리
-    const [params, setParams] = useState({ epoch: 5, batch_size: 128, learning_rate: 1e-5, max_length: 256, shuffle: true, length: 500 });
+    const [params, setParams] = useState({ epoch: 5, batch_size: 128, learning_rate: 1e-5, max_length: 256, shuffle: false, length: 500 });
     const [hasTrainedModel, setHasTrainedModel] = useState(0);
     const [modelInfo, setModelInfo] = useState<{ id: number; progress: number; model_version: number; model_status?: number } | null>(null);
     const [inferenceResults, setInferenceResults] = useState<any[]>([]);
@@ -33,6 +35,7 @@ export default function RecommendationPanel({
     const [cartItems, setCartItems] = useState<any[]>([]);
     const [resultPage, setResultPage] = useState(1);
     const [resultLimit, setResultLimit] = useState(10);
+    const [isLoading, setIsLoading] = useState(false);
 
     async function fetchRecommendationResult(modelId: number) {
         try {
@@ -45,7 +48,10 @@ export default function RecommendationPanel({
 
             setInferenceResults(data.results || []);
             setHistories(data.histories || null);
+
+            setIsLoading(false);
         } catch (err) {
+            setIsLoading(false);
             console.error(err);
         }
     }
@@ -117,11 +123,11 @@ export default function RecommendationPanel({
                 if (data.model_info && Object.keys(data.model_info).length > 0) {
                     setParams((prev) => ({
                         ...prev,
-                        // epoch: data.model_info.epoch,
-                        // batch_size: data.model_info.batch_size,
+                        epoch: data.model_info.epoch,
+                        batch_size: data.model_info.batch_size,
                         learning_rate: data.model_info.learning_rate,
-                        // max_length: data.model_info.max_length,
-                        shuffle: data.model_info.shuffle,
+                        max_length: data.model_info.max_length,
+                        shuffle: Boolean(data.model_info.shuffle),
                     }));
                 }
             } catch (e) { console.warn("Initial check failed", e); }
@@ -134,6 +140,8 @@ export default function RecommendationPanel({
     // 2. SSE를 통한 실시간 완료 감지 (별도 분리)
     useEffect(() => {
         if (storeProgress === -1 && modelInfo?.id) {
+            setIsLoading(true)
+
             const timer = setTimeout(async () => {
                 try {
 
@@ -199,19 +207,21 @@ export default function RecommendationPanel({
     };
 
     async function handleSubmitCart() {
-        if (!confirm(`${cartItems.length}개를 등록하시겠습니까?`)) return;
-        console.log(">>> collection:", collection)
+        // if (!confirm(`${cartItems.length}개를 등록하시겠습니까?`)) return;
         try {
+            const YYYYMMDD = new Date().toISOString().split('T')[0].replace(/-/g, '');
             const itemsToSave = cartItems.map(item => ({ ...item, collection_id: collection.id, project_id: collection.project_id, project_code: collection.project_code, source_type: collection.source_type, used: 1 }));
             const res = await fetch(`${API_BASE}/api/collection/${collection.id}/${collection.project_id}/save`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ items: itemsToSave }),
+                body: JSON.stringify({ items: itemsToSave, group_name: `REC-pjt_${collection.project_name}-col_${collection.collection_name}-${YYYYMMDD}` }),
             });
 
             if (res.ok) {
                 alert("저장 성공!");
-                setDataItems(prev => [...prev, ...itemsToSave]);
+                // setDataItems(prev => [...prev, ...itemsToSave]);
+                if (onRefresh) onRefresh();
+
                 setCartItems([]);
                 setSelectedIds(new Set());
             }
@@ -231,86 +241,82 @@ export default function RecommendationPanel({
                 <div className="p-6 space-y-6">
                     {/* [기존 유지] 학습 파라미터 */}
                     {/* {!hasTrainedModel && ( */}
-                    {histories?.train_acc && histories.train_acc.length > 0 && (
-                        <div className="bg-gradient-to-br from-zinc-50 to-zinc-100 rounded-xl p-6 border border-zinc-200">
-                            <h3 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
-                                <div className="w-1 h-5 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
-                                학습 파라미터
-                            </h3>
+                    <div className="bg-gradient-to-br from-zinc-50 to-zinc-100 rounded-xl p-6 border border-zinc-200">
+                        <h3 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
+                            <div className="w-1 h-5 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
+                            학습 파라미터
+                        </h3>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <label className="flex flex-col">
-                                    <span className="text-sm font-medium text-zinc-700 mb-2">Epoch</span>
-                                    <input
-                                        type="number"
-                                        value={params.epoch}
-                                        onChange={(e) => setParams({ ...params, epoch: Number(e.target.value) })}
-                                        className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-zinc-100 disabled:cursor-not-allowed"
-                                        disabled={isBusy}
-                                    />
-                                </label>
-                                <label className="flex flex-col">
-                                    <span className="text-sm font-medium text-zinc-700 mb-2">Batch Size</span>
-                                    <input
-                                        type="number"
-                                        value={params.batch_size}
-                                        onChange={(e) => setParams({ ...params, batch_size: Number(e.target.value) })}
-                                        className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-zinc-100 disabled:cursor-not-allowed"
-                                        disabled={isBusy}
-                                    />
-                                </label>
-                                <label className="flex flex-col">
-                                    <span className="text-sm font-medium text-zinc-700 mb-2">Learning Rate</span>
-                                    <input
-                                        type="number"
-                                        step="0.00001"
-                                        value={params.learning_rate}
-                                        onChange={(e) => setParams({ ...params, learning_rate: parseFloat(e.target.value) })}
-                                        className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-zinc-100 disabled:cursor-not-allowed"
-                                        disabled={isBusy}
-                                    />
-                                </label>
-                                <label className="flex flex-col">
-                                    <span className="text-sm font-medium text-zinc-700 mb-2">Max Length</span>
-                                    <input
-                                        type="number"
-                                        value={params.max_length}
-                                        onChange={(e) => setParams({ ...params, max_length: Number(e.target.value) })}
-                                        className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-zinc-100 disabled:cursor-not-allowed"
-                                        disabled={isBusy}
-                                    />
-                                </label>
-                            </div>
-
-                            <div className="flex items-center gap-6 mt-4">
-                                <span className="text-sm font-medium text-zinc-700">Shuffle</span>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="shuffle"
-                                        checked={params.shuffle === true}
-                                        onChange={() => setParams({ ...params, shuffle: true })}
-                                        className="w-4 h-4 text-blue-600"
-                                        disabled={isBusy}
-                                    />
-                                    <span className="text-sm text-zinc-700">On</span>
-                                </label>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="shuffle"
-                                        checked={params.shuffle === false}
-                                        onChange={() => setParams({ ...params, shuffle: false })}
-                                        className="w-4 h-4 text-blue-600"
-                                        disabled={isBusy}
-                                    />
-                                    <span className="text-sm text-zinc-700">Off</span>
-                                </label>
-                            </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <label className="flex flex-col">
+                                <span className="text-sm font-medium text-zinc-700 mb-2">Epoch</span>
+                                <input
+                                    type="number"
+                                    value={params.epoch}
+                                    onChange={(e) => setParams({ ...params, epoch: Number(e.target.value) })}
+                                    className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-zinc-100 disabled:cursor-not-allowed"
+                                    disabled={isBusy}
+                                />
+                            </label>
+                            <label className="flex flex-col">
+                                <span className="text-sm font-medium text-zinc-700 mb-2">Batch Size</span>
+                                <input
+                                    type="number"
+                                    value={params.batch_size}
+                                    onChange={(e) => setParams({ ...params, batch_size: Number(e.target.value) })}
+                                    className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-zinc-100 disabled:cursor-not-allowed"
+                                    disabled={isBusy}
+                                />
+                            </label>
+                            <label className="flex flex-col">
+                                <span className="text-sm font-medium text-zinc-700 mb-2">Learning Rate</span>
+                                <input
+                                    type="number"
+                                    step="0.00001"
+                                    value={params.learning_rate}
+                                    onChange={(e) => setParams({ ...params, learning_rate: parseFloat(e.target.value) })}
+                                    className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-zinc-100 disabled:cursor-not-allowed"
+                                    disabled={isBusy}
+                                />
+                            </label>
+                            <label className="flex flex-col">
+                                <span className="text-sm font-medium text-zinc-700 mb-2">Max Length</span>
+                                <input
+                                    type="number"
+                                    value={params.max_length}
+                                    onChange={(e) => setParams({ ...params, max_length: Number(e.target.value) })}
+                                    className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-zinc-100 disabled:cursor-not-allowed"
+                                    disabled={isBusy}
+                                />
+                            </label>
                         </div>
 
-
-                    )}
+                        <div className="flex items-center gap-6 mt-4">
+                            <span className="text-sm font-medium text-zinc-700">Shuffle</span>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="shuffle"
+                                    checked={params.shuffle === true}
+                                    onChange={() => setParams({ ...params, shuffle: true })}
+                                    className="w-4 h-4 text-blue-600"
+                                    disabled={isBusy}
+                                />
+                                <span className="text-sm text-zinc-700">On</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="shuffle"
+                                    checked={params.shuffle === false}
+                                    onChange={() => setParams({ ...params, shuffle: false })}
+                                    className="w-4 h-4 text-blue-600"
+                                    disabled={isBusy}
+                                />
+                                <span className="text-sm text-zinc-700">Off</span>
+                            </label>
+                        </div>
+                    </div>
 
                     {/* 📊 [통합] Accuracy & Loss 차트 */}
                     {hasTrainedModel > 0 && histories?.train_acc && (
@@ -357,6 +363,71 @@ export default function RecommendationPanel({
                         )}
                     </div>
 
+                    {/* {isLoading &&
+                        <div className="flex justify-between items-center">
+                            <div className="w-5 h-5 border-2 border-slate-300 border-t-white rounded-full animate-spin" /> 
+                            <div className="w-6 h-6 border-4 border-slate-200 border-t-white rounded-full animate-spin" /> 
+                            <div className="flex items-center gap-2">
+                                <span className="animate-spin text-lg">✦</span>
+                            </div>
+                        </div>
+                    } */}
+                    {isLoading && (
+                        <div className="bg-white rounded-[2.5rem] border border-zinc-100 p-16 shadow-sm animate-in fade-in zoom-in-95 duration-500">
+                            <div className="flex flex-col items-center justify-center space-y-8">
+
+                                {/* 1. 빛나는 AI 아이콘 (Gemini 스타일) */}
+                                <div className="relative">
+                                    {/* 배경 광원 효과 */}
+                                    <div className="absolute inset-0 bg-blue-400 blur-2xl opacity-20 animate-pulse rounded-full" />
+
+                                    {/* 메인 아이콘 박스 */}
+                                    <div className="relative bg-gradient-to-br from-blue-600 to-indigo-600 p-5 rounded-[1.5rem] shadow-xl shadow-blue-200">
+                                        <Sparkles className="w-10 h-10 text-white animate-pulse" />
+                                    </div>
+
+                                    {/* 주변을 도는 작은 점들 */}
+                                    <div className="absolute -top-2 -right-2 w-4 h-4 bg-emerald-400 rounded-full border-4 border-white animate-bounce" />
+                                </div>
+
+                                {/* 2. 상태 메시지 */}
+                                <div className="text-center space-y-3">
+                                    <h3 className="text-xl font-black text-zinc-900 flex items-center justify-center gap-2">
+                                        데이터 분석 및 선별 중
+                                        <span className="flex gap-1.5 ml-1">
+                                            <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                            <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                                            <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce" />
+                                        </span>
+                                    </h3>
+                                    <p className="text-zinc-500 font-medium text-sm leading-relaxed max-w-[280px] mx-auto">
+                                        AI 모델이 방대한 특허 빅데이터를 탐색하여<br />
+                                        가장 유사도가 높은 기술을 추출하고 있습니다.
+                                    </p>
+                                </div>
+
+                                {/* 3. 슬림한 스캔 라인 애니메이션 */}
+                                <div className="w-48 h-1 bg-zinc-100 rounded-full overflow-hidden relative">
+                                    <div
+                                        className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500 to-transparent w-1/2 animate-[shimmer_1.5s_infinite]"
+                                        style={{
+                                            backgroundImage: 'linear-gradient(90deg, transparent, #3b82f6, transparent)',
+                                            animation: 'shimmer 1.5s infinite'
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 🎯 Tailwind Config나 전역 CSS에 추가하면 좋은 애니메이션 (옵션) */}
+                    <style jsx>{`
+                        @keyframes shimmer {
+                            0% { transform: translateX(-100%); }
+                            100% { transform: translateX(200%); }
+                        }
+                    `}</style>
+
                     {/* 바구니 섹션 */}
                     {cartItems.length > 0 && (
                         <div className="mt-8 bg-white rounded-3xl border-2 border-blue-600 p-8 shadow-2xl animate-in slide-in-from-bottom-5">
@@ -387,7 +458,7 @@ export default function RecommendationPanel({
                     )}
 
                     {/* 추천 리스트 */}
-                    {inferenceResults.length > 0 && (
+                    {!isLoading && inferenceResults.length > 0 && (
                         <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden">
                             <div className="bg-zinc-100 px-6 py-4 flex justify-between items-center border-b border-zinc-200">
                                 <div className="flex items-center gap-2 text-zinc-800 font-bold">
@@ -397,18 +468,18 @@ export default function RecommendationPanel({
                                     <Plus size={14} /> 바구니에 담기 ({selectedIds.size})
                                 </button>
                             </div>
-                            <table className="w-full text-sm table-fixed"> {/* 🚀 table-fixed 추가: 컬럼 너비 고정 */}
+                            <table className="w-full text-sm table-fixed">
                                 <thead className="bg-zinc-100 text-zinc-500 border-b border-zinc-200">
                                     <tr className="text-left">
-                                        <th className="p-4 w-16 text-center"> {/* 🚀 너비 고정 */}
+                                        <th className="p-4 w-16 text-center">
                                             <button onClick={toggleSelectAll} disabled={availablePagedIds.length === 0} className="disabled:opacity-20">
                                                 {isAllSelected ? <CheckSquare size={20} className="text-blue-600" /> : <Square size={20} />}
                                             </button>
                                         </th>
-                                        <th className="p-4 font-bold text-zinc-700 w-1/4">특허명</th> {/* 🚀 너비 배분 */}
+                                        <th className="p-4 font-bold text-zinc-700 w-1/4">특허명</th>
                                         <th className="p-4 font-bold text-zinc-700">요약문</th>
                                         <th className="p-4 font-bold text-zinc-700">분류</th>
-                                        <th className="p-4 text-center font-bold text-zinc-700 w-24">유사도</th> {/* 🚀 너비 고정 */}
+                                        <th className="p-4 text-center font-bold text-zinc-700 w-24">유사도</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-zinc-100">
@@ -417,10 +488,8 @@ export default function RecommendationPanel({
                                         const isSelected = selectedIds.has(String(r.application_number));
                                         const isExpanded = expandedRow === String(r.application_number);
 
-                                        // 🚀 <group> 대신 <React.Fragment> 사용 (중요)
                                         return (
                                             <React.Fragment key={r.application_number}>
-                                                {/* 메인 행 */}
                                                 <tr
                                                     onClick={() => setExpandedRow(isExpanded ? null : String(r.application_number))}
                                                     className={`
@@ -478,7 +547,7 @@ export default function RecommendationPanel({
                                                 {/* 5. [확장 영역] 상세 정보 - 별도의 행으로 구성 */}
                                                 {isExpanded && (
                                                     <tr className="bg-zinc-50/50">
-                                                        <td colSpan={4} className="p-0"> {/* 🚀 colSpan 4 확인 */}
+                                                        <td colSpan={5} className="p-0">
                                                             <div className="px-16 py-6 border-b border-zinc-100 animate-in fade-in slide-in-from-top-1 duration-200">
                                                                 <div className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm">
                                                                     <div className="flex items-center gap-2 mb-4 text-blue-600">

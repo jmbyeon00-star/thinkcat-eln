@@ -77,9 +77,9 @@ export interface ProjectGroupItems {
     id: number;
     group_code: string;
     group_name: string;
+    group_items: ProjectData[];
     count: number;
     last_updated: string;
-    group_items: ProjectData[];
 }
 
 export interface ProjectDataGroups {
@@ -91,12 +91,12 @@ export interface ProjectDataGroups {
 
 export type TrainingDataItems = ProjectData[];
 export type TrainingConfig = {
-    modelName?: string;
-    modelDesc?: string;
+    model_name?: string;
+    model_desc?: string;
     epoch: number;
-    batchSize: number;
-    learningRate: number;
-    maxLength: number;
+    batch_size: number;
+    learning_rate: number;
+    max_length: number;
     shuffle: boolean,
 }
 

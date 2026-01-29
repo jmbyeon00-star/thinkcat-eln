@@ -123,3 +123,8 @@ export function getQueryString(
 export function authHeader(token?: string) {
     return token ? { Authorization: `Bearer ${token}` } : {};
 }
+
+export function truncateText(text: string | undefined, maxLength: number = 100) {
+    if (!text) return "-";
+    return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
+};

@@ -124,8 +124,7 @@ async def insert_recommendation_data(
     session: Session = Depends(get_sync_session)
 ):
     user_id = get_current_user_from_request(request)
-    
-    return await collection_service.insert_project_data(session, user_id, collection_id, project_id, body)
+    return await collection_service.save_recommended_data(session, user_id, collection_id, project_id, body)
 
 
 # ==========================================

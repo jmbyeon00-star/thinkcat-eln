@@ -16,6 +16,7 @@ import { withMessages } from '@/lib/i18n/withMessages';
 import { CollectionInfo } from "@/types/collection";
 import { ProjectInfo } from "@/types/project";
 import { ModelDetail } from "@/types/ai";
+import ProjectTypeSection from "@/components/project/ProjectTypeSection";
 export const getServerSideProps = withMessages();
 
 const projectData = {
@@ -217,60 +218,18 @@ export default function ProjectHomePage() {
             isLoading={loading} // 🔴 [핵심 수정] 로딩 상태를 Layout에 전달
         >
             <div className="space-y-6">
+                <div>
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="w-1 h-8 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
+                        <h1 className="text-3xl font-bold text-zinc-900">컬렉션 목록</h1>
+                    </div>
+                    <p className="text-zinc-600 ml-4">
+                        이 프로젝트로 학습된 모든 AI 모델을 관리합니다.
+                    </p>
+                </div>
+
                 {/* 프로젝트 소스 타입 안내 섹션 */}
-                <section className={`relative overflow-hidden rounded-2xl border transition-all p-5 
-                    ${projectInfo?.source_type === 'search'
-                        ? 'bg-blue-50/50 border-blue-100'
-                        : 'bg-emerald-50/50 border-emerald-100'}`}>
-
-                    {/* 배경 장식 (패턴) */}
-                    <div className="absolute right-[-20px] top-[-20px] opacity-10">
-                        {projectInfo?.source_type === 'search'
-                            ? <Database size={120} className="text-blue-600" />
-                            : <Plus size={120} className="text-emerald-600" />
-                        }
-                    </div>
-
-                    <div className="flex items-center gap-5 relative z-10">
-                        {/* 아이콘 박스 */}
-                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-sm
-                            ${projectInfo?.source_type === 'search' ? 'bg-blue-600' : 'bg-emerald-600'}`}>
-                            {projectInfo?.source_type === 'search'
-                                ? <Database className="text-white w-7 h-7" />
-                                : <Plus className="text-white w-7 h-7" />
-                            }
-                        </div>
-
-                        {/* 텍스트 설명 */}
-                        <div className="flex-grow">
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md
-                                    ${projectInfo?.source_type === 'search'
-                                        ? 'bg-blue-100 text-blue-700'
-                                        : 'bg-emerald-100 text-emerald-700'}`}>
-                                    {projectInfo?.source_type}
-                                </span>
-                                <h2 className="text-lg font-bold text-zinc-900">
-                                    {projectInfo?.source_type === 'search' ? "데이터베이스 검색 기반" : "파일 업로드 기반"}
-                                </h2>
-                            </div>
-                            <p className="text-sm text-zinc-600">
-                                {projectInfo?.source_type === 'search'
-                                    ? "글로벌 특허 및 논문 데이터베이스를 직접 조회하여 구성된 프로젝트입니다."
-                                    : "사용자가 직접 업로드한 로컬 문서 파일을 기반으로 구성된 프로젝트입니다."}
-                            </p>
-                        </div>
-
-                        {/* 상태 표시 뱃지 */}
-                        <div className="hidden md:block text-right">
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Active Status</p>
-                            <div className="flex items-center gap-1.5 justify-end">
-                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                <span className="text-sm font-semibold text-zinc-700 font-mono">LIVE_STREAMING</span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                <ProjectTypeSection projectInfo={projectInfo} />
 
                 {/* >>> 프로젝트 구조 도형 노드 - 좌우 레이아웃 */}
                 {collectionInfo.length === 0 ? (

@@ -2,7 +2,7 @@ import React from "react";
 
 type PatentDetailInfoProps = {
   data?: {
-    reg_number:string;
+    reg_number: string;
     application_number: string;
     filing_date?: string;
     publication_number?: string;
@@ -117,8 +117,7 @@ export default function PatentDetailInfo({ data, loading = false }: PatentDetail
                   <div className="w-3 h-3 bg-purple-500 rounded-full" />
                   <span className="text-sm font-medium text-zinc-700">청구항 수</span>
                 </div>
-                <div className={`text-lg font-semibold ${
-                  data.claim_count ? "text-zinc-900" : "text-zinc-400"}`}>
+                <div className={`text-lg font-semibold ${data.claim_count ? "text-zinc-900" : "text-zinc-400"}`}>
                   {data.claim_count ? `${data.claim_count}개` : "정보 없음"}
                 </div>
               </div>
@@ -145,7 +144,7 @@ export default function PatentDetailInfo({ data, loading = false }: PatentDetail
                 {data.applicant_name && (
                   <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm border border-blue-100">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+                      <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
                     </svg>
                     <span className="font-medium">출원인:</span>
                     <span>{data.applicant_name}</span>
@@ -154,7 +153,7 @@ export default function PatentDetailInfo({ data, loading = false }: PatentDetail
                 {data.inventor_name && (
                   <div className="inline-flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-lg text-sm border border-purple-100">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
+                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                     </svg>
                     <span className="font-medium">발명자:</span>
                     <span>{data.inventor_name}</span>

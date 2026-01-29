@@ -61,18 +61,44 @@ def search_by_registration(session: Session, reg_num: str) -> Dict:
 def search_fetch_by_applicant(session: Session, applicant_code: str) -> Dict:
     return fetch_by_applicant(session, applicant_code) or {}
 
+async def search_standard(session: Session, user_id: int, body: str) -> Dict[str, Any]:
+    payload = {
+        "user_id": user_id,
+        "body": body
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{GPU_BACKEND_URL}/gpu/search/standard", 
+                json=payload,
+                timeout=30
+            )
+            
+            resp.raise_for_status() 
+            gpu_result = resp.json()
+            return gpu_result
+
+    except httpx.HTTPStatusError as e:
+        error_detail = f"GPU 서버에서 HTTP 오류 발생: {e.response.status_code} - {e.response.text[:100]}..."
+        print(error_detail)
+        raise HTTPException(status_code=503, detail=f"GPU LLM 서버 오류: {e.response.status_code}") from e
+        
+    except Exception as e:
+        error_detail = str(e)
+        print(f"GPU 서버 통신 오류: {error_detail}")
+        raise HTTPException(status_code=503, detail=f"GPU LLM 서버 통신 실패: {error_detail}") from e
+
 async def search_with_mcp(session: Session, user_id: int, body: str) -> Dict[str, Any]:
     """
     GPU 서버로 LLM 기반 검색 요청을 전달하고 최종 검색 결과를 받아 반환합니다.
     """
     
-    # Next.js 프론트엔드와 FastAPI 라우터에서 'query'만 명시적으로 전달받았다고 가정
     payload = {
         "user_id": user_id,
-        "body": body  # 이제 query가 str 타입으로 명확합니다.
+        "body": body
     }
     
-    # print(f"GPU 서버 요청 payload: {payload}")
+    print(f"GPU 서버 요청 payload2: {payload}")
     
     try:
         async with httpx.AsyncClient() as client:

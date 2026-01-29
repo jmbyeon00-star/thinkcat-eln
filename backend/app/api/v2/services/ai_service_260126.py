@@ -157,39 +157,48 @@ async def update_model_name(session: httpx.AsyncClient, user_id: int, model_id: 
         return {"status": "error", "message": str(e)}
 
 async def run_training(session, payload: dict, user_id: int, project_id: int=None, collection_id: int=None):
-    print(f">>> [TRAIN] 프로젝트 {project_id} 학습 세션 시작")
-    print(">>> payload:", payload)
-
     start = time.perf_counter()
 
-    project_info = session.query(ProjectInfo).filter(
-        ProjectInfo.id == project_id,
-        ProjectInfo.user_id == user_id
-    ).first()
+    print(">>> train page payload:", payload.keys())
+    data_scope = payload.get("data_scope", "").lower()
+    task_type = payload.get("task_type", "").lower()
+    run_type = payload.get("run_type", "").lower()
 
-    if not project_info:
-        return {"status": "failed", "error": "Project not found"}
-
-    is_counter_used = bool(project_info.is_counter_used)
-    data_scope = payload.get("data_scope", "project").lower()
-    source_type = project_info.source_type
-    task_type = payload.get("task_type", project_info.task_type)
-    run_type = payload.get("run_type", "train")
-
+    # 공통 변수 초기화
     model_id = None
     model_code = None
     target_code = None
 
-    if run_type == "train":
-        print(f">>> [TRAIN] 프로젝트 {project_id} 학습 시작 (Counter 사용 여부: {is_counter_used})")
+    if run_type and run_type == "train":
+        print(">>> 일반 학습 시작")
 
-        model_code, target_code, source_type = generate_model_code(
-            session=session, user_id=user_id, data_scope=data_scope, 
-            task_type=task_type, project_id=project_id, collection_id=collection_id
-        )
+        is_counter_class = bool(payload.get("dataset", {}).get("n_items", []))
+        is_counter_used = payload.get("dataset", {}).get("is_counter_used", False)
+        if not is_counter_class and not is_counter_used:
+            print(f">>> [CLEANUP] Project {project_id}: Counter 미사용으로 인해 기존 used=0 데이터 삭제 진행")
+            try:
+                # 1. 해당 프로젝트에서 used=0인 모든 행을 삭제
+                # synchronize_session=False는 성능상 유리하며 대량 삭제 시 권장됩니다.
+                session.query(ProjectData).filter(
+                    ProjectData.project_id == project_id,
+                    ProjectData.used == 0
+                ).delete(synchronize_session=False)
+                
+                # 2. 프로젝트 설정도 카운터 미사용(0)으로 확실히 동기화
+                session.query(ProjectInfo).filter(ProjectInfo.id == project_id).update({
+                    "is_counter_used": 0
+                })
+                
+                session.commit()
+                print(">>> [SUCCESS] 기존 Counter 데이터 삭제 및 프로젝트 설정 업데이트 완료")
+            except Exception as cleanup_error:
+                session.rollback()
+                print(f">>> [ERROR] Cleanup 중 오류 발생: {cleanup_error}")
+            
+        final_check_counter_used = is_counter_class and is_counter_used
+        payload["dataset"]["is_counter_used"] = final_check_counter_used
 
-        final_collection_num = project_info.collection_num
-
+        model_code, target_code, source_type = generate_model_code(session=session, user_id=user_id, data_scope=data_scope, task_type=task_type, project_id=project_id, collection_id=collection_id)
         model_info = ModelInfo(
             user_id=user_id,
             project_id=project_id,
@@ -209,91 +218,157 @@ async def run_training(session, payload: dict, user_id: int, project_id: int=Non
             max_length=payload['max_length'],
             shuffle=payload['shuffle'],
             
-            task_type=task_type,
-            source_type=source_type,
+            task_type=payload['task_type'],
+            source_type=payload.get('source_type', source_type),
             data_scope=data_scope,
-            collection_num=final_collection_num,
+            collection_num=payload['collection_num']+1 if final_check_counter_used else payload['collection_num'],
         )
         session.add(model_info)
         session.commit()
         session.refresh(model_info)
+
         model_id = model_info.id
+        dataset = payload.get("dataset")
         
-    # elif run_type == "retrain":
-    #     print(f">>> [RE-TRAIN] 프로젝트 {project_id} 학습 시작 (Counter 사용 여부: {is_counter_used})")
-    #     model_id = payload.get("model_id", "")
-    #     file = payload.get("file")
+    elif run_type == "retrain":
+        print(">>> 재학습 시작")
+        model_id = payload.get("model_id", "")
+        file = payload.get("file")
 
-    #     if not file:
-    #         return {"status": "failed", "error": "No file provided for retraining"}
+        if not file:
+            return {"status": "failed", "error": "No file provided for retraining"}
 
-    #     # 1. 모델 정보 업데이트
-    #     model_info = session.query(ModelInfo).filter(ModelInfo.id == model_id).first()
-    #     if not model_info:
-    #         return {"status": "failed", "error": "Model not found"}
+        # 1. 모델 정보 업데이트
+        model_info = session.query(ModelInfo).filter(ModelInfo.id == model_id).first()
+        if not model_info:
+            return {"status": "failed", "error": "Model not found"}
 
-    #     model_code = model_info.model_code
-    #     target_code = re.sub(r"^(cls_|rec_|model_)", "", model_code)
-    #     source_type = model_info.source_type.value if hasattr(model_info.source_type, 'value') else model_info.source_type
-    #     task_type = model_info.task_type
-      
-    #     model_info.progress_status = "RUNNING"
+        model_code = model_info.model_code
+        # for prefix in ["cls_", "rec_", "model_"]:
+        #     if target_code.startswith(prefix):
+        #         target_code = target_code[len(prefix):]
+        #         break
+        target_code = re.sub(r"^(cls_|rec_|model_)", "", model_code)
+        source_type = model_info.source_type.value if hasattr(model_info.source_type, 'value') else model_info.source_type
+        task_type = model_info.task_type
+        
+        # 전달받은 신규 하이퍼파라미터로 업데이트
+        # model_info.epoch = payload.get('epoch', model_info.epoch)
+        # model_info.batch_size = payload.get('batch_size', model_info.batch_size)
+        # model_info.learning_rate = payload.get('learning_rate', model_info.learning_rate)
+        # model_info.max_length = payload.get('max_length', model_info.max_length)
+        # model_info.shuffle = payload.get('shuffle', model_info.shuffle)
+        
+        # model_info.updated_datetime = target_updated
+        # model_info.progress = 0
+        model_info.progress_status = "RUNNING"
 
-    #     if model_info.source_type == "upload":
-    #         print("[INFO] 업로드 파일 모델 재학습")
-    #         # 2. 엑셀 파일 읽기 및 데이터 변환
-    #         contents = await file.read()
-    #         df = pd.read_excel(BytesIO(contents))
+        if model_id.source_type == "upload":
+            print("[INFO] 업로드 파일 모델 재학습")
+            # 2. 엑셀 파일 읽기 및 데이터 변환
+            contents = await file.read()
+            df = pd.read_excel(BytesIO(contents))
 
-    #         items = []
-    #         for _, row in df.iterrows():
-    #             raw_label = (
-    #                 row.get("정답") or row.get("label") or row.get("target") or 
-    #                 row.get("컬렉션") or row.get("collection_name") or row.get("class")
-    #             )
-    #             raw_title = row.get("문제") or row.get("title") or row.get("source") or row.get("제목")
-    #             raw_abstract = row.get("요약") or row.get("abstract", "") or row.get("내용")
+            items = []
+            for _, row in df.iterrows():
+                raw_label = (
+                    row.get("정답") or row.get("label") or row.get("target") or 
+                    row.get("컬렉션") or row.get("collection_name") or row.get("class")
+                )
+                raw_title = row.get("문제") or row.get("title") or row.get("source") or row.get("제목")
+                raw_abstract = row.get("요약") or row.get("abstract", "") or row.get("내용")
 
-    #             items.append({
-    #                 "label": str(raw_label).strip(),
-    #                 "application_number": str(row.get("번호") or row.get("application_number")),
-    #                 "title": str(raw_title).strip() if raw_title else "",
-    #                 "abstract": str(raw_abstract).strip() if raw_abstract else "",
-    #             })
+                items.append({
+                    "label": str(raw_label).strip(),
+                    "application_number": str(row.get("번호") or row.get("application_number")),
+                    "title": str(raw_title).strip() if raw_title else "",
+                    "abstract": str(raw_abstract).strip() if raw_abstract else "",
+                })
 
-    #         if not items:
-    #             print(f"[ERROR] 엑셀에서 데이터를 하나도 추출하지 못했습니다. 컬럼명을 확인하세요: {df.columns.tolist()}")
-    #             return {"status": "failed", "error": "엑셀 파일의 컬럼명이 일치하지 않거나 데이터가 없습니다."}
-    #         dataset = {"items": items, "n_items": [], "is_counter_used": False}
+            if not items:
+                print(f"[ERROR] 엑셀에서 데이터를 하나도 추출하지 못했습니다. 컬럼명을 확인하세요: {df.columns.tolist()}")
+                return {"status": "failed", "error": "엑셀 파일의 컬럼명이 일치하지 않거나 데이터가 없습니다."}
+            dataset = {"items": items, "n_items": [], "is_counter_used": False}
 
-    #     elif model_info.source_type == "search":
-    #         print(f"[ERROR] 검색 데이터에 대한 재학습 처리가 준비되지 않았습니다")
-    #         return {"status": "failed", "error": "검색 데이터에 대한 재학습 처리가 준비되지 않았습니다"}
+        elif model_id.source_type == "search":
+            print(f"[ERROR] 검색 데이터에 대한 재학습 처리가 준비되지 않았습니다")
+            return {"status": "failed", "error": "검색 데이터에 대한 재학습 처리가 준비되지 않았습니다"}
+
+        # if data_scope == "project":
+        #     target_updated = (
+        #         session.query(ProjectInfo.updated_datetime)
+        #         .filter(ProjectInfo.id == project_id)
+        #         .scalar()
+        #     )
+        # elif data_scope == "collection":
+        #     target_updated = (
+        #         session.query(CollectionInfo.updated_datetime)
+        #         .filter(CollectionInfo.id == collection_id)
+        #         .scalar()
+        #     )
+
+    # 3. 데이터 입력 (insert_project_data 호출)
+    data_scope = payload.get("data_scope", None)
+    print(">>> data_scope:", data_scope)
+    if task_type == "recommendation":
+        print(">>> 추천 학습")
+        collection_num = 2
+        group_code = None
+    else:
+        print(">>> 일반 학습")
+        if data_scope == "project":
+            from app.utils.common import generate_data_group_code
+            group_code = generate_data_group_code()
+            inserted_data_info = project_service.insert_project_data(session, user_id, project_id, group_code, dataset)
+            collection_num = inserted_data_info["collection_num"]
+        elif data_scope == "collection":
+            return {}
+
+    try:
+        model_info.collection_num = collection_num
+        session.commit()
+
+        # 4. GPU 서버로 보낼 최종 페이로드 구성
+        gpu_payload = {
+            "start": start,
+            "user_id": user_id,
+            "project_id": project_id,
+            "collection_id": collection_id,
+            "model_id": model_id,
+            "model_code": model_code,
+            "target_code": target_code,
+            "group_code": group_code,
+            "run_type": run_type,
+            "updated_datetime": datetime.now().isoformat(),
+            # "updated_datetime": payload.get("updated_datetime", None),
+            # ---- params ----
+            "epoch": payload.get('epoch', 10),
+            "batch_size": payload.get('batch_size', 32),
+            "learning_rate": payload.get('learning_rate', 0.00001),
+            "max_length": payload.get('max_length', 512),
+            "shuffle": payload.get('shuffle', "1") == 1 or payload.get('shuffle', "1") == "1", # 문자열 "1"을 bool로 변환
+            "task_type": task_type
+        }
+    except Exception as e:
+        # print(str(e))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        
+        print("=> Error!")
+        print(f"=> Location: {fname}")
+        print(f"=> Line: {exc_tb.tb_lineno}")
+        print(f"=> Address: {exc_tb}")
+        print(f"=> Error: {exc_type}")
+        print(f"=> Content: {exc_obj}")
+        print(f"=> Information: {sys.exc_info()}")
+        
+        # 실패 시 ModelInfo 상태도 FAILED로 변경
+        session.query(ModelInfo).filter(ModelInfo.id == model_info.id).update(
+            {"progress_status": "FAILED"}#, "updated_datetime": datetime.now()}
+        )
+        session.commit()
+        return {"status": "failed", "error": str(e), "model_id": model_info.id}
     
-    gpu_payload = {
-        "start": start,
-        "user_id": user_id,
-        "project_id": project_id,
-        "collection_id": collection_id,
-        "model_id": model_id,
-        "model_code": model_code,
-        "target_code": target_code,
-        "group_code": payload.get("group_code", None) if task_type == "classification" else None,
-        "run_type": run_type,
-        "updated_datetime": datetime.now().isoformat(),
-        # "updated_datetime": payload.get("updated_datetime", None),
-        "is_counter_used": is_counter_used,
-        # ---- params ----
-        "epoch": payload.get('epoch', 10),
-        "batch_size": payload.get('batch_size', 32),
-        "learning_rate": payload.get('learning_rate', 0.00001),
-        "max_length": payload.get('max_length', 512),
-        "shuffle": payload.get('shuffle', "1") == 1 or payload.get('shuffle', "1") == "1", # 문자열 "1"을 bool로 변환
-        "task_type": task_type
-    }
-
-    print(">>> GPU Payload:", gpu_payload)
-
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.post(
@@ -314,6 +389,7 @@ async def run_training(session, payload: dict, user_id: int, project_id: int=Non
             return {"status": "training", "gpu_backend": resp.json(), "model_id": model_info.id, "model_code": model_code}
             
     except Exception as e:
+        # print(str(e))
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         
@@ -325,11 +401,11 @@ async def run_training(session, payload: dict, user_id: int, project_id: int=Non
         print(f"=> Content: {exc_obj}")
         print(f"=> Information: {sys.exc_info()}")
 
+        # 실패 시 ModelInfo 상태도 FAILED로 변경
         session.query(ModelInfo).filter(ModelInfo.id == model_info.id).update(
             {"progress_status": "FAILED"}#, "updated_datetime": datetime.now()}
         )
         session.commit()
-        
         return {"status": "failed", "error": str(e), "model_id": model_info.id}
 
 async def run_inference_recommendation(session: Session, user_id: int, body: dict):
@@ -394,92 +470,87 @@ async def run_inference_recommendation(session: Session, user_id: int, body: dic
             session.close()
 
 async def run_auto_recommend(session: Session, user_id: int, collection_id: int, body: dict):
-    try:
-        """
-        학습 모델이 없으면 학습 시작 → SSE로 진행률을 push하고
-        학습 완료되면 프론트가 감지해서 추론을 자동 실행한다.
-        """
+    """
+    학습 모델이 없으면 학습 시작 → SSE로 진행률을 push하고
+    학습 완료되면 프론트가 감지해서 추론을 자동 실행한다.
+    """
 
-        collection_info = session.query(CollectionInfo).filter_by(id=collection_id).first()
-        if not collection_info:
-            raise HTTPException(status_code=404, detail="컬렉션을 찾을 수 없습니다.")
-        project_id = collection_info.project_id
+    collection_info = session.query(CollectionInfo).filter_by(id=collection_id).first()
+    if not collection_info:
+        raise HTTPException(status_code=404, detail="컬렉션을 찾을 수 없습니다.")
 
-        model_code = "rec_" + collection_info.collection_code
-        latest_model = (
-            session.query(ModelInfo)
-            .filter(ModelInfo.model_code == model_code)
-            .order_by(ModelInfo.id.desc())
-            .first()
-        )
-        
-        # 1. 신규 모델 학습 시작
-        if not latest_model:
-            print("추천 모델 없음 -> 신규 학습 시작")
-            try:
-                return await run_training(session=session, payload=body, user_id=user_id, project_id=project_id, collection_id=collection_info.id)
-            except Exception as e:
-                print(">>> Error", str(e))
-        
-        # 2-1. 기존 모델이 있으면 추론만 진행
-        else:
-            print("추천 모델 있음")
-            # 신규 데이터 개수 확인
-            try:
-                new_data_count = (
-                    session.query(ProjectData)
-                    .filter(ProjectData.id == collection_info.project_id, ProjectData.updated_datetime >= collection_info.updated_datetime)
-                    .count()
-                )
-            except Exception as e:
-                print(str(e))
+    project_id = collection_info.project_id
 
-            n = 10
-            if new_data_count <= n:
-                print("추천 모델 추론 시작")
-                infer_body = {
-                    **body,
-                    "model_id": latest_model.id,
-                    "collection_id": collection_id,
-                }
-                
-                clean_infer_body = jsonable_encoder(infer_body)
+    model_code = "rec_" + collection_info.collection_code
+    latest_model = (
+        session.query(ModelInfo)
+        .filter(ModelInfo.model_code == model_code)
+        .order_by(ModelInfo.id.desc())
+        .first()
+    )
 
-                return await run_inference_recommendation(session, user_id, clean_infer_body)
+    project_data = session.query(ProjectData).filter(ProjectData.project_id==project_id, ProjectData.collection_id==collection_id).all()
+    project_data_list = [item.to_dict() for item in project_data]
+    body["dataset"] = {
+        "items": project_data_list,
+        "is_counter_used":  False,
+    }
+
+    # 1️⃣ 신규 모델 학습 시작
+    if not latest_model:
+        print("추천 모델 없음 -> 신규 학습 시작")
+        try:
+            return await run_training(session=session, payload=body, user_id=user_id, project_id=project_id, collection_id=collection_info.id)
+        except Exception as e:
+            print(">>> Error", str(e))
+    
+    # 2️⃣ 기존 모델이 있으면 추론만 진행
+    else:
+        print("추천 모델 있음")
+        # 신규 데이터 개수 확인
+        try:
+            new_data_count = (
+                session.query(ProjectData)
+                .filter(ProjectData.id == collection_info.project_id, ProjectData.updated_datetime >= collection_info.updated_datetime)
+                .count()
+            )
+        except Exception as e:
+            print(str(e))
+
+        n = 10
+        if new_data_count <= n:
+            print("추천 모델 추론 시작")
+            infer_body = {
+                **body,
+                "model_id": latest_model.id,
+                "collection_id": collection_id,
+            }
             
-            # 2-2. 추가된 데이터가 n개 이상인 경우 추가 학습 진행
-            else:
-                body["run_type"] = "retrain"
-                print("추가 학습 시작")
-                retrain_body = {
-                    **body,
-                    "task_type": "recommendation",
-                    "model_name": f"{body.get('model_name', 'retrain')}_v{latest_model.model_version + 1}",
-                    "epoch":  latest_model.epoch,
-                    "learning_rate":  latest_model.learning_rate,
-                    "batch_size":  latest_model.batch_size,
-                    "max_length":  latest_model.max_length,
-                    "shuffle":  latest_model.shuffle,
-                }
+            clean_infer_body = jsonable_encoder(infer_body)
 
-                # 마지막 학습 시각 갱신
-                collection_info.last_trained_at = datetime.utcnow()
-                session.commit()
-
-                return await run_training(session, payload=retrain_body, user_id=user_id, project_id=project_id, collection_id=collection_id)
-    except Exception as e:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            return await run_inference_recommendation(session, user_id, clean_infer_body)
         
-        print(f"[AUTO RECOMMEND] {str(e)}")
-        print("=> [AUTO RECOMMEND]")
-        print(f"=> Location: {fname}")
-        print(f"=> Line: {exc_tb.tb_lineno}")
-        print(f"=> Address: {exc_tb}")
-        print(f"=> Error: {exc_type}")
-        print(f"=> Content: {exc_obj}")
-        print(f"=> Information: {sys.exc_info()}")
+        # 3️⃣ 추가된 데이터가 n개 이상인 경우 추가 학습 진행
+        else:
+            body["run_type"] = "retrain"
+            print("추가 학습 시작")
+            retrain_body = {
+                **body,
+                "task_type": "recommendation",
+                "model_name": f"{body.get('model_name', 'retrain')}_v{latest_model.model_version + 1}",
+                "epoch":  latest_model.epoch,
+                "learning_rate":  latest_model.learning_rate,
+                "batch_size":  latest_model.batch_size,
+                "max_length":  latest_model.max_length,
+                "shuffle":  latest_model.shuffle,
+            }
 
+            # 마지막 학습 시각 갱신
+            collection_info.last_trained_at = datetime.utcnow()
+            session.commit()
+
+            return await run_training(session, payload=retrain_body, user_id=user_id, project_id=project_id, collection_id=collection_id)
+        
 
 def run_inference_classification(session: Session, user_id: int, model_id: int, body: dict):
     """FastAPI → GPU 백엔드 추론 요청"""

@@ -133,8 +133,13 @@ def get_patent_detail(application_number: str, session: Session = Depends(get_sy
 # MCP를 활용한 엘라스틱서치 라이브러리 검색
 # -----------------------------
 @router.post("/mcp")
-async def get_patent_with_mcp(request: Request, session: Session = Depends(get_sync_session)):
+async def get_patents_with_mcp(request: Request, session: Session = Depends(get_sync_session)):
     user_id = get_current_user_from_request(request)
     body = await request.json()
     return await search_service.search_with_mcp(session, user_id, body)
     
+@router.post("/standard")
+async def get_patents(request: Request, session: Session = Depends(get_sync_session)):
+    user_id = get_current_user_from_request(request)
+    body = await request.json()
+    return await search_service.search_standard(session, user_id, body)

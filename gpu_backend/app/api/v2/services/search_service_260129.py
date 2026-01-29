@@ -342,147 +342,6 @@ def fetch_patent_by_regnum(reg_number: str) -> Dict[str, Any]:
         except:
             pass
 
-# >>> 2026-01-28
-def build_standard_es_query(options: dict, query_vector=None):
-    """
-    Elasticsearch DSL 생성을 위한 일반 검색 전용 함수.
-    AI 분석값(intent) 없이 오직 유저의 UI 입력값만 사용합니다.
-    """
-    try:
-        filters = []
-        should = []
-        
-        # 1. Exact Match (출원번호)
-        app_num = options.get("exact_match", {}).get("application_number")
-        if app_num:
-            filters.append({"term": {"application_number": app_num}})
-
-        # 2. 필터 설정 (연도, 출원인, 발명인)
-        ui_filters = options.get("filters", {})
-        
-        # 출원 연도
-        year = ui_filters.get("filing_year", {})
-        gte, lte = year.get("gte"), year.get("lte")
-        if gte or lte:
-            range_query = {}
-            if gte: range_query["gte"] = gte
-            if lte: range_query["lte"] = lte
-            filters.append({"range": {"filing_year": range_query}})
-
-        # 출원인
-        applicant = ui_filters.get("applicant_name")
-        if applicant:
-            filters.append({
-                "bool": {
-                    "should": [
-                        { "match": { "applicant_name": { "query": applicant, "boost": 3.0 } } },
-                        { "term": { "applicant_name.keyword": { "value": applicant, "boost": 5.0 } } }
-                    ],
-                    "minimum_should_match": 1
-                }
-            })
-
-        # 발명인
-        inventor = ui_filters.get("inventor_name")
-        if inventor:
-            filters.append({"match": {"inventor_name": {"query": inventor}}})
-
-        # 3. 키워드 검색 (Text Query)
-        # 프론트엔드에서 보낸 검색어(text_query)를 사용
-        target_kw = options.get("text_query", {}).get("text_query", "").strip()
-        if target_kw:
-            should.append({
-                "multi_match": {
-                    "query": target_kw,
-                    "fields": ["title^3", "abstract^2"],
-                    "type": "best_fields"
-                }
-            })
-
-        # 4. 벡터 검색 (하이브리드)
-        if options.get("use_vector", True) and query_vector is not None:
-            should.append({
-                "script_score": {
-                    "query": {"match_all": {}},
-                    "script": {
-                        "source": "cosineSimilarity(params.q, 'vector') + 1.0",
-                        "params": {"q": query_vector}
-                    }
-                }
-            })
-
-        # 최종 쿼리 조립
-        if not should:
-            return {"bool": {"filter": filters}} if filters else {"match_all": {}}
-        
-        return {
-            "bool": {
-                "should": should,
-                "filter": filters,
-                "minimum_should_match": 1
-            }
-        }
-
-    except Exception as e:
-        print(f"Standard Query Build Error: {e}")
-        return {"match_all": {}}
-
-async def search_standard(payload: dict):
-    try:
-        # 1. 페이로드 추출
-        body = payload.get('body', {})
-        user_query = body.get('query', '').strip()
-        ui_options = body.get('options', {})
-        
-        page = body.get('page', 1)
-        size = body.get('size', 10)
-        start_from = (page - 1) * size
-
-        # 안전장치: 1,000개(100페이지) 넘어가면 제한 (선택사항)
-        if start_from >= 1000:
-            return {"error": "Maximum page limit (100) exceeded."}
-
-        # 2. 임베딩 생성 (하이브리드/벡터 검색용)
-        query_vector = None
-        if user_query:
-            raw_vector = get_embedding(user_query)
-            query_vector = raw_vector.tolist() if hasattr(raw_vector, 'tolist') else list(raw_vector)
-
-        # 3. ES DSL 생성
-        if "text_query" not in ui_options:
-            ui_options["text_query"] = {}
-        ui_options["text_query"]["text_query"] = user_query
-
-        query_dsl = build_standard_es_query(options=ui_options, query_vector=query_vector)
-   
-        # 4. MCP 검색 실행
-        MCP_CLIENT = Client(MCP_ENDPOINT)
-        async with MCP_CLIENT:
-            # MCP 서버 상태 체크
-            await MCP_CLIENT.call_tool("es-ping", {"req": {}})
-            
-            tool_name = "es-search"
-            search_args = {
-                "index": "patent_data_v1",
-                "track_total_hits": True, # 전체 결과 개수를 알기 위해 필수
-                "from": start_from, # 시작 위치
-                "size": size, # 페이지당 개수
-                "query": query_dsl
-            }
-
-            # MCP 서버의 es-search 도구 호출
-            mcp_response = await MCP_CLIENT.call_tool(
-                tool_name,
-                {"req": search_args}
-            )
-
-        return {
-            "results": mcp_response
-        }
-    except Exception as e:
-        print(f"[ERROR] Standard Search {str(e)}")
-        return {"error": "Standard Search failed", "details": str(e)}
-# <<<
 
 # >>> 2025-12-16 ~ 17
 def parse_llm_json(text: str) -> dict:
@@ -490,6 +349,210 @@ def parse_llm_json(text: str) -> dict:
         cleaned = re.sub(r"```(?:json)?\s*", "", text)
         cleaned = re.sub(r"\s*```", "", cleaned)
         return json.loads(cleaned)
+
+import numpy as np
+import os
+import sys
+
+# def build_es_query_from_intent(intent: dict, options: dict, query_vector=None, raw_query=None):
+#     """
+#     Elasticsearch DSL 생성을 위한 최종 통합 함수.
+#     1. UI 입력값(options)이 LLM 분석값(intent)보다 우선순위를 가짐.
+#     2. 유저가 직접 입력한 키워드가 있으면 LLM 생성 키워드를 무시(Override).
+#     3. 하이브리드 검색(텍스트 + 벡터) 및 정교한 필터링 처리.
+#     """
+#     try:
+#         filters = []
+#         should = []
+
+#         # --------------------------------------------------
+#         # 1. Exact Match (출원번호) - 발견 시 즉시 반환
+#         # --------------------------------------------------
+#         ui_exact = options.get("exact_match", {})
+#         intent_exact = intent.get("exact_match", {})
+
+#         application_number = ui_exact.get("application_number") or intent_exact.get("application_number")
+        
+#         if application_number:
+#             # UI 동기화를 위해 intent 객체 업데이트
+#             if "exact_match" not in intent: intent["exact_match"] = {}
+#             intent["exact_match"]["application_number"] = application_number
+            
+#             return {
+#                 "term": {
+#                     "application_number": application_number
+#                 }
+#             }
+
+#         # --------------------------------------------------
+#         # 2. Filtering (출원 연도) - UI Override 우선
+#         # --------------------------------------------------
+#         def pick(*values):
+#             for v in values:
+#                 if v is not None and v != "":
+#                     return v
+#             return None
+
+#         ui_filters = options.get("filters", {})
+#         intent_filters = intent.get("filters", {})
+
+#         ui_filing_year = ui_filters.get("filing_year") or {}
+#         intent_filing_year = intent_filters.get("filing_year") or {}
+
+#         # 시작/종료 연도 결정
+#         filing_year_gte = pick(ui_filing_year.get("gte"), intent_filing_year.get("gte"), intent_filing_year.get("from"))
+#         filing_year_lte = pick(ui_filing_year.get("lte"), intent_filing_year.get("lte"), intent_filing_year.get("to"))
+
+#         # Intent 데이터 업데이트 (UI 반영용)
+#         if "filters" not in intent: intent["filters"] = {}
+#         if "filing_year" not in intent["filters"]: intent["filters"]["filing_year"] = {}
+        
+#         range_body = {}
+#         if filing_year_gte is not None:
+#             intent["filters"]["filing_year"]["gte"] = filing_year_gte
+#             range_body["gte"] = filing_year_gte
+#         if filing_year_lte is not None:
+#             intent["filters"]["filing_year"]["lte"] = filing_year_lte
+#             range_body["lte"] = filing_year_lte
+
+#         if range_body:
+#             filters.append({"range": {"filing_year": range_body}})
+
+#         # --------------------------------------------------
+#         # 3. Filtering (출원 날짜) - Intent 기반
+#         # --------------------------------------------------
+#         filing_date = intent_filters.get("filing_date")
+#         if filing_date and filing_date.get("from"):
+#             filters.append({
+#                 "range": {
+#                     "filing_date": {
+#                         "gte": filing_date["from"],
+#                         "lte": filing_date.get("to")
+#                     }
+#                 }
+#             })
+
+#         # --------------------------------------------------
+#         # 4. Text Query (UI Keyword Override 로직)
+#         # --------------------------------------------------
+#         ui_text_query = options.get("text_query", {})
+#         ui_keyword = ui_text_query.get("text_query", "").strip() # 유저가 직접 입력한 값
+        
+#         intent_keywords_list = intent.get("text_query", {}).get("keywords", [])
+#         intent_keywords = " ".join(intent_keywords_list).strip()
+        
+#         fields = ["title^3", "abstract^2"] # 제목 가중치 3배, 요약 가중치 2배
+
+#         # 🎯 유저 입력 키워드가 있으면 LLM 결과 무시하고 유저 값 사용
+#         target_keywords = None
+#         if ui_keyword:
+#             target_keywords = ui_keyword
+#             if "text_query" not in intent: intent["text_query"] = {}
+#             intent["text_query"]["keywords"] = [ui_keyword]
+#             intent["text_query"]["llm_summary"] = [intent_keywords]
+            
+#             print(f">>> [User Override] Using UI Keywords: {ui_keyword}")
+#         elif intent_keywords:
+#             target_keywords = intent_keywords
+#             print(f">>> [LLM Intent] Using LLM Keywords: {intent_keywords}")
+
+#         if target_keywords:
+#             should.append({
+#                 "multi_match": {
+#                     "query": target_keywords,
+#                     "type": "best_fields",
+#                     "fields": fields,
+#                     "operator": "or"
+#                 }
+#             })
+
+#         # --------------------------------------------------
+#         # 5. Vector Similarity (보조 검색)
+#         # --------------------------------------------------
+#         if intent.get("use_vector", True) and query_vector is not None:
+#             # L2 정규화 (코사인 유사도 정확도 향상)
+#             q_vec = np.array(query_vector)
+#             norm = np.linalg.norm(q_vec)
+#             if norm > 0:
+#                 q_vec = q_vec / norm
+#             q_list = q_vec.tolist()
+
+#             should.append({
+#                 "script_score": {
+#                     "query": {"bool": {"filter": filters}} if filters else {"match_all": {}},
+#                     "script": {
+#                         "source": "cosineSimilarity(params.q, 'vector') + 1.0",
+#                         "params": {"q": q_list}
+#                     }
+#                 }
+#             })
+
+#         # --------------------------------------------------
+#         # 6. Inventor Name Filter (UI > Intent)
+#         # --------------------------------------------------
+#         ui_inventor = ui_filters.get("inventor_name")
+#         intent_inventor = intent_filters.get("inventor_name")
+#         inventor_name = ui_inventor or intent_inventor
+
+#         if inventor_name:
+#             intent["filters"]["inventor_name"] = inventor_name
+#             filters.append({
+#                 "match": {
+#                     "inventor_name": {
+#                         "query": inventor_name,
+#                         "operator": "or"
+#                     }
+#                 }
+#             })
+
+#         # --------------------------------------------------
+#         # 7. Applicant Name Filter (복합 검색 로직)
+#         # --------------------------------------------------
+#         ui_applicant = ui_filters.get("applicant_name")
+#         intent_applicant = intent_filters.get("applicant_name")
+#         applicant_name = ui_applicant or intent_applicant
+
+#         if applicant_name:
+#             intent["filters"]["applicant_name"] = applicant_name
+#             applicant_clause = {
+#                 "bool": {
+#                     "should": [
+#                         { "match": { "applicant_name": { "query": applicant_name, "boost": 3.0 } } },
+#                         { "match": { "applicant_name.ngram": { "query": applicant_name, "boost": 1.5 } } },
+#                         { "term": { "applicant_name.keyword": { "value": applicant_name, "boost": 5.0 } } }
+#                     ],
+#                     "minimum_should_match": 1
+#                 }
+#             }
+#             filters.append(applicant_clause)
+
+#         # --------------------------------------------------
+#         # 8. 최종 쿼리 조립 (Query Assembly)
+#         # --------------------------------------------------
+#         if not should:
+#             # should(텍스트/벡터) 조건이 하나도 없으면 필터링된 전체 결과 반환
+#             return {"bool": {"filter": filters}}
+
+#         # 최종 bool 쿼리 생성
+#         query = {
+#             "bool": {
+#                 "should": should,
+#                 "minimum_should_match": 1 # 텍스트나 벡터 중 최소 하나는 연관성이 있어야 함
+#             }
+#         }
+
+#         if filters:
+#             query["bool"]["filter"] = filters
+
+#     except Exception as e:
+#         # 에러 발생 시 상세 정보 출력
+#         exc_type, exc_obj, exc_tb = sys.exc_info()
+#         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+#         print(f"!!! Error in build_es_query: {str(e)}")
+#         print(f"=> Location: {fname} | Line: {exc_tb.tb_lineno}")
+#         return {"match_all": {}} # 에러 시 기본 전체 검색 결과라도 반환
+
+#     return query
 
 def build_es_query_from_intent(intent: dict, options: dict, query_vector=None, raw_query=None):
     try:
@@ -594,28 +657,36 @@ def build_es_query_from_intent(intent: dict, options: dict, query_vector=None, r
     except Exception as e:
         print(f"Error building query: {e}")
         return {"match_all": {}}
-        
+
 
 async def search_with_mcp(payload: dict):
     body = payload.get('body', {})
     user_query = body.get('query').strip()
     ui_options = body.get('options', {})
+    # results = await search_with_ollama(user_query)
 
     # 1. 검색 의도 분석
     intent = await analyze_search_intent(user_query) if user_query else {}
+    # print("\n\n\n>>> search mcp intent:", intent)
+
     if "filters" not in intent: intent["filters"] = {}
     
     filter_keys = ["applicant_name", "filing_year", "inventor_name", "applicant_code"]
+
     for key in filter_keys:
         ui_val = ui_options.get("filters", {}).get(key)
         intent_val = intent["filters"].get(key)
+        
+        # LLM이 분석을 못했거나({}) 비어있는데, UI(옵션)에는 값이 있는 경우 -> UI 값 유지
         if (not intent_val or intent_val == {}) and ui_val:
             intent["filters"][key] = ui_val
 
     # 2. 임베딩
     query_vector = None
     if user_query:
+        print(">>> user_query:", user_query)
         query_vector = get_embedding(user_query)
+    # print(">>>", query_vector, "<<<")
 
     # 3. ES DSL 생성
     query_dsl = build_es_query_from_intent(intent, ui_options, query_vector, raw_query=user_query)
@@ -626,6 +697,18 @@ async def search_with_mcp(payload: dict):
     async with MCP_CLIENT:
         await MCP_CLIENT.call_tool("es-ping", {"req": {}})
 
+        # ping_result = await MCP_CLIENT.call_tool("es-ping", {"req": {}})
+        # if ping_result.data.get("is_error") or not ping_result.data.get("success"):
+        #     error_message = ping_result.get('error', 'Unknown ES failure')
+        #     raise ConnectionError(f"Elasticsearch 핑 실패: {error_message}")
+
+        # tool_objects = await MCP_CLIENT.list_tools()
+        # tool_schemas = [
+        #     tool.model_dump() 
+        #     for tool in tool_objects
+        # ]
+        # tools_str = json.dumps(tool_schemas)
+        
         tool_name = "es-search"
         search_args = {
             "index": "patent_data_v1",
@@ -633,16 +716,83 @@ async def search_with_mcp(payload: dict):
             "size": 5,
             "query": query_dsl
         }
+        # print("\n\n\nsearch_args:", search_args)
 
         mcp_response = await MCP_CLIENT.call_tool(
             tool_name,
             {"req": search_args}
         )
+        # print("\n\n\nmcp_response:", mcp_response)
 
     return {
         "intent": intent,
         "results": mcp_response
     }
+
+    # async with httpx.AsyncClient(timeout=30.0) as client:
+    #     ollama_res = await client.post(OLLAMA_BASE_URL+"/api/chat", json=ollama_payload)
+    #     llm_text = ollama_res.json()["message"]["content"]
+    #     intent = extract_json(llm_text)
+    #     print("intent:", intent)
+        
+#     # MCP 쿼리 호출
+#     tool_name = "es-search"
+#     index = "titleabstract_h"
+#     # embedded_query = get_embedding(user_query)
+#     # print("embedded_query:", embedded_query)
+
+#     MAPPING_PROPS = {
+#         "address": {"type": "long"}, 
+#         "quote": {"type": "text"}, 
+#         "vector": {"dims": 1024, "type": "dense_vector"}
+#     }
+    
+#     from .search_service import _build_query
+#     query_dsl = _build_query(
+#         index=index,
+#         props=MAPPING_PROPS,
+#         keyword=user_query,
+#         use_vector=True,
+#         get_embedding_fn=get_embedding # BGEM3 임베딩 함수
+#     )
+#     # print("\n\n\n")
+#     # print(json.dumps(query_dsl, indent=4, ensure_ascii=False))
+
+#     search_args = {
+#         "index": index, 
+#         "track_total_hits": True,
+#         "from": 0,
+#         "size": 5,
+#         "_source": ["address", "quote"],
+#         "query": query_dsl, # 생성된 하이브리드 DSL (ID, term, vector script_score 포함)
+#         "highlight": {
+#             "pre_tags": ["<mark>"], "post_tags": ["</mark>"],
+#             "fields": {"quote": {}}
+#         }
+#     }
+#     try:
+#         request_params = { 
+#             "index": "titleabstract_h", 
+#             "query": {"match": {"content_field": user_query}},
+#             "size": 5
+#         }
+
+#         mcp_response = await MCP_CLIENT.call_tool(tool_name, {"req": search_args})
+#         # print("강제 검색 결과:", type(mcp_response))
+#         # print(f"✅ 강제 검색 성공. 결과 수: {len(mcp_response.get('results', {}).get('hits', {}).get('hits', []))}")
+        
+# #         # 3-4. 2차 LLM 호출 (최종 답변 생성) - 기존 코드의 2차 호출 로직 사용
+#         # final_response_data = await second_ollama_call(user_query, mcp_response)
+#         # return final_response_data
+
+#     except Exception as e:
+#         print(">>> 강제 검색 오류", str(e))
+#         pass
+            
+    # mcp_response = await MCP_CLIENT.call_tool(tool_name, request_params)
+            
+    # print("\n--- 최종 결과 ---")
+    # print(json.dumps(intent, indent=4, ensure_ascii=False))
 
     return str(intent)
 # <<<
@@ -665,6 +815,7 @@ async def search_with_ollama(user_query: str):
             ping_result = await MCP_CLIENT.call_tool("es-ping", {"req": {}})
             print(f"DEBUG: ES-PING RAW RESULT: {ping_result}")
 
+            # if ping_result.get("success"):
             if ping_result.data.get("success"):
                 print("✅ MCP 서버와 Elasticsearch 연결 성공.")
             else:
@@ -673,14 +824,30 @@ async def search_with_ollama(user_query: str):
                 raise ConnectionError(f"Elasticsearch 핑 실패: {error_message}")
 
             # 2. 도구 스키마 로드
+            # tool_schemas = await MCP_CLIENT.list_tools()
+
+            # list_tools는 Tool 객체의 리스트를 반환합니다.
             tool_objects = await MCP_CLIENT.list_tools() 
+            
+            # 🚨 수정: 각 Tool 객체를 JSON 직렬화가 가능한 딕셔너리로 변환
             tool_schemas = [
+                # 대부분의 Pydantic 객체는 to_dict() 또는 model_dump()를 제공합니다.
+                # .model_dump()를 사용하여 딕셔너리 리스트로 변환합니다.
                 tool.model_dump() 
                 for tool in tool_objects
             ]
             tools_str = json.dumps(tool_schemas)
-            # print(f"MCP 서버에서 {len(tool_schemas)}개의 도구 스키마 로드 완료.")
+            print(f"📦 MCP 서버에서 {len(tool_schemas)}개의 도구 스키마 로드 완료.")
 
+            # 3. Ollama API 호출 및 Tool Calling 로직 (이하 동일)
+            # ollama_payload = {
+            #     "model": OLLAMA_MODEL,
+            #     "prompt": user_query,
+            #     "options": {
+            #         "system": f"You are a helpful assistant. You have access to the following tools: {tools_str}. Use the tools to answer the question if necessary.",
+            #     },
+            #     "stream": False 
+            # }
             ollama_payload = {
                 "model": OLLAMA_MODEL,
                 "prompt": user_query,
@@ -728,3 +895,38 @@ async def search_with_ollama(user_query: str):
         print(f"경고: MCP 서버 연결 또는 설정 실패. 오류: {e}")
         # MCP 클라이언트 초기화 실패 또는 연결 실패 시
         return {"error": f"MCP Client Connection Failed: {e}"}
+
+async def search_standard(payload: dict):
+    body = payload.get('body', {})
+    user_query = body.get('query').strip()
+    ui_options = body.get('options', {})
+
+    query_vector = None
+    if user_query:
+        query_vector = get_embedding(user_query)
+
+    # 3. ES DSL 생성
+    query_dsl = build_es_query_from_intent(intent, ui_options, query_vector, raw_query=user_query)
+   
+    # 4. MCP 검색 실행
+    MCP_CLIENT = Client(MCP_ENDPOINT)
+    async with MCP_CLIENT:
+        await MCP_CLIENT.call_tool("es-ping", {"req": {}})
+        
+        tool_name = "es-search"
+        search_args = {
+            "index": "patent_data_v1",
+            "track_total_hits": True,
+            "size": 5,
+            "query": query_dsl
+        }
+
+        mcp_response = await MCP_CLIENT.call_tool(
+            tool_name,
+            {"req": search_args}
+        )
+
+    return {
+        "results": mcp_response
+    }
+    return str(intent)

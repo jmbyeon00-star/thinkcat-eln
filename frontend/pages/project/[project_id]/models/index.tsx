@@ -9,6 +9,7 @@ import ModelProgressSSE from "@/components/train/ModelProgressSSE";
 import { ModelDetail } from "@/types/ai";
 
 import { withMessages } from '@/lib/i18n/withMessages';
+import ProjectTypeSection from "@/components/project/ProjectTypeSection";
 export const getServerSideProps = withMessages();
 
 // ModelProgressSSE 컴포넌트가 존재한다고 가정
@@ -190,6 +191,7 @@ export default function ProjectModelListPage() {
             CreatedDatetime={projectInfo?.created_datetime}
             UpdatedDatetime={projectInfo?.updated_datetime}
         >
+            {/* <ProjectTypeSection projectInfo={projectInfo} /> */}
             <div className="min-h-screen bg-white p-8">
 
                 {/* Header and Action Button */}
@@ -230,7 +232,7 @@ export default function ProjectModelListPage() {
                         <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
                         <input
                             type="text"
-                            placeholder="모델 이름으로 검색..."
+                            placeholder="모델명 검색"
                             value={query}
                             onChange={(e) => {
                                 setQuery(e.target.value);

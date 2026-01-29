@@ -15,14 +15,14 @@ export function SearchResults({ resp, page, loading, keyword, onChangePage }: Pr
     const [openRow, setOpenRow] = useState<string | null>(null);
 
     // ✅ 디버깅: 받은 데이터 확인
-    console.log("=== SearchResults Debug ===");
-    console.log("resp:", resp);
-    console.log("resp.data:", resp?.data);
-    console.log("resp.data.length:", resp?.data?.length);
-    console.log("resp.total_hits:", resp?.total_hits);
-    console.log("resp.total_pages:", resp?.total_pages);
-    console.log("loading:", loading);
-    console.log("========================");
+    // console.log("=== SearchResults Debug ===");
+    // console.log("resp:", resp);
+    // console.log("resp.data:", resp?.data);
+    // console.log("resp.data.length:", resp?.data?.length);
+    // console.log("resp.total_hits:", resp?.total_hits);
+    // console.log("resp.total_pages:", resp?.total_pages);
+    // console.log("loading:", loading);
+    // console.log("========================");
 
     if (loading)
         return <p className="text-center text-zinc-500 mt-10 mb-10">검색 중...</p>;
