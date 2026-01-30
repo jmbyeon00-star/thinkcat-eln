@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
 import Head from "next/head";
-import Link from "next/link";
-import { GetServerSideProps } from "next";
+import Footer from '@components/layouts/Footer';
 import { useRouter } from "next/router";
-import { ArrowRight, BarChart3, LineChart as LineChartIcon, Zap, MousePointer2 } from "lucide-react";
+import { SearchBar } from "@/components/search/SearchBar";
 import BarChart from "@/components/charts/BarChart";
 import ModelAccuracyLineChart from "@/components/charts/ModelAccuracyLineChart";
+import { Sparkles, ArrowRight, BarChart3, LineChart as LineChartIcon, Zap, MousePointer2 } from "lucide-react";
 import fs from "fs";
 import path from "path";
+import { GetServerSideProps } from "next";
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => {
     const messages = JSON.parse(
@@ -28,34 +29,51 @@ export default function Home() {
         setMounted(true);
     }, []);
 
+    const handleSearch = ({ keyword, category }: { keyword: string; category: string }) => {
+        if (!keyword.trim()) return;
+        router.push(
+            `/search/keyword/${encodeURIComponent(keyword)}?category=${category}&include_vector=false&include_quote=false`
+        );
+    };
+
     return (
         <>
             <Head>
-                <title>IPFORCE</title>
+                <title>IPFORCE | AI Patent Intelligence</title>
                 <style>{`
+                    html, body {
+                        height: 100%;
+                        margin: 0;
+                        padding: 0;
+                        overflow: hidden; /* 브라우저 기본 스크롤 차단 */
+                    }
+
                     #main-snap-container {
-    height: 100vh;
-    overflow-y: auto;
-    /* ❌ 삭제: scroll-snap-type: y mandatory; */
-    scroll-behavior: smooth; /* 이건 두는 게 부드럽고 좋습니다 */
+                        height: 100vh;
+                        overflow-y: auto;
+                        scroll-snap-type: y mandatory;
+                        scroll-behavior: smooth;
 
-    /* 스크롤바 숨기기 설정은 유지 */
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
+                        /* 🚀 스크롤바 숨기기 핵심 코드 */
+                        -ms-overflow-style: none; /* IE, Edge */
+                        scrollbar-width: none; /* Firefox */
+                    }
 
-#main-snap-container::-webkit-scrollbar {
-    display: none;
-}
+                    /* Chrome, Safari, Opera, Brave */
+                    #main-snap-container::-webkit-scrollbar {
+                        display: none;
+                    }
 
-section {
-    min-height: 100vh; /* 🎯 height 대신 min-height 권장 */
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    position: relative;
-}
+                    section {
+                        height: 100vh;
+                        width: 100%;
+                        scroll-snap-align: start;
+                        scroll-snap-stop: always;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        position: relative;
+                    }
                 `}</style>
             </Head>
 
@@ -79,20 +97,15 @@ section {
                             {/* <br className="hidden md:block" /> */}
                         </p>
 
-                        <div className="flex justify-center gap-4">
-                            <Link href="/search"
-                                // className="px-10 py-5 bg-blue-600 text-white rounded-2xl font-blue-600 shadow-2xl hover:bg-blue-700 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-                                className="px-10 py-5 border-2 border-blue-600 text-blue-600 rounded-2xl font-black transition-all hover:bg-blue-600 hover:text-white hover:scale-105 active:scale-95 flex items-center gap-2"
-                            >
-                                특허 찾기<ArrowRight size={20} />
-                            </Link>
-                            <Link href="/project/new"
-                                // className="px-10 py-5 border-2 border-zinc-900 text-zinc-900 rounded-2xl font-black transition-all hover:bg-zinc-900 hover:text-white hover:scale-105 active:scale-95 flex items-center gap-2"
-                                className="px-10 py-5 bg-zinc-900 text-white rounded-2xl font-black shadow-2xl hover:bg-black transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-                            >
-                                특허 관리<ArrowRight size={20} />
-                            </Link>
-                        </div>
+                        {/* <div className="pt-8 max-w-2xl mx-auto w-full">
+                            <SearchBar loading={loading} onSearch={handleSearch} />
+                        </div> */}
+                    </div>
+
+                    {/* Scroll Indicator */}
+                    <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-zinc-300 animate-bounce">
+                        <span className="text-[10px] font-black uppercase tracking-widest">Scroll Down</span>
+                        <MousePointer2 size={16} className="rotate-180" />
                     </div>
                 </section>
 
@@ -151,6 +164,7 @@ section {
                     <div className="absolute bottom-8 left-0 w-full text-center">
                         <p className="text-[10px] font-black text-zinc-300 uppercase tracking-[0.4em]">© 2026 IPFORCE Intelligence Platform</p>
                     </div>
+                    <Footer />
                 </section>
             </main>
         </>

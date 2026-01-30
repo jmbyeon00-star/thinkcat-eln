@@ -54,7 +54,7 @@
     "types/**/*.d.ts",
     "pages/about/index.tsx",
     // "pages/page.tsx", "pages/layout.tsx"
-    "pages/index.tsx",
+    "pages/index_260130",
     "pages/_app.tsx",
     "components/project/UploadComponent_251204",
     "components/project/SearchComponent_251203",

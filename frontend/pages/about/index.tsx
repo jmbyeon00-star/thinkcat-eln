@@ -1,10 +1,6 @@
 import Head from "next/head";
-import {
-  Brain, Database, Rocket, BarChart3, Cpu, ArrowRight, Zap,
-  UploadCloud, CheckCircle2, ShieldCheck, Layers, Gauge,
-  MessageSquareText, SearchCode, Network
-} from "lucide-react";
 import Link from "next/link";
+import { Brain, Database, Rocket, Cpu, ArrowRight, CheckCircle2, ShieldCheck, Layers, Gauge, SearchCode, Network } from "lucide-react";
 import { withMessages } from '@/lib/i18n/withMessages';
 
 export const getServerSideProps = withMessages();
