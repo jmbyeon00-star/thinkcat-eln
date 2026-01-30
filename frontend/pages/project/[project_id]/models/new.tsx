@@ -773,7 +773,7 @@ export default function NewModelPage() {
     const [modelInfo, setModelInfo] = useState<any[]>([]);
     const [projectDataGroups, setProjectDataGroups] = useState<ProjectDataGroups | null>(null);
     const [trainingItems, setTrainingItems] = useState<ProjectData[]>([]);
-    console.log(">>>trainingItems:", trainingItems)
+
     const [config, setConfig] = useState<TrainingConfig>({ model_name: '', model_desc: '', epoch: 10, batch_size: 32, learning_rate: 1e-5, max_length: 128, shuffle: true });
     const [groupName, setGroupName] = useState("");
 

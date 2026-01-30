@@ -12,6 +12,8 @@ import SearchLayout from "@components/layouts/SearchLayout";
 import { withMessages } from '@/lib/i18n/withMessages';
 export const getServerSideProps = withMessages();
 
+import { useSearchContext } from '@/contexts/SearchContext';
+
 export default function KeywordDetail() {
     // app router
     // const params = useParams();
@@ -25,6 +27,8 @@ export default function KeywordDetail() {
 
     // page router
     const router = useRouter();
+    const { keywordCache, setKeywordCache, lastPages, setLastPage } = useSearchContext();
+
     const {
         keyword: rawKeyword,
         category: rawCategory,
@@ -45,18 +49,30 @@ export default function KeywordDetail() {
     const searchMethod =
         typeof method === "string" ? method : "bgem3";
 
-    const [page, setPage] = useState(1);
+    const [page, setPage] = useState(() => {
+        return lastPages[keyword] || 1;
+    });
     const [isLoading, setIsLoading] = useState(false);
     const [resp, setResp] = useState<PaginationSearchResp | null>(null);
 
     const size = 10;
 
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage);
+        setLastPage(keyword, newPage); // 🎯 현재 페이지 번호를 금고에 저장
+    };
+
     useEffect(() => {
         if (!router.isReady || !keyword) return;
 
-        setIsLoading(true);
+        const cacheKey = `${keyword}_${category}_${page}_${searchMethod}`;
+        if (keywordCache[cacheKey]) {
+            console.log("🚀 캐시에서 데이터를 찾았습니다! 서버 요청을 건너뜁니다.");
+            setResp(keywordCache[cacheKey]);
+            return;
+        }
 
-        // searchPagination 사용
+        setIsLoading(true);
         searchPagination({
             section: category,
             keyword,
@@ -66,7 +82,11 @@ export default function KeywordDetail() {
             include_vector: includeVector,  // URL에서 가져온 값
             include_quote: includeQuote,    // URL에서 가져온 값
         })
-            .then((r) => setResp(r as PaginationSearchResp))
+            .then((r) => {
+                const data = r as PaginationSearchResp
+                setResp(data)
+                setKeywordCache(cacheKey, data);
+            })
             .catch((e) => {
                 console.error("검색 오류:", e);
                 alert(e.message || "검색에 실패했습니다.");
@@ -95,7 +115,7 @@ export default function KeywordDetail() {
                     loading={isLoading}
                     page={page}
                     keyword={keyword}
-                    onChangePage={setPage}
+                    onChangePage={handlePageChange}
                 />
             </section>
         </SearchLayout>

@@ -81,15 +81,33 @@ SYSTEM_PROMPT = """너는 "검색 의도 파서"다.
     "fields": ["title", "abstract", "claim"]
   },
 
-  "use_vector": false,
+  "use_vector": true,
   "confidence": 0.0
 }
 """
+# def extract_json(text: str):
+#     match = re.search(r'\{.*\}', text, re.S)
+#     if not match:
+#         raise ValueError("JSON 객체 없음")
+#     return json.loads(match.group())
 def extract_json(text: str):
-    match = re.search(r'\{.*\}', text, re.S)
-    if not match:
-        raise ValueError("JSON 객체 없음")
-    return json.loads(match.group())
+    try:
+        # 1. 코드 블록(```json ... ```) 제거 시도
+        cleaned = re.sub(r'```(?:json)?', '', text).strip()
+        cleaned = cleaned.replace('```', '')
+        
+        # 2. 가장 바깥쪽의 { } 추출
+        start = cleaned.find('{')
+        end = cleaned.rfind('}') + 1
+        if start == -1 or end == 0:
+            raise ValueError("JSON 형식을 찾을 수 없습니다.")
+            
+        json_str = cleaned[start:end]
+        return json.loads(json_str)
+    except Exception as e:
+        print(f"❌ JSON Parsing Error: {e}\nRaw Text: {text}")
+        # 실패 시 기본 구조 반환 (시스템 중단 방지)
+        return {"search_type": "text", "filters": {}, "confidence": 0}
 
 async def analyze_search_intent(user_query: str) -> dict:
     text = await generate_intent(

@@ -108,7 +108,7 @@ export function SearchBar({ loading, onSearch, searchType = "keyword" }: Props) 
                 </>
               ) : (
                 <>
-                  <span className="tracking-tighter font-black">지능 검색</span>
+                  <span className="tracking-tighter font-black">검색</span>
                   <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                 </>
               )}

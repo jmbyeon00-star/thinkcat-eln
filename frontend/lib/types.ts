@@ -66,6 +66,7 @@ export type PaginationHit = {
 
 export type PaginationSearchItem = {
     application_number: string;
+    applicant_name?: string;
     title: string;
     abstract: string;
     filing_date?: string;

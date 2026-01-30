@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { CheckCircle2, ChevronRight } from "lucide-react";
+import { Check, RotateCw, ChevronRight, Sparkles } from "lucide-react";
 
 export type Step = number;
 
@@ -17,9 +17,9 @@ export default function SearchStepper({ step, items }: StepperProps) {
   const router = useRouter();
 
   return (
-    <div className="w-full">
-      {/* Desktop Stepper */}
-      <ol className="hidden md:flex items-center justify-between w-full">
+    <div className="w-full py-8">
+      {/* 💻 Desktop Stepper */}
+      <ol className="hidden md:flex items-center w-full gap-4">
         {items.map((item, i) => {
           const idx = i + 1;
           const active = idx === step;
@@ -27,77 +27,69 @@ export default function SearchStepper({ step, items }: StepperProps) {
           const clickable = idx < step;
 
           return (
-            <li
-              key={item.label}
-              className="flex-1 flex items-center"
-            >
+            <li key={item.label} className={`flex items-center ${i !== items.length - 1 ? 'flex-1' : ''}`}>
               <div
-                className={`flex items-center gap-3 ${clickable ? "cursor-pointer group" : "cursor-default"
+                className={`flex items-center gap-4 transition-all duration-300 ${clickable ? "cursor-pointer group" : "cursor-default"
                   }`}
                 onClick={() => {
                   if (clickable) router.push(item.href);
                 }}
               >
-                {/* Circle */}
+                {/* 🔵 Step Number / Icon Box */}
                 <div
-                  className={[
-                    "flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 shadow-sm",
-                    passed
-                      ? "bg-gradient-to-br from-green-400 to-emerald-500 text-white"
+                  className={`
+                    flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-500
+                    ${passed
+                      ? "bg-slate-900 text-white shadow-lg shadow-slate-200"
                       : active
-                        ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white ring-4 ring-blue-100"
-                        : "bg-white ring-2 ring-zinc-200 text-zinc-400",
-                    clickable && "group-hover:ring-4 group-hover:ring-blue-100 group-hover:scale-110",
-                  ].join(" ")}
+                        ? (idx === 3
+                          ? "bg-indigo-600 text-white shadow-xl shadow-indigo-200 scale-110"
+                          : "bg-blue-600 text-white shadow-xl shadow-blue-100 scale-110") // 🎯 3단계가 아닐 때 Blue 적용
+                        : "bg-zinc-100 text-zinc-400 border border-zinc-200"}
+                    ${clickable && "group-hover:bg-blue-600 group-hover:scale-105"}
+                  `}
                 >
                   {passed ? (
-                    <CheckCircle2 className="h-5 w-5" strokeWidth={2.5} />
+                    <Check className="h-5 w-5" strokeWidth={3} />
+                  ) : active ? (
+                    idx === 3 ? (
+                      <Sparkles className="h-5 w-5 animate-pulse text-indigo-200" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 animate-pulse opacity-70" strokeWidth={3} />
+                    )
                   ) : (
-                    <span className="font-bold text-sm">{idx}</span>
+                    <span className="font-black text-sm">{idx}</span>
                   )}
                 </div>
 
-                {/* Label */}
-                <div className="flex flex-col">
+                {/* 📝 Label Group */}
+                <div className="flex flex-col text-left">
                   <span
-                    className={[
-                      "text-xs uppercase tracking-wide font-semibold transition-colors",
-                      active
-                        ? "text-blue-600"
-                        : passed
-                          ? "text-emerald-600"
-                          : "text-zinc-400",
-                      clickable && "group-hover:text-blue-600",
-                    ].join(" ")}
+                    className={`
+                      text-[10px] font-black uppercase tracking-[0.2em] transition-colors
+                      ${active ? "text-indigo-600" : passed ? "text-slate-900" : "text-zinc-400"}
+                    `}
                   >
                     Step {idx}
                   </span>
                   <span
-                    className={[
-                      "text-sm font-medium transition-colors mt-0.5",
-                      active
-                        ? "text-zinc-900"
-                        : passed
-                          ? "text-zinc-700"
-                          : "text-zinc-400",
-                      clickable && "group-hover:text-zinc-900",
-                    ].join(" ")}
+                    className={`
+                      text-[13px] font-black transition-all mt-0.5
+                      ${active ? "text-slate-900 scale-105" : passed ? "text-slate-600" : "text-zinc-400"}
+                      ${clickable && "group-hover:text-indigo-600"}
+                    `}
                   >
                     {item.label}
                   </span>
                 </div>
               </div>
 
-              {/* Connector Line */}
+              {/* 🔗 Connector Line */}
               {i < items.length - 1 && (
-                <div className="flex-1 h-0.5 mx-4">
+                <div className="flex-1 mx-6 h-[2px] bg-zinc-100 rounded-full overflow-hidden">
                   <div
-                    className={[
-                      "h-full transition-all duration-500",
-                      passed
-                        ? "bg-gradient-to-r from-emerald-400 to-emerald-300"
-                        : "bg-zinc-200",
-                    ].join(" ")}
+                    className={`h-full transition-all duration-1000 ease-in-out ${passed ? "w-full bg-slate-900" : "w-0 bg-indigo-600"
+                      }`}
                   />
                 </div>
               )}
@@ -106,44 +98,31 @@ export default function SearchStepper({ step, items }: StepperProps) {
         })}
       </ol>
 
-      {/* Mobile Stepper */}
-      <div className="md:hidden">
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-sm font-medium text-zinc-600">
-            Step {step} of {items.length}
-          </span>
-          <div className="flex gap-1.5">
-            {items.map((_, i) => (
-              <div
-                key={i}
-                className={[
-                  "h-1.5 rounded-full transition-all duration-300",
-                  i + 1 === step
-                    ? "w-8 bg-gradient-to-r from-blue-500 to-indigo-600"
-                    : i + 1 < step
-                      ? "w-6 bg-emerald-400"
-                      : "w-6 bg-zinc-200",
-                ].join(" ")}
-              />
-            ))}
+      {/* 📱 Mobile Stepper */}
+      <div className="md:hidden space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col text-left">
+            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Current Progress</span>
+            <span className="text-xl font-black text-slate-900">{items[step - 1]?.label}</span>
           </div>
+          <span className="text-sm font-black bg-slate-100 px-3 py-1 rounded-full text-slate-500">
+            {step} / {items.length}
+          </span>
         </div>
 
-        {/* Current Step Card */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md">
-              <span className="font-bold">{step}</span>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-wide font-semibold text-blue-600">
-                Current Step
-              </div>
-              <div className="text-sm font-semibold text-zinc-900">
-                {items[step - 1]?.label}
-              </div>
-            </div>
-          </div>
+        {/* Progress Bar */}
+        <div className="flex gap-1.5 h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+          {items.map((_, i) => (
+            <div
+              key={i}
+              className={`h-full rounded-full transition-all duration-500 ${i + 1 === step
+                ? "flex-[2] bg-indigo-600"
+                : i + 1 < step
+                  ? "flex-1 bg-slate-900"
+                  : "flex-1 bg-zinc-200"
+                }`}
+            />
+          ))}
         </div>
       </div>
     </div>

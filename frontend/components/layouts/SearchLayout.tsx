@@ -3,12 +3,12 @@ import { Sparkles, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/router";
 
 export default function SearchLayout({
-  step,
+  step = 0,
   keyword,
   number,
   children,
 }: {
-  step: number;
+  step?: number;
   keyword?: string;
   number?: number;
   children: React.ReactNode;
@@ -16,16 +16,16 @@ export default function SearchLayout({
   const router = useRouter();
 
   const stepItems = [
-    { label: "검색 환경 설정", href: "/search" },
-    { label: "실시간 분석 결과", href: keyword ? `/search/keyword/${keyword}` : "#" },
-    { label: "지식 자산 상세", href: number ? `/search/detail/${number}` : "#" },
+    { label: "환경 설정", href: "/search" },
+    { label: "검색 결과", href: keyword ? `/search/keyword/${keyword}` : "#" },
+    { label: "특허 상세", href: number ? `/search/detail/${number}` : "#" },
   ];
 
   return (
     <div className="mx-auto w-full max-w-7xl px-6 py-12 selection:bg-blue-100">
       {/* 1. Page Header: 세련된 타이포그래피와 뒤로가기 조합 */}
       <header className="mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 border-b">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600">
               <Sparkles size={12} className="fill-blue-600" />
@@ -40,21 +40,21 @@ export default function SearchLayout({
           </div>
 
           {/* 브라우저 히스토리 기반 뒤로가기 버튼 */}
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-zinc-400 hover:text-zinc-900 font-bold transition-all group text-sm"
-          >
-            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> 이전 단계로
-          </button>
         </div>
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-zinc-400 hover:text-zinc-900 font-bold transition-all group text-sm mt-5"
+        >
+          <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> 이전 단계로
+        </button>
       </header>
 
       {/* 2. Stepper Container: 배경색과 라운딩으로 구분감 부여 */}
-      <div className="mb-12 bg-zinc-50/50 p-6 md:p-8 rounded-[2rem] border border-zinc-100 shadow-inner animate-in fade-in duration-1000">
+      {/* <div className="mb-12 bg-zinc-50/50 p-6 md:p-8 rounded-[2rem] border border-zinc-100 shadow-inner animate-in fade-in duration-1000">
         <div className="max-w-3xl mx-auto">
           <Stepper step={step} items={stepItems} />
         </div>
-      </div>
+      </div> */}
 
       {/* 3. Main Content: 자식 컴포넌트 렌더링 영역 */}
       <main className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">

@@ -24,6 +24,8 @@ load_dotenv()
 
 # 환경 변수 설정
 MCP_ENDPOINT = os.getenv("MCP_ENDPOINT", "http://192.168.1.116:9999/mcp")
+mcp_client = Client(MCP_ENDPOINT)
+
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
 # OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://192.168.1.20:11434/api/chat")
 OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://192.168.1.20:11434/api/generate")
@@ -35,6 +37,7 @@ DB_HOST = os.getenv("DB_HOST", None)
 DB_USER = os.getenv("DB_USER", None)
 DB_PASS = os.getenv("DB_PASS", None)
 DB_TYPE = os.getenv("DB_TYPE", None)
+
 
 # ------------------------------------------
 # ⚙️ 전역 설정
@@ -456,10 +459,11 @@ async def search_standard(payload: dict):
         query_dsl = build_standard_es_query(options=ui_options, query_vector=query_vector)
    
         # 4. MCP 검색 실행
-        MCP_CLIENT = Client(MCP_ENDPOINT)
-        async with MCP_CLIENT:
+        # MCP_CLIENT = Client(MCP_ENDPOINT)
+        # async with MCP_CLIENT:
+        async with mcp_client:
             # MCP 서버 상태 체크
-            await MCP_CLIENT.call_tool("es-ping", {"req": {}})
+            # await MCP_CLIENT.call_tool("es-ping", {"req": {}})
             
             tool_name = "es-search"
             search_args = {
@@ -471,10 +475,7 @@ async def search_standard(payload: dict):
             }
 
             # MCP 서버의 es-search 도구 호출
-            mcp_response = await MCP_CLIENT.call_tool(
-                tool_name,
-                {"req": search_args}
-            )
+            mcp_response = await mcp_client.call_tool(tool_name, {"req": search_args})
 
         return {
             "results": mcp_response
@@ -496,10 +497,10 @@ def build_es_query_from_intent(intent: dict, options: dict, query_vector=None, r
         filters = []
         should = []
         
-        # UI와 AI 분석값 중 우선순위 결정 함수
+        # 헬퍼 함수: 유효한 값을 순서대로 선택
         def pick(*values):
             for v in values:
-                if v is not None and v != "":
+                if v is not None and v != "" and v != []:
                     return v
             return None
 
@@ -512,16 +513,22 @@ def build_es_query_from_intent(intent: dict, options: dict, query_vector=None, r
         ui_exact = options.get("exact_match", {})
         ui_text_query = options.get("text_query", {})
 
-        # 1. Exact Match (출원번호) - 이제 조기 반환하지 않고 filter에 추가
-        application_number = pick(ui_exact.get("application_number"), intent.get("exact_match", {}).get("application_number"))
-        if application_number:
-            filters.append({"term": {"application_number": application_number}})
-            intent["exact_match"]["application_number"] = application_number
+        # 1. Exact Match (출원번호)
+        app_num = pick(ui_exact.get("application_number"), intent.get("exact_match", {}).get("application_number"))
+        if app_num:
+            filters.append({"term": {"application_number": app_num}})
+            intent["exact_match"]["application_number"] = app_num
 
-        # 2. 출원 연도 (Range)
+        # 2. 출원 연도 (Range) - [데이터 형식 오류 방어]
         ui_year = ui_filters.get("filing_year", {})
-        intent_year = intent.get("filters", {}).get("filing_year", {})
+        intent_year_raw = intent.get("filters", {}).get("filing_year", {})
         
+        # AI가 숫자 하나(2020)만 보냈을 경우 처리
+        if isinstance(intent_year_raw, (int, str)):
+            intent_year = {"gte": int(intent_year_raw), "lte": int(intent_year_raw)}
+        else:
+            intent_year = intent_year_raw
+
         gte = pick(ui_year.get("gte"), intent_year.get("gte"), intent_year.get("from"))
         lte = pick(ui_year.get("lte"), intent_year.get("lte"), intent_year.get("to"))
 
@@ -533,7 +540,7 @@ def build_es_query_from_intent(intent: dict, options: dict, query_vector=None, r
             filters.append({"range": {"filing_year": range_body}})
             intent["filters"]["filing_year"] = range_body
 
-        # 3. 출원인 (Applicant) - 복합 검색 유지
+        # 3. 출원인 (Applicant)
         applicant_name = pick(ui_filters.get("applicant_name"), intent.get("filters", {}).get("applicant_name"))
         if applicant_name:
             intent["filters"]["applicant_name"] = applicant_name
@@ -553,53 +560,73 @@ def build_es_query_from_intent(intent: dict, options: dict, query_vector=None, r
             intent["filters"]["inventor_name"] = inventor_name
             filters.append({"match": {"inventor_name": {"query": inventor_name}}})
 
-        # 5. 텍스트 검색 (Keywords)
+        # 5. 텍스트 검색 (Keywords) - [원문 백업 로직 추가]
         ui_keyword = ui_text_query.get("text_query", "").strip()
         intent_keywords = " ".join(intent.get("text_query", {}).get("keywords", [])).strip()
-        target_keywords = ui_keyword or intent_keywords
+        # UI -> AI 키워드 -> 사용자가 입력한 원래 문장(raw_query) 순으로 탐색
+        target_keywords = pick(ui_keyword, intent_keywords, raw_query)
 
         if target_keywords:
             should.append({
                 "multi_match": {
                     "query": target_keywords,
-                    "fields": ["title^3", "abstract^2"],
-                    "type": "best_fields"
+                    "fields": ["title^3", "abstract^2", "claims"],
+                    "type": "best_fields",
+                    "operator": "or"
                 }
             })
 
         # 6. 벡터 검색 (Hybrid)
         if intent.get("use_vector", True) and query_vector is not None:
+            print("222222222")
+            # numpy array인 경우 list로 변환
+            q_vec = query_vector.tolist() if hasattr(query_vector, 'tolist') else query_vector
             should.append({
                 "script_score": {
                     "query": {"match_all": {}},
                     "script": {
                         "source": "cosineSimilarity(params.q, 'vector') + 1.0",
-                        "params": {"q": query_vector}
+                        "params": {"q": q_vec}
                     }
                 }
             })
 
-        # 최종 쿼리 조립
+        # 🎯 7. 최종 쿼리 조립 [검색 결과 0건 방지 로직]
         if not should:
             return {"bool": {"filter": filters}} if filters else {"match_all": {}}
         
-        return {
+        query_body = {
             "bool": {
                 "should": should,
-                "filter": filters,
-                "minimum_should_match": 1
+                "filter": filters
             }
         }
 
+        # 필터(연도, 출원인 등)가 없을 때는 키워드/벡터 중 하나라도 맞아야 하므로 1 적용
+        # 필터가 있을 때는 필터만 맞아도 결과가 나오게 하기 위해 1을 생략 (가산점 모드)
+        if not filters:
+            query_body["bool"]["minimum_should_match"] = 1
+            
+        return query_body
+
     except Exception as e:
-        print(f"Error building query: {e}")
+        print(f"❌ Error building query: {e}")
+        import traceback
+        traceback.print_exc()
         return {"match_all": {}}
-        
 
 async def search_with_mcp(payload: dict):
     body = payload.get('body', {})
     user_query = body.get('query').strip()
     ui_options = body.get('options', {})
+
+    page = body.get('page', 1)
+    size = body.get('size', 10)
+    start_from = (page - 1) * size
+
+    # 안전장치: 1,000개(100페이지) 넘어가면 제한 (선택사항)
+    if start_from >= 1000:
+        return {"error": "Maximum page limit (100) exceeded."}
 
     # 1. 검색 의도 분석
     intent = await analyze_search_intent(user_query) if user_query else {}
@@ -613,32 +640,31 @@ async def search_with_mcp(payload: dict):
             intent["filters"][key] = ui_val
 
     # 2. 임베딩
+    intent_keywords = ' '.join(intent.get("text_query", {}).get("keywords", []))
+    print(">>> user_query:", user_query)
+    print(">>> intent_keywords:", intent_keywords)
+    print(">>>", intent_keywords or user_query)
     query_vector = None
     if user_query:
-        query_vector = get_embedding(user_query)
+        query_vector = get_embedding(intent_keywords or user_query)
 
     # 3. ES DSL 생성
     query_dsl = build_es_query_from_intent(intent, ui_options, query_vector, raw_query=user_query)
-    print("\n\n\n>>> search mcp query_dsl:", query_dsl)
 
     # 4. MCP 검색 실행
-    MCP_CLIENT = Client(MCP_ENDPOINT)
-    async with MCP_CLIENT:
-        await MCP_CLIENT.call_tool("es-ping", {"req": {}})
-
+    # async with MCP_CLIENT:
+    async with mcp_client:
+        # await MCP_CLIENT.call_tool("es-ping", {"req": {}})
         tool_name = "es-search"
         search_args = {
             "index": "patent_data_v1",
             "track_total_hits": True,
-            "size": 5,
+            "from": start_from,
+            "size": size,
             "query": query_dsl
         }
 
-        mcp_response = await MCP_CLIENT.call_tool(
-            tool_name,
-            {"req": search_args}
-        )
-
+        mcp_response = await mcp_client.call_tool(tool_name, {"req": search_args})
     return {
         "intent": intent,
         "results": mcp_response
@@ -646,6 +672,7 @@ async def search_with_mcp(payload: dict):
 
     return str(intent)
 # <<<
+
 # 2025-12-09
 async def search_with_mcp1(payload: dict):
     user_query = payload.get('query', {}).get('query')

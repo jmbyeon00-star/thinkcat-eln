@@ -1,4 +1,16 @@
 import React from "react";
+import {
+  FileText,
+  Calendar,
+  Hash,
+  Users,
+  Globe,
+  Info,
+  Layers,
+  User,
+  Activity,
+  CheckCircle2
+} from "lucide-react";
 
 type PatentDetailInfoProps = {
   data?: {
@@ -12,191 +24,191 @@ type PatentDetailInfoProps = {
     claim_count?: number;
     applicant_name?: string;
     inventor_name?: string;
+    end_status?: string;
   };
   loading?: boolean;
 };
 
 export default function PatentDetailInfo({ data, loading = false }: PatentDetailInfoProps) {
+  // --- [1] 로딩 상태 (Skeleton) ---
   if (loading || !data) {
     return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-5xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden animate-pulse">
-            {/* Header Skeleton */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
-              <div className="h-6 bg-blue-400 rounded w-32 mb-2"></div>
-              <div className="h-4 bg-blue-300 rounded w-48"></div>
+      <div className="w-full animate-pulse space-y-8">
+        <div className="space-y-3">
+          <div className="h-10 bg-slate-100 rounded-2xl w-1/3" />
+          <div className="h-4 bg-slate-50 rounded-xl w-1/4" />
+        </div>
+        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+          <div className="h-20 bg-slate-900" />
+          <div className="p-8 space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-20 bg-slate-50 rounded-[1.5rem]" />
+              ))}
             </div>
-
-            {/* Content Skeleton */}
-            <div className="p-8">
-              <div className="grid md:grid-cols-2 gap-6 mb-8">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="bg-zinc-50 rounded-xl p-4">
-                    <div className="h-4 bg-zinc-200 rounded w-24 mb-2"></div>
-                    <div className="h-5 bg-zinc-300 rounded w-32"></div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-6">
-                <div className="h-5 bg-zinc-200 rounded w-20"></div>
-                <div className="h-20 bg-zinc-100 rounded-xl"></div>
-                <div className="h-5 bg-zinc-200 rounded w-16"></div>
-                <div className="h-32 bg-zinc-100 rounded-xl"></div>
-              </div>
-            </div>
+            <div className="h-40 bg-slate-50 rounded-[1.5rem]" />
           </div>
         </div>
       </div>
     );
   }
 
+  // --- [2] 데이터 표시 상태 ---
   return (
-    <div className="min-h-screen bg-white p-8">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-zinc-900 mb-2">
-            특허 상세 정보
-          </h1>
-          <p className="text-zinc-600">
-            {data.reg_number ? `등록번호: ${data.reg_number}` : `출원번호: ${data.application_number}`}
-          </p>
+    <div className="w-full text-left">
+      {/* Header */}
+      <div className="mb-10 space-y-2">
+        <h1 className="text-4xl font-black text-slate-900 tracking-tighter">
+          특허 상세 정보
+        </h1>
+        <div className="flex items-center gap-2 text-slate-400 font-bold text-sm">
+          <Hash size={14} />
+          {data.reg_number ? `등록번호: ${data.reg_number}` : `출원번호: ${data.application_number}`}
         </div>
+      </div>
 
-        {/* Main Card */}
-        <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden">
-          {/* Card Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
-            <h2 className="text-xl font-semibold text-white mb-2">
-              기본 정보
+      {/* Main Card */}
+      <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+
+        {/* Card Header (Slate Dark Theme) */}
+        <div className="bg-slate-900 px-10 py-8 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-black text-white flex items-center gap-2">
+              <Info size={20} className="text-indigo-400" /> 기본 정보
             </h2>
-            <p className="text-blue-100 text-sm">
+            <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">
               Patent Basic Information
             </p>
           </div>
+          {data.end_status && (
+            <span className="px-4 py-1.5 bg-indigo-600 text-white rounded-full text-[11px] font-black uppercase tracking-widest">
+              {data.end_status}
+            </span>
+          )}
+        </div>
 
-          {/* Basic Info Grid */}
-          <div className="grid md:grid-cols-2 gap-6 px-8 py-6 bg-zinc-50 border-b border-zinc-100">
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-zinc-100">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 bg-blue-500 rounded-full" />
-                <span className="text-sm font-medium text-zinc-700">출원번호</span>
+        {/* Basic Info Grid */}
+        <div className="grid md:grid-cols-2 gap-4 p-8 bg-zinc-50/50">
+
+          <InfoItem
+            icon={<Hash className="text-blue-500" />}
+            label="출원번호"
+            value={data.application_number}
+          />
+          <InfoItem
+            icon={<Calendar className="text-indigo-500" />}
+            label="출원일자"
+            value={data.filing_date || "-"}
+          />
+
+          {data.publication_number && (
+            <InfoItem
+              icon={<Activity className="text-cyan-500" />}
+              label="공개번호"
+              value={data.publication_number}
+            />
+          )}
+
+          <InfoItem
+            icon={<Layers className="text-purple-500" />}
+            label="청구항 수"
+            value={data.claim_count ? `${data.claim_count}개` : "정보 없음"}
+            isDimmed={!data.claim_count}
+          />
+
+          {data.ipc_code && (
+            <div className="md:col-span-2 bg-white rounded-[1.5rem] p-5 shadow-sm border border-slate-100">
+              <div className="flex items-center gap-2 mb-3">
+                <Globe size={16} className="text-emerald-500" />
+                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">IPC 코드</span>
               </div>
-              <div className="text-lg font-semibold text-zinc-900">
-                {data.application_number}
+              <div className="text-xs font-mono text-slate-900 leading-relaxed break-all bg-slate-50 p-3 rounded-xl">
+                {data.ipc_code}
               </div>
             </div>
+          )}
+        </div>
 
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-zinc-100">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 bg-indigo-500 rounded-full" />
-                <span className="text-sm font-medium text-zinc-700">출원일자</span>
-              </div>
-              <div className="text-lg font-semibold text-zinc-900">
-                {data.filing_date || "-"}
-              </div>
-            </div>
+        {/* Title & Abstract Section */}
+        <div className="p-10 space-y-10">
 
-            {data.publication_number && (
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-zinc-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-3 h-3 bg-cyan-500 rounded-full" />
-                  <span className="text-sm font-medium text-zinc-700">공개번호</span>
-                </div>
-                <div className="text-lg font-semibold text-zinc-900">
-                  {data.publication_number}
-                </div>
-              </div>
+          {/* 인적 사항 뱃지 */}
+          <div className="flex flex-wrap gap-3">
+            {data.applicant_name && (
+              <PersonBadge icon={<Users size={14} />} label="출원인" name={data.applicant_name} color="blue" />
             )}
-
-            {data.claim_count !== undefined && (
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-zinc-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-3 h-3 bg-purple-500 rounded-full" />
-                  <span className="text-sm font-medium text-zinc-700">청구항 수</span>
-                </div>
-                <div className={`text-lg font-semibold ${data.claim_count ? "text-zinc-900" : "text-zinc-400"}`}>
-                  {data.claim_count ? `${data.claim_count}개` : "정보 없음"}
-                </div>
-              </div>
-            )}
-
-            {data.ipc_code && (
-              <div className="md:col-span-2 bg-white rounded-xl p-4 shadow-sm border border-zinc-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-3 h-3 bg-emerald-500 rounded-full" />
-                  <span className="text-sm font-medium text-zinc-700">IPC 코드</span>
-                </div>
-                <div className="text-sm font-mono text-zinc-900 whitespace-pre-wrap">
-                  {data.ipc_code}
-                </div>
-              </div>
+            {data.inventor_name && (
+              <PersonBadge icon={<User size={14} />} label="발명자" name={data.inventor_name} color="purple" />
             )}
           </div>
 
-          {/* Title & Abstract Section */}
-          <div className="p-8">
-            {/* Applicant & Inventor Info */}
-            {(data.applicant_name || data.inventor_name) && (
-              <div className="flex flex-wrap gap-3 mb-6">
-                {data.applicant_name && (
-                  <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm border border-blue-100">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-                    </svg>
-                    <span className="font-medium">출원인:</span>
-                    <span>{data.applicant_name}</span>
-                  </div>
-                )}
-                {data.inventor_name && (
-                  <div className="inline-flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-lg text-sm border border-purple-100">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                    </svg>
-                    <span className="font-medium">발명자:</span>
-                    <span>{data.inventor_name}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Title */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-zinc-900 mb-3 flex items-center gap-2">
-                <div className="w-1 h-5 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
-                발명의 명칭
-              </h3>
-              <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                <p className="text-zinc-900 font-medium leading-relaxed">
-                  {data.title || "-"}
-                </p>
-              </div>
-            </div>
-
-            {/* Abstract */}
-            <div>
-              <h3 className="text-lg font-semibold text-zinc-900 mb-3 flex items-center gap-2">
-                <div className="w-1 h-5 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
-                요약
-              </h3>
-              <div className="p-5 bg-zinc-50 rounded-xl border border-zinc-100">
-                <p className="text-zinc-700 whitespace-pre-line leading-relaxed">
-                  {data.abstract || "요약 정보가 없습니다."}
-                </p>
-              </div>
+          {/* 발명의 명칭 */}
+          <div className="space-y-4">
+            <SectionTitle title="발명의 명칭" />
+            <div className="p-6 bg-gradient-to-br from-indigo-50/50 to-blue-50/50 rounded-[2rem] border border-indigo-100">
+              <p className="text-slate-900 font-black text-lg leading-tight">
+                {data.title || "-"}
+              </p>
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="px-8 py-4 bg-zinc-50 border-t border-zinc-100">
-            <p className="text-xs text-zinc-500">
-              💡 특허 정보는 출원 시점 기준으로 표시됩니다.
-            </p>
+          {/* 요약 */}
+          <div className="space-y-4">
+            <SectionTitle title="요약 (Abstract)" />
+            <div className="p-8 bg-white rounded-[2rem] border border-slate-100 shadow-inner-sm">
+              <p className="text-slate-600 font-medium text-[15px] leading-relaxed whitespace-pre-line">
+                {data.abstract || "요약 정보가 등록되지 않았습니다."}
+              </p>
+            </div>
           </div>
         </div>
+
+        {/* Footer */}
+        <div className="px-10 py-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+          <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            {/* <CheckCircle2 size={12} />  */}
+            💡 특허 정보는 출원 시점 기준으로 표시됩니다.
+          </p>
+          <p className="text-[10px] font-black text-slate-300 italic">
+            Snapshot: {new Date().toLocaleDateString()}
+          </p>
+        </div>
       </div>
+    </div>
+  );
+}
+
+// --- [컴포넌트 내 재사용 가능한 작은 부품들] ---
+
+function InfoItem({ icon, label, value, isDimmed = false }: any) {
+  return (
+    <div className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-slate-100 transition-all hover:border-indigo-200">
+      <div className="flex items-center gap-2 mb-2">
+        {React.cloneElement(icon, { size: 14 })}
+        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
+      </div>
+      <div className={`text-lg font-black tracking-tight ${isDimmed ? "text-slate-300" : "text-slate-900"}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function SectionTitle({ title }: { title: string }) {
+  return (
+    <h3 className="flex items-center gap-2 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] px-2">
+      <div className="w-1 h-3 bg-indigo-600 rounded-full" />
+      {title}
+    </h3>
+  );
+}
+
+function PersonBadge({ icon, label, name, color }: any) {
+  const colorClass = color === "blue" ? "bg-blue-50 text-blue-700 border-blue-100" : "bg-purple-50 text-purple-700 border-purple-100";
+  return (
+    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-black border ${colorClass}`}>
+      {icon}
+      <span>{label}: {name}</span>
     </div>
   );
 }

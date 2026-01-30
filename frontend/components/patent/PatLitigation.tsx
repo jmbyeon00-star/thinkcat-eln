@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { AlertCircle, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  History,
+  ExternalLink,
+  ShieldAlert,
+  CheckCircle2,
+  Info
+} from "lucide-react";
 import { patentByNpecheck } from "@/lib/api";
 
 type NpeItem = {
@@ -12,11 +22,7 @@ type NpeItem = {
   npe_prob: number;
 };
 
-type PatLitigationProps = {
-  applicationNumber: string;
-};
-
-export default function PatLitigation({ applicationNumber }: PatLitigationProps) {
+export default function PatLitigation({ applicationNumber }: { applicationNumber: string }) {
   const [npeData, setNpeData] = useState<NpeItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
@@ -25,7 +31,6 @@ export default function PatLitigation({ applicationNumber }: PatLitigationProps)
   useEffect(() => {
     if (!applicationNumber) return;
     setIsLoading(true);
-
     patentByNpecheck(applicationNumber)
       .then((data) => setNpeData(Array.isArray(data) ? data : []))
       .catch(console.error)
@@ -36,6 +41,7 @@ export default function PatLitigation({ applicationNumber }: PatLitigationProps)
     if (code) router.push(`/search/company/${code}`);
   };
 
+  // --- [데이터 가공 로직] ---
   const groupByRGT_TRNSF_SEQ = (data: NpeItem[]) => {
     const grouped: Record<string, NpeItem[]> = {};
     data.forEach((item) => {
@@ -48,253 +54,208 @@ export default function PatLitigation({ applicationNumber }: PatLitigationProps)
 
   const groupedData = groupByRGT_TRNSF_SEQ(npeData);
 
-  const getColor = (prob: number) => {
-    if (prob === 0) return { color: "#6b7280", label: "데이터 없음", icon: <XCircle size={20} /> };
-    if (prob >= 0.99933) return { color: "#dc2626", label: "매우 높음", icon: <AlertCircle size={20} /> };
-    if (prob >= 0.99924) return { color: "#f97316", label: "높음", icon: <AlertTriangle size={20} /> };
-    if (prob >= 0.69892) return { color: "#fbbf24", label: "중간", icon: <AlertTriangle size={20} /> };
-    return { color: "#16a34a", label: "낮음", icon: <CheckCircle size={20} /> };
+  const getRiskStatus = (prob: number) => {
+    if (prob === 0) return { color: "text-slate-400", bg: "bg-slate-50", border: "border-slate-100", label: "No Data", icon: <XCircle size={14} /> };
+    if (prob >= 0.99933) return { color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100", label: "매우 높음", icon: <AlertCircle size={14} /> };
+    if (prob >= 0.99924) return { color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100", label: "높음", icon: <AlertTriangle size={14} /> };
+    if (prob >= 0.69892) return { color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", label: "중간", icon: <AlertTriangle size={14} /> };
+    return { color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100", label: "낮음", icon: <CheckCircle size={14} /> };
   };
 
-  // 통계 계산
-  const highRiskCount = npeData.filter(item => item.npe_prob >= 0.99933).length;
-  const mediumRiskCount = npeData.filter(item => item.npe_prob >= 0.69892 && item.npe_prob < 0.99933).length;
-  const lowRiskCount = npeData.filter(item => item.npe_prob > 0 && item.npe_prob < 0.69892).length;
+  // 통계
+  const stats = {
+    high: npeData.filter(item => item.npe_prob >= 0.99933).length,
+    medium: npeData.filter(item => item.npe_prob >= 0.69892 && item.npe_prob < 0.99933).length,
+    low: npeData.filter(item => item.npe_prob > 0 && item.npe_prob < 0.69892).length,
+  };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white p-8">
-        <div className="max-w-5xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden animate-pulse">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
-              <div className="h-6 bg-blue-400 rounded w-32 mb-2"></div>
-              <div className="h-4 bg-blue-300 rounded w-48"></div>
-            </div>
-            <div className="p-8">
-              <div className="grid grid-cols-3 gap-6 mb-8">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="h-24 bg-zinc-100 rounded-xl"></div>
-                ))}
-              </div>
-              <div className="h-96 bg-zinc-100 rounded-xl"></div>
-            </div>
-          </div>
-        </div>
+      <div className="w-full animate-pulse space-y-10">
+        <div className="h-12 bg-slate-100 rounded-2xl w-1/3" />
+        <div className="bg-white rounded-[2.5rem] border border-slate-100 h-96" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white p-8">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-zinc-900 mb-2">
-            권리자 이전 분석
-          </h1>
-          <p className="text-zinc-600">
-            NPE(Non-Practicing Entity) 위험도 평가
-          </p>
-        </div>
+    <div className="w-full text-left font-sans">
+      {/* Header */}
+      <div className="mb-10 space-y-2">
+        <h1 className="text-4xl font-black text-slate-900 tracking-tighter">
+          권리자 이전 분석
+        </h1>
+        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
+          NPE Risk Assessment & Ownership Transfer History
+        </p>
+      </div>
 
-        {/* Main Card */}
-        <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden">
-          {/* Card Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
-            <h2 className="text-xl font-semibold text-white mb-2">
-              권리자 이전 내역
+      {/* Main Container */}
+      <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+
+        {/* Top Dark Header */}
+        <div className="bg-slate-900 px-10 py-8 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-black text-white flex items-center gap-2">
+              <History size={20} className="text-indigo-400" /> 이전 내역 분석
             </h2>
-            <p className="text-blue-100 text-sm">
-              Rights Holder Transfer History & NPE Risk Assessment
+            <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">
+              Historical Ownership Data
             </p>
           </div>
+          <ShieldAlert size={32} className="text-slate-700" />
+        </div>
 
-          {npeData.length > 0 ? (
-            <>
-              {/* Stats Summary */}
-              <div className="grid grid-cols-3 gap-6 px-8 py-6 bg-zinc-50 border-b border-zinc-100">
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-red-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertCircle size={16} className="text-red-500" />
-                    <span className="text-sm font-medium text-zinc-700">고위험</span>
-                  </div>
-                  <div className="text-2xl font-bold text-red-600">
-                    {highRiskCount}건
-                  </div>
-                  <div className="text-xs text-zinc-500 mt-1">NPE 가능성 매우 높음</div>
-                </div>
+        {npeData.length > 0 ? (
+          <>
+            {/* Stats Summary Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-slate-50">
+              <RiskStatCard label="고위험 NPE 가능성" count={stats.high} color="rose" desc="심각한 주의 필요" />
+              <RiskStatCard label="중위험 이전 내역" count={stats.medium} color="amber" desc="모니터링 권장" />
+              <RiskStatCard label="안전/저위험 내역" count={stats.low} color="emerald" desc="안전 수준" />
+            </div>
 
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-yellow-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle size={16} className="text-yellow-600" />
-                    <span className="text-sm font-medium text-zinc-700">중위험</span>
-                  </div>
-                  <div className="text-2xl font-bold text-yellow-600">
-                    {mediumRiskCount}건
-                  </div>
-                  <div className="text-xs text-zinc-500 mt-1">주의 필요</div>
-                </div>
-
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-green-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle size={16} className="text-green-500" />
-                    <span className="text-sm font-medium text-zinc-700">저위험</span>
-                  </div>
-                  <div className="text-2xl font-bold text-green-600">
-                    {lowRiskCount}건
-                  </div>
-                  <div className="text-xs text-zinc-500 mt-1">안전 수준</div>
-                </div>
-              </div>
-
-              {/* Table */}
-              <div className="p-8">
-                <h3 className="text-lg font-semibold text-zinc-900 mb-6 flex items-center gap-2">
-                  <div className="w-1 h-5 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
-                  상세 이전 내역
-                </h3>
-
-                <div className="overflow-x-auto rounded-xl border border-zinc-200">
-                  <table className="min-w-full divide-y divide-zinc-200">
-                    <thead className="bg-zinc-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">
-                          이전번호
+            {/* Content Table Area */}
+            <div className="p-10">
+              <SectionTitle title="상세 이전 타임라인" />
+              <div className="mt-8 overflow-hidden rounded-[2rem] border border-slate-100 shadow-inner-sm">
+                <table className="min-w-full border-separate border-spacing-0">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      {["이전 번호", "권리자번호", "출원번호", "등록번호", "권리자이름", "권리자코드", "NPE 위험도"].map((head) => (
+                        <th key={head} className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                          {head}
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">
-                          권리자번호
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">
-                          출원번호
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">
-                          등록번호
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">
-                          권리자이름
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-700 uppercase tracking-wider">
-                          권리자코드
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-zinc-700 uppercase tracking-wider">
-                          NPE 위험도
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-zinc-100">
-                      {groupedData.map((group, gIdx) =>
-                        group.map((item, iIdx) => {
-                          const key = `${gIdx}-${iIdx}`;
-                          const colorData = getColor(item.npe_prob);
-                          return (
-                            <tr
-                              key={key}
-                              className={`${hoveredRow === key
-                                  ? "bg-blue-50"
-                                  : gIdx % 2 === 0
-                                    ? "bg-white"
-                                    : "bg-zinc-50"
-                                } hover:bg-blue-50 transition-colors`}
-                              onMouseEnter={() => setHoveredRow(key)}
-                              onMouseLeave={() => setHoveredRow(null)}
-                            >
-                              {iIdx === 0 && (
-                                <td
-                                  rowSpan={group.length}
-                                  className="px-4 py-3 text-sm font-medium text-blue-600 cursor-pointer hover:underline"
-                                  onClick={() => handleClick(item.rgtr_cd)}
-                                >
-                                  {item.rgt_trnsf_seq}
-                                </td>
-                              )}
-                              <td
-                                className="px-4 py-3 text-sm text-blue-600 cursor-pointer hover:underline"
-                                onClick={() => handleClick(item.rgtr_cd)}
-                              >
-                                {item.rgtr_seq}
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-50">
+                    {groupedData.map((group, gIdx) =>
+                      group.map((item, iIdx) => {
+                        const key = `${gIdx}-${iIdx}`;
+                        const risk = getRiskStatus(item.npe_prob);
+                        return (
+                          <tr
+                            key={key}
+                            className={`group transition-colors ${hoveredRow === key ? 'bg-indigo-50/30' : ''}`}
+                            onMouseEnter={() => setHoveredRow(key)}
+                            onMouseLeave={() => setHoveredRow(null)}
+                          >
+                            {iIdx === 0 && (
+                              <td rowSpan={group.length} className="px-6 py-4 align-top border-r border-slate-50">
+                                <span className="text-lg font-black text-indigo-600">#{item.rgt_trnsf_seq}</span>
                               </td>
-                              <td className="px-4 py-3 text-sm text-zinc-700">
-                                {applicationNumber}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-zinc-700">
-                                {item.reg_number}
-                              </td>
-                              <td className="px-4 py-3 text-sm font-medium text-zinc-900">
+                            )}
+                            <td className="px-6 py-4 text-sm font-bold text-slate-400">
+                              {item.rgtr_seq.toString().padStart(2, '0')}
+                            </td>
+
+                            <td className="px-6 py-4 text-sm font-bold text-slate-400">
+                              {applicationNumber}
+                            </td>
+                            <td className="px-6 py-4 text-sm font-bold text-slate-400">
+                              {item.reg_number}
+                            </td>
+                            <td className="px-6 py-4 text-sm font-bold text-slate-400">
+                              <span className="text-sm font-black text-slate-900 group-hover/link:text-indigo-600 transition-colors">
                                 {item.rgtr_nm}
-                              </td>
-                              <td
-                                className="px-4 py-3 text-sm text-blue-600 cursor-pointer hover:underline"
+                              </span>
+                            </td>
+
+                            <td className="px-6 py-4">
+                              <div
+                                className="flex flex-col cursor-pointer group/link"
                                 onClick={() => handleClick(item.rgtr_cd)}
                               >
-                                {item.rgtr_cd || "N/A"}
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center justify-center gap-2">
-                                  <div style={{ color: colorData.color }}>
-                                    {colorData.icon}
-                                  </div>
-                                  <span
-                                    className="text-xs font-semibold px-2 py-1 rounded-full"
-                                    style={{
-                                      color: colorData.color,
-                                      backgroundColor: `${colorData.color}20`
-                                    }}
-                                  >
-                                    {colorData.label}
-                                  </span>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                                <span className="text-[15px] font-bold text-slate-400 flex items-center gap-1 mt-0.5">
+                                  {item.rgtr_cd || "CODE N/A"} <ExternalLink size={10} />
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${risk.bg} ${risk.color} ${risk.border}`}>
+                                {risk.icon}
+                                <span className="text-[11px] font-black uppercase tracking-tight">{risk.label}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
-                {/* Risk Legend */}
-                <div className="mt-6 bg-gradient-to-r from-zinc-50 to-blue-50 rounded-xl p-5 border border-zinc-200">
-                  <h4 className="text-sm font-semibold text-zinc-700 mb-3">NPE 위험도 범례</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="flex items-center gap-2">
-                      <AlertCircle size={18} className="text-red-500" />
-                      <span className="text-xs text-zinc-600">매우 높음 (≥0.99933)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle size={18} className="text-orange-500" />
-                      <span className="text-xs text-zinc-600">높음 (≥0.99924)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle size={18} className="text-yellow-500" />
-                      <span className="text-xs text-zinc-600">중간 (≥0.69892)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle size={18} className="text-green-500" />
-                      <span className="text-xs text-zinc-600">낮음 (&lt;0.69892)</span>
-                    </div>
-                  </div>
+              {/* Legend Box */}
+              <div className="mt-10 bg-slate-50 rounded-[2rem] p-8 border border-slate-100">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <Info size={14} className="text-indigo-500" /> NPE Risk Methodology
+                </h4>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                  <LegendItem prob="≥ 0.99933" label="매우 높음" color="bg-rose-500" />
+                  <LegendItem prob="≥ 0.99924" label="위험/높음" color="bg-orange-500" />
+                  <LegendItem prob="≥ 0.69892" label="주의/중간" color="bg-amber-500" />
+                  <LegendItem prob="< 0.69892" label="안전/낮음" color="bg-emerald-500" />
                 </div>
               </div>
-            </>
-          ) : (
-            <div className="p-8">
-              <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-12 text-center">
-                <XCircle size={48} className="text-zinc-400 mx-auto mb-4" />
-                <p className="text-zinc-500 text-lg">권리자 이전 데이터가 없습니다.</p>
-              </div>
             </div>
-          )}
+          </>
+        ) : (
+          <div className="py-24 text-center">
+            <XCircle size={48} className="mx-auto text-slate-200 mb-4" />
+            <p className="text-slate-400 font-bold">권리자 이전 데이터가 존재하지 않습니다.</p>
+          </div>
+        )}
 
-          {/* Footer Note */}
-          {npeData.length > 0 && (
-            <div className="px-8 py-4 bg-zinc-50 border-t border-zinc-100">
-              <p className="text-xs text-zinc-500">
-                💡 권리자 코드를 클릭하면 해당 기업의 상세 정보를 확인할 수 있습니다.
-              </p>
-            </div>
-          )}
+        {/* Footer */}
+        <div className="px-10 py-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+          <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            {/* <CheckCircle2 size={12} className="text-indigo-500" />  */}
+            💡 권리자 코드를 클릭하면 해당 기업의 상세 정보를 확인할 수 있습니다.
+          </p>
+          <p className="text-[10px] font-black text-slate-300 italic">
+            Reference No: {applicationNumber}
+          </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+// --- [Sub Components] ---
+
+function RiskStatCard({ label, count, color, desc }: any) {
+  const colors: any = {
+    rose: "text-rose-600 border-rose-100",
+    amber: "text-amber-600 border-amber-100",
+    emerald: "text-emerald-600 border-emerald-100",
+  };
+  return (
+    <div className={`bg-white rounded-[1.5rem] p-6 border shadow-sm ${colors[color]}`}>
+      <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{label}</span>
+      <div className="text-3xl font-black my-1">{count}<span className="text-sm ml-1 opacity-50">건</span></div>
+      <p className="text-[9px] font-bold uppercase tracking-tight opacity-40">{desc}</p>
+    </div>
+  );
+}
+
+function SectionTitle({ title }: { title: string }) {
+  return (
+    <h3 className="flex items-center gap-2 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] px-2">
+      <div className="w-1 h-3 bg-indigo-600 rounded-full" />
+      {title}
+    </h3>
+  );
+}
+
+function LegendItem({ prob, label, color }: any) {
+  return (
+    <div className="flex flex-col gap-1.5 text-left">
+      <div className="flex items-center gap-2">
+        <div className={`w-2 h-2 rounded-full ${color}`} />
+        <span className="text-xs font-black text-slate-700">{label}</span>
+      </div>
+      <span className="text-[10px] font-bold text-slate-400 ml-4">{prob}</span>
     </div>
   );
 }

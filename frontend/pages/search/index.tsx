@@ -1,105 +1,122 @@
-import { useState } from "react";
-import Head from "next/head";
-import { useRouter } from "next/router";
-import { SearchBar } from "@/components/search/SearchBar";
-import SearchLayout from "@/components/layouts/SearchLayout";
-import { Search, Hash, FileCheck, MousePointer2 } from "lucide-react";
-import { withMessages } from '@/lib/i18n/withMessages';
+import React from 'react';
+import { useSearchContext } from '@/contexts/SearchContext';
 
-export const getServerSideProps = withMessages();
+// 분리한 컴포넌트들 임포트
+import { ResultListSection } from '@/components/search/ResultListSection';
+import { AiSearchView } from '@/components/search/AiSearchView';
+import { StandardSearchView } from '@/components/search/StandardSearchView';
 
-export default function SearchIndexPage() {
-    const router = useRouter();
-    const [searchType, setSearchType] = useState<"keyword" | "application" | "registration">("keyword");
+import { Sparkles, Settings } from "lucide-react";
 
-    const handleSearch = ({ keyword, category }: { keyword: string; category: string }) => {
-        if (!keyword.trim()) return;
+export default function SearchPage() {
+    const {
+        searchTab, setSearchTab,
+        searchMode, setSearchMode,
+        searchType, setSearchType,
+        query, setQuery,
+        results, setResults,
+        targetKeyword, setTargetKeyword,
+        totalHits, setTotalHits,
+        options, setOptions,
+        hasSearched, setHasSearched,
+        currentPage, setCurrentPage,
+        keywordCache, setKeywordCache,
+        isLoading, setIsLoading,
+        lastPages, setLastPage,
+        pageSize,
+    } = useSearchContext();
 
-        if (searchType === "keyword") {
-            router.push(`/search/keyword/${encodeURIComponent(keyword)}?category=${category}`);
-        } else if (searchType === "application") {
-            router.push(`/search/applicationNum/${encodeURIComponent(keyword)}`);
-        } else {
-            router.push(`/search/registrationNum/${encodeURIComponent(keyword)}`);
-        }
+    const handleTabChange = (tab: 'ai' | 'standard') => {
+        if (searchTab === tab) return; // 이미 같은 탭이면 무시
+
+        // 1. 탭 상태 변경
+        setSearchTab(tab);
+
+        // 2. 검색 상태 완전 초기화 (데이터 꼬임 방지)
+        setResults([]);         // 리스트 비우기
+        setTotalHits(0);        // 검색 건수 리셋
+        setHasSearched(false);  // 검색 전 상태로 되돌리기 (가이드 페이지 노출)
+        setCurrentPage(1);      // 페이지 번호 초기화
+        setIsLoading(false);    // 로딩 상태 해제
     };
 
-    const typeOptions = [
-        { id: "keyword", label: "키워드 검색", icon: <Search size={14} /> },
-        { id: "application", label: "출원번호", icon: <Hash size={14} /> },
-        { id: "registration", label: "등록번호", icon: <FileCheck size={14} /> },
-    ];
-
     return (
-        <SearchLayout step={1}>
-            <Head>
-                <title>지능형 특허 검색 | IPFORCE</title>
-            </Head>
+        <div className="min-h-screen bg-white font-sans">
+            {/* <main className={`flex flex-col items-center w-full ${!hasSearched ? 'justify-center min-h-[90vh]' : 'pt-10'}`}> */}
+            <main className={`flex flex-col items-center w-full transition-all duration-700  ${!hasSearched ? 'justify-center min-h-[90vh]' : 'pt-10 pb-60'}`}>
 
-            {/* 🚀 레이아웃 내에서 최적의 비율을 유지하는 검색 섹션 */}
-            <div className="w-full max-w-5xl mx-auto space-y-12 py-10">
-
-                {/* 1. 검색 타입 선택기: 더 직관적이고 세련된 탭 스타일 */}
-                <div className="flex justify-center animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <div className="inline-flex bg-zinc-50 p-1.5 rounded-[1.5rem] border border-zinc-100 shadow-inner">
-                        {typeOptions.map((opt) => (
-                            <button
-                                key={opt.id}
-                                onClick={() => setSearchType(opt.id as any)}
-                                className={`
-                                    flex items-center gap-2 px-8 py-3 rounded-2xl text-sm font-black transition-all duration-300
-                                    ${searchType === opt.id
-                                        ? "bg-white text-blue-600 shadow-lg ring-1 ring-zinc-200/50 scale-105"
-                                        : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100/50"}
-                                `}
-                            >
-                                {opt.icon}
-                                {opt.label}
-                            </button>
-                        ))}
-                    </div>
+                {/* 탭 스위처 */}
+                <div className={`flex bg-slate-100 p-1.5 rounded-2xl mb-10 z-10 transition-all ${!hasSearched ? 'scale-110' : 'scale-100'}`}>
+                    <button onClick={() => handleTabChange('ai')} className={`flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-black transition-all ${searchTab === 'ai' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>
+                        <Sparkles size={16} /> AI 검색
+                    </button>
+                    <button onClick={() => handleTabChange('standard')} className={`flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-black transition-all ${searchTab === 'standard' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>
+                        <Settings size={16} /> 일반 검색
+                    </button>
                 </div>
 
-                {/* 2. 메인 검색 카드: 가로폭을 넓게 사용하여 시원한 검색 환경 제공 */}
-                <div className="relative group animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200">
-                    {/* 포커스 시 나타나는 은은한 글로우 효과 */}
-                    <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/5 to-indigo-600/5 rounded-[3.5rem] opacity-0 group-focus-within:opacity-100 transition-opacity blur-2xl" />
+                {/* 🎯 뷰 스위칭: 로직은 각 컴포넌트가 담당! */}
+                {searchTab === 'ai' ? (
+                    <AiSearchView
+                        currentPage={currentPage}
+                        searchMode={searchMode}
+                        setSearchMode={setSearchMode}
+                        query={query}
+                        setQuery={setQuery}
+                        options={options}
+                        setOptions={setOptions}
+                        isLoading={isLoading}
+                        setIsLoading={setIsLoading}
+                        results={results}
+                        setResults={setResults}
+                        setTotalHits={setTotalHits}
+                        setTargetKeyword={setTargetKeyword}
+                        hasSearched={hasSearched}
+                        setHasSearched={setHasSearched}
+                        targetKeyword={targetKeyword}
+                    />
+                ) : (
+                    // <StandardSearchView
+                    //     setIsLoading={setIsLoading}
+                    //     setResults={setResults}
+                    //     setTotalHits={setTotalHits}
+                    //     setHasSearched={setHasSearched}
+                    // />
+                    <StandardSearchView
+                        searchType={searchType}
+                        setSearchType={setSearchType}
+                        query={query} // 🎯 일반 검색도 검색어 관리가 필요함
+                        setQuery={setQuery}
+                        options={options}
+                        setOptions={setOptions}
+                        currentPage={currentPage}
+                        setCurrentPage={setCurrentPage}
+                        isLoading={isLoading}
+                        setIsLoading={setIsLoading}
+                        results={results}
+                        setResults={setResults}
+                        setTotalHits={setTotalHits}
+                        setHasSearched={setHasSearched}
+                        hasSearched={hasSearched}
+                        setSearchMode={setSearchMode}
+                        keywordCache={keywordCache} // 🎯 캐시 기능 추가
+                        setKeywordCache={setKeywordCache} // 🎯 캐시 기능 추가
+                        pageSize={pageSize}
+                    />
+                )}
 
-                    <div className="relative bg-white rounded-[3rem] shadow-2xl shadow-zinc-200/60 border border-zinc-100 p-4 md:p-6 transition-all duration-500 group-focus-within:border-blue-200">
-                        <SearchBar
-                            loading={false}
-                            searchType={searchType}
-                            onSearch={handleSearch}
-                        />
-                    </div>
-
-                    {/* 3. 검색 팁 & 단축키 안내 */}
-                    <div className="mt-8 flex justify-center items-center gap-6 animate-in fade-in duration-1000 delay-500">
-                        <div className="flex items-center gap-2 text-zinc-300 font-bold text-[10px] uppercase tracking-[0.2em]">
-                            <MousePointer2 size={12} />
-                            <span>Press Enter to Search</span>
-                        </div>
-                        <div className="w-1 h-1 rounded-full bg-zinc-200" />
-                        <div className="text-zinc-300 font-bold text-[10px] uppercase tracking-[0.2em]">
-                            AI-Powered Inference Enabled
-                        </div>
-                    </div>
-                </div>
-
-                {/* 4. 부가 정보 섹션 (선택 사항): 검색창 아래의 썰렁함을 방지 */}
-                <div className="grid md:grid-cols-3 gap-6 pt-12 opacity-50 filter grayscale hover:grayscale-0 transition-all duration-700">
-                    {[
-                        { t: "Deep Search", d: "특허 공보 전문 검색 지원" },
-                        { t: "Semantic AI", d: "의미론적 유사도 분석 기술" },
-                        { t: "Real-time", d: "최신 등록 데이터 실시간 반영" }
-                    ].map((item, i) => (
-                        <div key={i} className="text-center space-y-2">
-                            <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{item.t}</div>
-                            <p className="text-xs text-zinc-500 font-medium">{item.d}</p>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </SearchLayout>
+                {/* 🎯 결과 리스트: 데이터가 있으면 누구든 여기를 통해 보여줌 */}
+                {hasSearched && (
+                    <ResultListSection
+                        results={results}
+                        totalHits={totalHits}
+                        currentPage={currentPage}
+                        onPageChange={setCurrentPage}
+                        isLoading={isLoading}
+                        pageSize={pageSize}
+                    />
+                )}
+            </main>
+        </div>
     );
 }

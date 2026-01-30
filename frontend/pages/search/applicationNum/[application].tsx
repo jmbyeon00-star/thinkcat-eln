@@ -11,6 +11,7 @@ import PatNavigation from "@/components/patent/PatNavigation";
 import PatentClaimInfo from "@/components/patent/PatClaim";
 
 import { withMessages } from '@/lib/i18n/withMessages';
+import SearchLayout from "@/components/layouts/SearchLayout";
 export const getServerSideProps = withMessages();
 
 export default function ApplicationSearchDetail() {
@@ -82,13 +83,15 @@ export default function ApplicationSearchDetail() {
     data?.result?.ipc_code?.split("|")[0]?.trim()?.[0] || "";
 
   return (
-    <div className="mt-5 mb-10">
-      <PatentDetailInfo data={data.result} />
-      <PatentClaimInfo data={data.result} />
-      <PatentEvaluationResult appNumber={appNo} />
-      <ZipPredict applicationNumber={appNo} />
-      <PatLitigation applicationNumber={appNo} />
-      <PatNavigation applicationNumber={appNo} code={firstLetter} />
-    </div>
+    <SearchLayout>
+      <div className="mt-5 mb-10">
+        <PatentDetailInfo data={data.result} />
+        <PatentClaimInfo data={data.result} />
+        <PatentEvaluationResult appNumber={appNo} />
+        <ZipPredict applicationNumber={appNo} />
+        <PatLitigation applicationNumber={appNo} />
+        <PatNavigation applicationNumber={appNo} code={firstLetter} />
+      </div>
+    </SearchLayout>
   );
 }

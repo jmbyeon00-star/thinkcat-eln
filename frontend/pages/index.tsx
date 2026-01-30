@@ -96,9 +96,9 @@ export default function Home() {
                             {/* <br className="hidden md:block" /> */}
                         </p>
 
-                        <div className="pt-8 max-w-2xl mx-auto w-full">
+                        {/* <div className="pt-8 max-w-2xl mx-auto w-full">
                             <SearchBar loading={loading} onSearch={handleSearch} />
-                        </div>
+                        </div> */}
                     </div>
 
                     {/* Scroll Indicator */}

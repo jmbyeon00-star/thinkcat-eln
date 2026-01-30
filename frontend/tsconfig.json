@@ -12,7 +12,7 @@
         "components/*"
       ],
       "@context/*": [
-        "context/*"
+        "contexts/*"
       ]
     },
     "target": "ES2022",
@@ -121,6 +121,7 @@
     "components/project/train/TrainingSettings",
     "pages/search/mcp/index_260128_2",
     "pages/search/mcp/index_260128",
+    "components/layouts/SearchStepper_260129",
   ],
   "exclude": [
     "node_modules"

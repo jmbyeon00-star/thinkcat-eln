@@ -2,6 +2,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import type { AppProps } from 'next/app';
 import { SessionProvider, useSession } from 'next-auth/react'
+import { SearchProvider } from '@/contexts/SearchContext';
 import { NextIntlClientProvider } from 'next-intl';
 import { useRouter } from 'next/router';
 
@@ -105,12 +106,16 @@ export default function MyApp({ Component, pageProps }: AppProps) {
       // if (process.env.NODE_ENV === 'development') console.warn('[next-intl]', err);
       // }}
       >
-        {/* 전역 SSE 리스너 */}
-        <GlobalStatusListener />
 
-        <Layout>
-          <Component {...pageProps} />
-        </Layout>
+        {/* 전역 SSE 리스너 */}
+        <SearchProvider>
+          <GlobalStatusListener />
+
+          <Layout>
+            <Component {...pageProps} />
+          </Layout>
+        </SearchProvider>
+
       </NextIntlClientProvider>
     </SessionProvider>
   );
