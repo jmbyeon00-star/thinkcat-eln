@@ -42,6 +42,25 @@ export const AiSearchView = (props: AiSearchViewProps) => {
         };
     };
 
+    const INITIAL_OPTIONS: SearchOptions = {
+        search_type: null,           // 제공해주신 데이터 기준 null
+        use_vector: true,            // 제공해주신 데이터 기준 true
+        text_query: {
+            fields: [],
+            keyword: []              // 'keywords'가 아닌 'keyword'임에 주의!
+        },
+        filters: {
+            applicant_name: '',      // undefined 대신 빈 문자열
+            inventor_name: '',       // undefined 대신 빈 문자열
+            filing_year: {
+                gte: undefined,
+                lte: undefined
+            }
+        },
+        exact_match: {
+            application_number: ''   // undefined 대신 빈 문자열
+        }
+    };
     // 🚀 [로직 1] 최초 AI 의도 검색 (MCP API)
     const handleAISearch = async (page: number = 1) => {
         if (!props.query.trim()) return;
@@ -57,13 +76,14 @@ export const AiSearchView = (props: AiSearchViewProps) => {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ query: props.query, page: page, size: 10, options: props.options }),
+                body: JSON.stringify({ query: props.query, page: page, size: 10, options: INITIAL_OPTIONS }),
             });
             const data = await res.json();
 
             // 🎯 부모의 변수들에 데이터 채워넣기
             const aiKeywords = data.intent.text_query?.keywords?.join(' ') || '';
             const aiFilters = data.intent.filters || {};
+            const aiExact = data.intent.exact_match || {};
             const normalizedYear = normalizeYear(aiFilters.filing_year);
 
             props.setTargetKeyword(aiKeywords);
@@ -72,14 +92,15 @@ export const AiSearchView = (props: AiSearchViewProps) => {
 
             // AI가 찾아준 필터로 옵션 업데이트
             props.setOptions(prev => ({
-                ...prev,
+                ...INITIAL_OPTIONS,
                 filters: {
                     ...prev.filters,
-                    applicant_name: aiFilters.applicant_name || prev.filters.applicant_name,
+                    applicant_name: aiFilters.applicant_name || '',
+                    inventor_name: aiFilters.inventor_name || '',
                     filing_year: normalizedYear
                 },
                 exact_match: {
-                    application_number: data.intent.exact_match?.application_number || prev.exact_match.application_number
+                    application_number: aiExact.application_number || ''
                 }
             }));
         } catch (err) {
@@ -104,7 +125,7 @@ export const AiSearchView = (props: AiSearchViewProps) => {
                 body: JSON.stringify({ query: props.targetKeyword, page: page, size: 10, options: props.options }),
             });
             const data = await res.json();
-            console.log("data:", data)
+
             props.setResults(data.results.data.results.hits.hits || []);
             props.setTotalHits(data.results.data.results.hits.total.value || 0);
         } finally {
@@ -167,11 +188,10 @@ export const AiSearchView = (props: AiSearchViewProps) => {
                             </div>
                         </div>
 
-                        {/* 🎯 우측: 상세 필터 (에디터블 인풋) */}
                         <div className="lg:col-span-7 bg-white p-5 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col justify-center gap-4">
                             <div className="flex items-center gap-2 px-1">
                                 <Filter size={14} className="text-slate-400" />
-                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">지능형 상세 필터</span>
+                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">상세 필터</span>
                             </div>
 
                             <div className="grid grid-cols-2 gap-x-6 gap-y-3">
