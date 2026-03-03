@@ -34,6 +34,7 @@ __pycache__/
 # models/
 users/
 legacy/
+sql/
 
 ########################################
 # 🧠 GPU Backend / Model Artifacts
@@ -42,6 +43,7 @@ legacy/
 *.bin
 *.pt
 *.ckpt
+*.sql
 *tokenizer.json
 *tokenizer_config.json
 vocab.txt

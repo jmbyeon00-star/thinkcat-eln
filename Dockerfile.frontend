@@ -4,7 +4,7 @@
 FROM node:20-slim AS builder
 
 # 작업 디렉토리 설정
-WORKDIR /app
+WORKDIR /app/frontend
 
 # 종속성 설치 package.json / lock 파일 복사 (캐시 효율 향상)
 COPY ./frontend/package*.json ./
@@ -29,13 +29,13 @@ FROM node:20-slim AS runner
 ENV NODE_ENV=production
 
 # 작업 디렉토리
-WORKDIR /app
+WORKDIR /app/frontend
 
 # 빌드 산출물 복사
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/frontend/.next ./.next
+COPY --from=builder /app/frontend/public ./public
+COPY --from=builder /app/frontend/node_modules ./node_modules
+COPY --from=builder /app/frontend/package.json ./package.json
 
 # 포트 개방
 EXPOSE 3000

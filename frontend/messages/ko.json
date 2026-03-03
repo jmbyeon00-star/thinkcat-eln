@@ -1,10 +1,10 @@
 {
     "header": {
-        "about": "서비스 소개",
-        "projectNew": "프로젝트 생성",
-        "projects": "프로젝트 관리",
-        "collections": "컬렉션 관리",
-        "search": "검색"
+        "about": "소개",
+        "notice": "공지사항",
+        "announcement": "R&D 공고",
+        "search": "특허 검색",
+        "marketplace": "변리사"
     },
     "common": {
         "search": "검색",
@@ -12,6 +12,30 @@
     },
     "search": {
         "placeholder": "검색어를 입력하세요",
-        "title": "특허 검색"
+        "title": "특허 검색",
+        "ai": {
+            "title": "어떤 특허를",
+            "title2": "찾으시나요?",
+            "sub_title": "인공지능이 당신의 검색 의도를 완벽하게 이해합니다.",
+            "guide": "이렇게 질문해보세요",
+            "tab": {
+                "aiSearch": "AI 검색",
+                "standardSearch": "일반 검색"
+            },
+            "placeholder": {
+                "fixedChatBar": {
+                    "aiSearch": "특허 의도를 입력하세요 (예: 2020년 이후 삼성전자의 자율주행 특허).",
+                    "standardSearch": "일반 검색어를 입력하세요."
+                }
+            }
+        }
+    },
+    "home": {
+        "title": "ThinkCat ELN",
+        "description": "테스트 환경입니다."
+    },
+    "NotFound": {
+        "title": "페이지를 찾을 수 없습니다.",
+        "goHome": "메인으로 돌아가기"
     }
 }

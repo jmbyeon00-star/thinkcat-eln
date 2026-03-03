@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, useRef } from "react";
 import { Search, Hash, FileCheck } from "lucide-react";
 import { StandardSearchBar } from "@/components/search/StandardSearchBar";

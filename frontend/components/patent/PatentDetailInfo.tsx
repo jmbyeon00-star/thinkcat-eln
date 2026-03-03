@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import {
   FileText,
@@ -101,6 +102,12 @@ export default function PatentDetailInfo({ data, loading = false }: PatentDetail
             value={data.filing_date || "-"}
           />
 
+          <InfoItem
+            icon={<CheckCircle2 className="text-teal-500" />}
+            label="등록번호"
+            value={data.reg_number || "-"}
+          />
+
           {data.publication_number && (
             <InfoItem
               icon={<Activity className="text-cyan-500" />}
@@ -142,9 +149,9 @@ export default function PatentDetailInfo({ data, loading = false }: PatentDetail
             )}
           </div>
 
-          {/* 발명의 명칭 */}
+          {/* 특허명 */}
           <div className="space-y-4">
-            <SectionTitle title="발명의 명칭" />
+            <SectionTitle title="특허명 (Title)" />
             <div className="p-6 bg-gradient-to-br from-indigo-50/50 to-blue-50/50 rounded-[2rem] border border-indigo-100">
               <p className="text-slate-900 font-black text-lg leading-tight">
                 {data.title || "-"}
@@ -196,8 +203,10 @@ function InfoItem({ icon, label, value, isDimmed = false }: any) {
 
 function SectionTitle({ title }: { title: string }) {
   return (
-    <h3 className="flex items-center gap-2 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] px-2">
-      <div className="w-1 h-3 bg-indigo-600 rounded-full" />
+    // <h3 className="flex items-center gap-2 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] px-2">
+    // <div className="w-1 h-3 bg-indigo-600 rounded-full" />
+    <h3 className="flex items-center gap-2 text-[15px] font-semibold text-slate-400">
+      <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full" />
       {title}
     </h3>
   );

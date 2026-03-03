@@ -1,13 +1,13 @@
 from fastapi import FastAPI, BackgroundTasks, Depends, WebSocket
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v2.routers import health, ai_router, chat_router, train_router, infer_router, search_router, project_router#, patent_router, check
+from app.api.routers import health, ai_router, chat_router, train_router, infer_router, search_router, project_router, patent_router
 
 
 # 임베딩 함수
 from app.utils.embedding import get_embedding 
 from contextlib import asynccontextmanager
-from app.api.v2.routers import health, ai_router, chat_router, train_router, infer_router, search_router, project_router
+from app.api.routers import health, ai_router, chat_router, train_router, infer_router, search_router, project_router, query_router
 
 from tqdm.auto import tqdm
 import os
@@ -79,7 +79,8 @@ app.include_router(train_router.router, prefix="/gpu")
 app.include_router(infer_router.router, prefix="/gpu")
 
 app.include_router(search_router.router, prefix="/gpu")
-# app.include_router(patent_router.router, prefix="/gpu")
+app.include_router(patent_router.router, prefix="/gpu")
+app.include_router(query_router.router, prefix="/gpu")
 app.include_router(project_router.router, prefix="/gpu")
 
 app.include_router(health.router, prefix="/gpu")

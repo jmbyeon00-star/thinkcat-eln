@@ -6,6 +6,7 @@ export interface PatentSource {
     inventor_name?: string;
     filing_date?: string;
     end_status?: string;
+    abstract?: string;
 }
 export interface SearchResultItem {
     _id: string;

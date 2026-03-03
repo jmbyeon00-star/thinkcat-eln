@@ -1,46 +1,59 @@
-import { withAuth } from "next-auth/middleware";
+'use strict';
+
+import createMiddleware from 'next-intl/middleware';
+import { routing, locales } from './routing';
+import { NextRequestWithAuth, withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+const intlMiddleware = createMiddleware(routing);
 
 export default withAuth(
-  function middleware(req) {
+  function middleware(req: NextRequestWithAuth) {
     const { pathname } = req.nextUrl;
-    const res = NextResponse.next();
+    const token = req.nextauth.token;
 
-    // 1. 언어 쿠키(NEXT_LOCALE) 강제화
-    // 사용자가 /en 이나 /ko로 들어오면 그 값을 쿠키에 저장해 세션을 유지합니다.
-    const locale = req.nextUrl.locale || "ko";
-    res.cookies.set("NEXT_LOCALE", locale, { path: "/" });
+    // locale prefix 제거 후 순수 경로 확인
+    const pathWithoutLocale = locales.reduce(
+      (acc: string, locale: string) => acc.replace(`/${locale}`, ''),
+      pathname
+    ) || '/';
 
-    return res;
+    // [중요] 특정 경로는 로그인이 없어도 접근 가능해야 함
+    const isPublicPath =
+      pathWithoutLocale === "/" ||
+      pathWithoutLocale.startsWith("/auth") ||
+      pathWithoutLocale.startsWith("/about") ||
+      pathWithoutLocale.startsWith("/agent") ||
+      pathWithoutLocale.startsWith("/notice") ||
+      pathWithoutLocale.startsWith("/announcement") ||
+      pathWithoutLocale.startsWith("/search") ||
+      pathname.includes(".") ||
+      pathname.includes("/api/") ||
+      pathname.includes("/_next/") ||
+      pathname === "/favicon.ico";
+
+    // 로그인이 필요한 리퀘스트인데 토큰이 없는 경우
+    if (!isPublicPath && !token) {
+      // 현재 적용된 로케일을 찾음 (URL의 첫 번째 세그먼트)
+      const segments = pathname.split('/');
+      const locale = locales.includes(segments[1]) ? segments[1] : 'ko';
+
+      const signInUrl = new URL(`/${locale}/auth/signin`, req.nextUrl.origin);
+      signInUrl.searchParams.set("callbackUrl", pathname);
+      return NextResponse.redirect(signInUrl);
+    }
+
+    return intlMiddleware(req);
   },
   {
     callbacks: {
-      authorized: ({ token, req }) => {
-        const { pathname } = req.nextUrl;
-
-        // [인증 예외 경로]
-        // 1. 정적 파일 (확장자가 있는 경우)
-        if (pathname.includes(".")) return true;
-
-        // 2. 인증 관련 페이지 (/auth/signin, /auth/signup 등)
-        // Pages Router는 locale이 앞에 붙어도 내부 pathname은 /auth/...로 인식됩니다.
-        if (pathname.startsWith("/auth")) return true;
-
-        // 3. 공용 페이지 (필요시 추가)
-        if (pathname === "/") return true;
-
-        // 나머지는 로그인이 되어 있어야 함 (token 존재 여부)
-        return !!token;
-      },
-    },
-    pages: {
-      // 로그인이 안 된 사용자를 보낼 페이지
-      signIn: "/auth/signin",
+      // middleware 함수 내에서 직접 체크하므로 항상 true 반환하여 
+      // NextAuth의 기본 비localized 리다이렉트를 방지합니다.
+      authorized: () => true,
     },
   }
 );
 
 export const config = {
   // api, _next, 정적 파일들을 제외한 모든 경로에서 실행
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|logos|attorney_photos|images|default-profile.png|logo.png|logo.svg).*)"],
 };

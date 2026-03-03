@@ -1,4 +1,3 @@
-import type { UserTaskState } from "@/lib/store/useUserTaskStore";
 
 export interface Props {
     id: string;
@@ -6,7 +5,7 @@ export interface Props {
     isBusy: boolean;
     storeStatus: "RUNNING" | "INFERRING" | "AVAILABLE";
     token?: string;
-    onStateChange?: (obj: Partial<UserTaskState>) => void;
+    onStateChange?: (obj: Partial<any>) => void;
     artifact?: {
         data_info: {
             train: number;

@@ -26,7 +26,7 @@ class TorchRecommendationTrainer(BaseTrainer):
         super().__init__(config)
         self.task_type = "recommendation"
         self.run_type = self.config.get("run_type", "train")
-        self.backend_url = self.config.get("BACKEND_URL", "http://backend:8000")
+        self.backend_url = self.config.get("BACKEND_URL", "http://backend:8008")
         self.default_path = self.config.get("DEFAULT_PATH", "/app")
         self.user_id = int(self.config["user_id"])
         self.model_id = int(self.config["model_id"])

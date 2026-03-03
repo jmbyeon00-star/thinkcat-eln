@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from dotenv import load_dotenv
 
 load_dotenv()
-BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8008")
 
 # --- local safe helpers (공용 util에 의존하지 않도록 최소 정의) ---
 def safe_encode_decode(x):
@@ -612,7 +612,7 @@ from elasticsearch import Elasticsearch
 from FlagEmbedding import BGEM3FlagModel
 from app.utils.es_client import get_es
 
-ES_HOST = os.getenv("ES_HOST", "http://backend:8000")
+ES_HOST = os.getenv("ES_HOST", "http://backend:8008")
 class PatentDataLoader:
     def __init__(self):
         self.client = get_es()

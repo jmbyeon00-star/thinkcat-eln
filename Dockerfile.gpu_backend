@@ -25,9 +25,9 @@ RUN apt-get update && \
 # ────────────────────────────────
 # 3. Python 패키지 설치
 # ────────────────────────────────
+RUN python3 -m pip install --upgrade pip setuptools
 COPY ./gpu_backend/requirements.txt ./requirements.txt
-RUN python3 -m pip install --upgrade pip && \
-    python3 -m pip install --no-cache-dir -r requirements.txt
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
 # ────────────────────────────────
 # 4. 앱 소스 복사
@@ -44,5 +44,5 @@ ENV PYTHONUNBUFFERED=1 \
 # ────────────────────────────────
 # 6. 포트 및 실행
 # ────────────────────────────────
-EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app"]
+EXPOSE 8008
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8008", "--reload", "--reload-dir", "/app"]

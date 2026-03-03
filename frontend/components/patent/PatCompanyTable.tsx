@@ -1,61 +1,62 @@
+"use client";
 import { useState } from "react";
-import { useRouter } from "next/router";
+import { useRouter } from "@/routing";
 import { FileText, ChevronLeft, ChevronRight } from "lucide-react";
 
 type PatentItem = {
-    application_number: string;
-    applicant_name: string;
-    ipc_code: string;
-    end_status: string;
-    filing_date?: string;
+  application_number: string;
+  applicant_name: string;
+  ipc_code: string;
+  end_status: string;
+  filing_date?: string;
 };
 
 type PatentTableProps = {
-    title : string;
-    description : string;
-    data : PatentItem[] | undefined;
-    color: "blue" | "yellow" | "green";
+  title: string;
+  description: string;
+  data: PatentItem[] | undefined;
+  color: "blue" | "yellow" | "green";
 };
 
 
 const colorClasses = {
-    blue: {
-        gradient: "from-blue-600 to-blue-500",
-        badge: "bg-blue-100 text-blue-700",
-        hover: "hover:bg-blue-50",
-    },
-    yellow: {
-        gradient: "from-yellow-600 to-yellow-500",
-        badge: "bg-yellow-100 text-yellow-700",
-        hover: "hover:bg-yellow-50",
-    },
-    green: {
-        gradient: "from-green-600 to-green-500",
-        badge: "bg-green-100 text-green-700",
-        hover: "hover:bg-green-50",
-    },
+  blue: {
+    gradient: "from-blue-600 to-blue-500",
+    badge: "bg-blue-100 text-blue-700",
+    hover: "hover:bg-blue-50",
+  },
+  yellow: {
+    gradient: "from-yellow-600 to-yellow-500",
+    badge: "bg-yellow-100 text-yellow-700",
+    hover: "hover:bg-yellow-50",
+  },
+  green: {
+    gradient: "from-green-600 to-green-500",
+    badge: "bg-green-100 text-green-700",
+    hover: "hover:bg-green-50",
+  },
 };
 
 export default function PatentTable({
-    title,
-    description,
-    data = [],
-    color,
+  title,
+  description,
+  data = [],
+  color,
 }: PatentTableProps) {
-    const router = useRouter();
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
+  const router = useRouter();
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
-    const totalPages = Math.ceil(data.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const paginatedData = data.slice(startIndex, startIndex + itemsPerPage);
+  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedData = data.slice(startIndex, startIndex + itemsPerPage);
 
-    const handleRowClick = (appNum: string) => {
-        router.push(`/search/applicationNum/${appNum}`);
-    };
-    const colors = colorClasses[color];
+  const handleRowClick = (appNum: string) => {
+    router.push(`/applicationNum/${appNum}`);
+  };
+  const colors = colorClasses[color];
 
-return (
+  return (
     <div className="bg-white rounded-xl shadow-lg border border-zinc-200 overflow-hidden">
       <div className={`bg-gradient-to-r ${colors.gradient} px-6 py-4`}>
         <h3 className="text-lg font-semibold text-white flex items-center gap-2">

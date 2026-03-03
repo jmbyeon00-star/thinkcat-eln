@@ -23,16 +23,20 @@ export function SearchBar({ loading, onSearch, searchType = "keyword" }: Props) 
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState("a");
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e: FormEvent | MouseEvent | KeyboardEvent) => {
+    if (e && 'preventDefault' in e) e.preventDefault();
+
     if (!keyword.trim()) return;
-    onSearch({ keyword: keyword.trim(), category });
+    onSearch({
+      keyword: keyword.trim(),
+      category: searchType === "keyword" ? category : ""
+    });
   };
 
   const getPlaceholder = () => {
     switch (searchType) {
-      case "application": return "출원번호 13자리를 입력하세요 (예: 1020240001234)";
-      case "registration": return "등록번호 13자리를 입력하세요 (예: 1016473180000)";
+      case "application": return "출원번호 13자리를 입력하세요 (예: 1020140054109)";
+      case "registration": return "등록번호 13자리를 입력하세요 (예: 1013900690000)";
       default: return "특허 핵심 키워드를 입력하세요...";
     }
   };
@@ -97,6 +101,7 @@ export function SearchBar({ loading, onSearch, searchType = "keyword" }: Props) 
             </div>
 
             <button
+              type="button"
               onClick={handleSubmit}
               disabled={loading || !keyword.trim()}
               className="px-10 py-5 bg-zinc-900 text-white font-black text-lg rounded-[1.5rem] shadow-xl hover:bg-black disabled:bg-zinc-100 disabled:text-zinc-300 disabled:shadow-none transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 min-w-[160px] group"

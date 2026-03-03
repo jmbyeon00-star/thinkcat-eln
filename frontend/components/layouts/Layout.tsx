@@ -1,6 +1,6 @@
 // components/layouts/Layout.tsx
 // import LanguageSwitcher from '@/components/LanguageSwitcher';
-import Header from './Header';
+import Header from './AgentHeader';
 import Footer from './Footer';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -8,9 +8,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <>
       <Header />
       {/* <LanguageSwitcher /> */}
-      <main style={{ minHeight: 'calc(100vh - 200px)' }}>
-        {children}
-      </main>
+      {children}
       <Footer />
     </>
   );

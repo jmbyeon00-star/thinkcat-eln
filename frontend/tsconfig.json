@@ -30,9 +30,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
-    /* preserve 쓸 땐 jsxImportSource 불필요. 제거 */
-    // "jsxImportSource": "react",
-    /* ← 여기만 중요: 중복을 제거하고 React 타입을 포함 */
     "types": [
       "node",
       "react",

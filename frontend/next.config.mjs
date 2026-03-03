@@ -1,6 +1,11 @@
 // frontend/next.config.mjs
 import path from "path";
 import { fileURLToPath } from "url";
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin(
+  './i18n/request.ts'
+);
 
 // __dirname 대체 코드 (ESM용)
 const __filename = fileURLToPath(import.meta.url);
@@ -11,18 +16,14 @@ const isProd =
   process.env.NODE_ENV === "production" ||
   process.env.NEXT_PUBLIC_ENV === "prod";
 
-/* @type {import('next').NextConfig} */
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
 
-  // ✅ i18n 설정 (Pages Router)
-  i18n: {
-    locales: ["ko", "en"],
-    defaultLocale: "ko",
-  },
-
-  // experimental: {
-  //   allowedDevOrigins: ["http://192.168.1.20:3000", "http://localhost:3000"],
+  // ✅ App Router에서는 withNextIntl 플러그인이 i18n 설정을 관리하므로 삭제 가능하거나 최소화
+  // i18n: {
+  //   locales: ["ko", "en"],
+  //   defaultLocale: "ko",
   // },
 
   webpack: (config) => {
@@ -43,16 +44,14 @@ const nextConfig = {
     const backend =
       process.env.API_BASE_URL ||
       process.env.NEXT_PUBLIC_API_BASE_URL ||
-      "http://backend:8000";
+      "http://backend:8008";
 
     return [
-      // ✅ NextAuth는 Next(3000) 내부 라우트가 처리해야 함 (절대 백엔드로 보내지 말 것)
       {
         source: "/api/auth/:path*",
         destination: "/api/auth/:path*",
       },
 
-      // ✅ 그 외 /api/* 는 FastAPI(8000)로 프록시
       {
         source: "/api/:path*",
         destination: `${backend}/api/:path*`,
@@ -91,4 +90,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

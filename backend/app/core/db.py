@@ -14,7 +14,7 @@ DB_USER = os.getenv("DB_USER", "root")
 DB_PASS = os.getenv("DB_PASS", "doslvkdlqm!")
 DB_HOST = os.getenv("DB_HOST", "db")
 DB_PORT = os.getenv("DB_PORT", "3306")
-DB_NAME = os.getenv("DB_NAME", "ipforce")
+DB_NAME = os.getenv("DB_NAME", "thinkcateln")
 DB_CHARSET = os.getenv("DB_CHAR", "utf8mb4")
 
 # 기존 DB_URL 환경 변수가 있다면 사용하고, 없으면 재구성합니다.

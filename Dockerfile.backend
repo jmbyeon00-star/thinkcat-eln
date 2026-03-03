@@ -39,11 +39,11 @@ ENV PYTHONUNBUFFERED=1 \
 # ────────────────────────────────
 # 7. 포트 오픈
 # ────────────────────────────────
-EXPOSE 8000
+EXPOSE 8008
 
 # ────────────────────────────────
 # 8. 기본 실행 명령 (개발용: reload 활성화)
 # ────────────────────────────────
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8008", "--reload", "--reload-dir", "/app"]
 # uvicorn 종료 시 열린 연결 로그 확인
 # uvicorn app.main:app --timeout-keep-alive 5

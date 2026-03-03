@@ -1,18 +1,21 @@
+'use client';
+
 // components/LanguageSwitcher.tsx
-import { useRouter } from 'next/router';
+import { usePathname, useRouter } from '@/routing';
+import { useLocale } from 'next-intl';
 import Cookies from 'js-cookie';
 
 export default function LanguageSwitcher() {
     const router = useRouter();
-    const { locale, asPath } = router;
+    const pathname = usePathname();
+    const currentLocale = useLocale();
 
     const changeLanguage = (nextLocale: 'en' | 'ko') => {
-        // // Next.js Pages Router의 표준 쿠키명: 'NEXT_LOCALE'
+        // Next.js Pages Router의 표준 쿠키명: 'NEXT_LOCALE'
         Cookies.set('NEXT_LOCALE', nextLocale, { expires: 365 });
 
-        // const pathWithoutLocale = asPath.replace(/^\/(en|ko)/, '');
-        // router.push(`/${nextLocale}${pathWithoutLocale}`);
-        router.push(asPath, asPath, { locale: nextLocale });
+        // next-intl의 useRouter.replace는 locale 옵션을 받을 수 있습니다.
+        router.replace(pathname, { locale: nextLocale });
     };
 
     return (
@@ -26,7 +29,7 @@ export default function LanguageSwitcher() {
                     onClick={() => changeLanguage(lang.code as 'ko' | 'en')}
                     className={`
                         px-2 py-1 text-[10px] font-bold rounded-md transition-all
-                        ${locale === lang.code
+                        ${currentLocale === lang.code
                             ? 'bg-white text-blue-600 shadow-sm'
                             : 'text-zinc-500 hover:text-zinc-800'
                         }

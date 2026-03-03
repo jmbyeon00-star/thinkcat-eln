@@ -1,4 +1,6 @@
+"use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "@/routing";
 import { getPatentPrice } from "@/lib/api";
 import {
   Radar,

@@ -8,6 +8,8 @@ from bs4 import BeautifulSoup
 import re
 
 from app.models.patent_model import PatentData, PatentInfo, PatentResult
+from app.models.company_data import CompanyData
+from app.models.vietnam_company import VietnamData
 
 # 환경 변수로 키 필드 커스터마이징 가능
 DB_KEY_FIELD = os.getenv("DB_KEY_FIELD", "application_number")
@@ -62,10 +64,11 @@ def parse_claims(text: str) -> Dict[str, Dict[str, Union[str, List[str]]]]:
         
         # 종속항 참조 패턴 검색 (더 포괄적인 패턴)
         ref_patterns = [
+            r"청구항\s*(\d+)\s*에\s*있어서",
             r"청구항\s*(\d+)\s*항",
             r"제\s*(\d+)\s*항",
             r"claim\s*(\d+)",
-            r"청구항\s*(\d+)\s*내지\s*(\d+)",  # 범위 참조
+            r"청구항\s*(\d+)\s*내지\s*(\d+)",
         ]
         
         is_dependent = False
@@ -164,6 +167,7 @@ def fetch_patent_by_appnum(session: Session, app_num: str) -> Dict[str, Any]:
 
     result = {
         "application_number": row.application_number,
+        "reg_number": row.reg_number,
         "title": row.title,
         "abstract": row.abstract,
         "filing_date": row.filing_date,
@@ -217,31 +221,23 @@ def fetch_patent_by_regnum(session: Session, reg_num: str) -> Dict[str, Any]:
 def fetch_by_applicant(session: Session, applicant_code: str) -> Dict[str, Any]:
     """
     출원인 코드로 특허 데이터를 조회하고 분석
-    
-    Returns:
-        - result_1: 출원하고 최종 특허로 가진 것
-        - result_2: 출원했지만 최종 특허로 없는 것
-        - result_3: 출원 안 했지만 최종 특허로 가진 것
-        - company: 기업 정보
     """
     try:
-        # Step 1: PatentInfo에서 최신 권리자 정보 조회
-        # 서브쿼리: 각 등록번호별 최대 RGT_TRNSF_SEQ
+        # Step 1: PATENT_INFO_TB에서 최신 권리자 기준 등록번호 조회
         subq = (
             select(
-                PatentInfo.official_number,
+                PatentInfo.reg_number,
                 func.max(PatentInfo.rgt_trnsf_seq).label("max_seq")
             )
-            .group_by(PatentInfo.official_number)
+            .group_by(PatentInfo.reg_number)
             .subquery()
         )
         
-        # 메인 쿼리: 최신 권리자 정보 중 해당 출원인 코드만 필터링
         query = (
-            select(PatentInfo.official_number)
+            select(PatentInfo.reg_number)
             .join(
                 subq,
-                (PatentInfo.official_number == subq.c.official_number) &
+                (PatentInfo.reg_number == subq.c.reg_number) &
                 (PatentInfo.rgt_trnsf_seq == subq.c.max_seq)
             )
             .where(
@@ -250,113 +246,244 @@ def fetch_by_applicant(session: Session, applicant_code: str) -> Dict[str, Any]:
             )
         )
         
-        result = session.execute(query).scalars().all()
-        rgstno_list = list(result)
+        rgstno_list = list(session.execute(query).scalars().all())
 
-        # Step 2: PATENT_RESULT_TB에서 출원인 코드로 검색
-        sql2 = text("""
-            SELECT DISTINCT application_number, applicant_name, ipc_code, end_status, filing_date
-            FROM PATENT_RESULT_TB
-            WHERE applicant_code LIKE :applicant_pattern 
-            AND end_status IN ('등록', '공개')
-        """)
-        search_data1 = session.execute(
-            sql2, 
-            {"applicant_pattern": f"%{applicant_code}%"}
-        ).mappings().all()
 
-        # Step 3: 등록번호로 PATENT_RESULT_TB 검색
-        result_1_data = []
-        result_2_data = []
-        result_3_data = []
+        # Step 2: PatentResult에서 출원인 코드로 검색
+        search_data1 = (
+            session.query(PatentResult)
+            .filter(
+                PatentResult.applicant_code.like(f"%{applicant_code}"),
+                PatentResult.end_status.in_(['등록', '공개'])
+            )
+            .distinct(PatentResult.application_number)
+            .all()
+        )
+
+        application_df = pd.DataFrame(
+            [{"application_number": r.application_number,
+              "applicant_name": r.applicant_name,
+              "ipc_code": r.ipc_code,
+              "end_status": r.end_status,
+              "filing_date": r.filing_date} for r in search_data1],
+            columns = ['application_number', 'applicant_name', 'ipc_code', 'end_status', 'filing_date']
+        )
+
+
+        # Step 3: 등록번호로 PatentResult 검색
+        result_1_data, result_2_data, result_3_data = [], [], []
         
         if rgstno_list:
-            sql3 = text("""
-                SELECT application_number, applicant_name, ipc_code, end_status, filing_date
-                FROM PATENT_RESULT_TB
-                WHERE reg_number IN :reg_numbers 
-                AND end_status IN ('등록', '공개')
-            """)
-            search_data2 = session.execute(
-                sql3, 
-                {"reg_numbers": tuple(rgstno_list)}
-            ).mappings().all()
-            
-            # pandas로 데이터 분석
-            application_df = pd.DataFrame(
-                [dict(r) for r in search_data1],
-                columns=['application_number', 'applicant_name', 'ipc_code', 'end_status', 'filing_date']
-            )
-            final_df = pd.DataFrame(
-                [dict(r) for r in search_data2],
-                columns=['application_number', 'applicant_name', 'ipc_code', 'end_status', 'filing_date']
-            )
-            
-            if not application_df.empty and not final_df.empty:
-                # 출원하고 최종 특허로 가진 것
-                result_1_df = pd.merge(
-                    application_df, 
-                    final_df[['application_number']], 
-                    on='application_number', 
-                    how='inner'
+            search_data2 = (
+                session.query(PatentResult)
+                .filter(
+                    PatentResult.reg_number.in_(rgstno_list),
+                    PatentResult.end_status.in_(['등록', '공개'])
                 )
-                result_1_data = result_1_df.to_dict(orient='records')
+                .all()
+            )
+            
+            final_df = pd.DataFrame(
+                [{"application_number": r.application_number,
+                    "applicant_name": r.applicant_name,
+                    "ipc_code": r.ipc_code,
+                    "end_status": r.end_status,
+                    "filing_date": r.filing_date}
+                for r in search_data2],
+                columns=['application_number', 'applicant_name', 'ipc_code', 'end_status', 'filing_date']
+            )
+
+            if not application_df.empty and not final_df.empty:
+                result_1_data = pd.merge(
+                    application_df, final_df[['application_number']],
+                    on='application_number', how='inner'
+                ).to_dict(orient='records')
                 
-                # 출원했지만 최종 특허로 없는 것
-                result_2_df = pd.merge(
-                    application_df, 
-                    final_df, 
-                    how='outer', 
-                    indicator=True
-                ).query('_merge == "left_only"').drop(columns=['_merge'])
-                result_2_data = result_2_df.to_dict(orient='records')
+                result_2_data = pd.merge(
+                    application_df, final_df, how='outer', indicator=True
+                ).query('_merge == "left_only"').drop(columns=['_merge']).to_dict(orient='records')
                 
-                # 출원 안 했지만 최종 특허로 가진 것
-                result_3_df = pd.merge(
-                    application_df, 
-                    final_df, 
-                    how='outer', 
-                    indicator=True
-                ).query('_merge == "right_only"').drop(columns=['_merge'])
-                result_3_data = result_3_df.to_dict(orient='records')
+                result_3_data = pd.merge(
+                    application_df, final_df, how='outer', indicator=True
+                ).query('_merge == "right_only"').drop(columns=['_merge']).to_dict(orient='records')
+                
             elif not application_df.empty:
                 result_2_data = application_df.to_dict(orient='records')
             elif not final_df.empty:
                 result_3_data = final_df.to_dict(orient='records')
         else:
-            result_2_data = [dict(r) for r in search_data1] if search_data1 else []
-
-        # Step 4: COMPANY_DATA_TB에서 기업 정보 조회
-        sql4 = text("""
-            SELECT name, estb_dt, em_cnt, bzc_nm
-            FROM COMPANY_DATA_TB 
-            WHERE applicant_code = :applicant_code
-        """)
-        company_result = session.execute(
-            sql4, 
-            {"applicant_code": applicant_code}
-        ).mappings().all()
+            result_2_data = application_df.to_dict(orient='records') if not application_df.empty else []
+            
+        
+        # Step 4: CompanyData에서 기업 정보 조회
+        company_obj = (
+            session.query(CompanyData)
+            .filter(CompanyData.applicant_code == applicant_code)
+            .first()
+        )
         
         company_data = {}
-        if company_result:
-            company_data = dict(company_result[0])
-            # 기업 나이 계산
-            if company_data.get('estb_dt'):
-                estb_year = int(str(company_data['estb_dt'])[:4])
-                company_data['age'] = str(2025 - estb_year)
-
+        if company_obj:
+            company_data = {
+                "name": company_obj.enp_nm,
+                "estb_dt": company_obj.estb_dt,
+                "em_cnt": company_obj.em_cnt,
+                "bzc_nm": company_obj.bzc_nm,
+            }
+            if company_obj.estb_dt:
+                company_data['age'] = str( 2025 - int(str(company_obj.estb_dt)[:4]))
+        
         return {
             "result_1": result_1_data,
             "result_2": result_2_data,
             "result_3": result_3_data,
             "company": company_data
         }
-
+        
     except Exception as e:
-        print(f"Error in fetch_by_applicant: {e}")
+        print(f"fetch_by_applicant 오류 ({applicant_code}): {e}")
         return {
             "result_1": [],
             "result_2": [],
             "result_3": [],
             "company": {}
         }
+
+        
+        
+# ------------------------------------------
+# 📄 기업 상세 정보 조회 함수 (fetch_company_data_by_applicant_codes)
+# ------------------------------------------
+def fetch_company_data_by_applicant_codes(session: Session, applicant_codes: List[str]) -> Dict[str, Dict[str, Any]]:
+    """
+    출원인 코드를 기반으로 CompanyData 테이블에서 기업 상세 정보를 조회합니다.
+    (대표자명 NULL 여부와 상관없이 조회하며, API 응답 형식에 맞춰 키를 매핑합니다.)
+    """
+    if not applicant_codes:
+        return {}
+
+    unique_codes = list(set(applicant_codes))
+    
+    # 💡 [핵심 수정] select 문에서 컬럼명을 DB 컬럼명 그대로 사용
+    stmt = (
+        select(
+            CompanyData.applicant_code,
+            CompanyData.official_number, 
+            CompanyData.bzno,           # 사업자번호
+            CompanyData.cono_pid,
+            CompanyData.enp_nm,         # 기업명
+            CompanyData.eng_enp_nm,     # 영문기업명
+            CompanyData.reper_nm,       # 대표자명
+            CompanyData.estb_dt,        # 설립일
+            CompanyData.en_bzc_nm,         # 업종명
+            CompanyData.hpage_url,      # 홈페이지주소
+            CompanyData.major_pd        # 주요상품
+        )
+        .where(CompanyData.applicant_code.in_(unique_codes))
+    )
+
+    rows = session.execute(stmt).all()
+    
+    company_map = {}
+    for r in rows:
+        # 💡 [핵심 수정] API 응답 스키마 키에 맞춰 매핑 (요청하신 정확한 형식 사용)
+        company_map[r.applicant_code] = {
+            "officialNumber": r.official_number,    # official_number -> officialNumber
+            "enpNm": r.enp_nm,                      # enp_nm -> enpNm
+            "bzno": r.bzno,                         # bzno -> bzno
+            "conoPid": r.cono_pid,                  # cono_pid -> conoPid
+            "engEnpNm": r.eng_enp_nm,               # eng_enp_nm -> engEnpNm
+            "reperNm": r.reper_nm,                  # reper_nm -> reperNm
+            "estbDt": r.estb_dt,                    # estb_dt -> estbDt
+            "bzcNm": r.en_bzc_nm,                      # bzc_nm -> bzcNm
+            "hpageUrl": r.hpage_url,                # hpage_url -> hpageUrl
+            "majorPd": r.major_pd,                  # major_pd -> majorPd
+        }
+        
+    return company_map
+
+
+# ------------------------------------------
+# 📄 특허 및 출원인 기본 정보 조회 함수 (fetch_by_list_applicant)
+# ------------------------------------------
+# 💡 [함수 시그니처 수정] List[Dict[str, Any]] 대신 pandas.DataFrame을 반환하도록 수정
+def fetch_by_list_applicant(session: Session, keys: List[str]) -> pd.DataFrame:
+    """
+    특허 번호(keys)를 기반으로 특허/출원인 정보를 조회하고,
+    해당 출원인 코드를 이용하여 기업 상세 정보까지 조회하여 Pandas DataFrame으로 병합하여 반환합니다.
+    """
+    if not keys:
+        return pd.DataFrame() # 빈 DataFrame 반환
+
+    # 1. 특허 및 출원인 기본 정보 조회
+    stmt = (
+        select(
+            PatentResult.application_number,
+            PatentResult.applicant_code,
+            PatentResult.applicant_name,
+            getattr(PatentResult, DB_KEY_FIELD).label(DB_KEY_FIELD), # 필드 레이블 지정
+        )
+        .where(getattr(PatentResult, DB_KEY_FIELD).in_(keys))
+    )
+
+    # 💡 SQLAlchemy 결과(Row 객체 리스트)를 딕셔너리 리스트로 변환
+    patent_row_dicts = [r._asdict() for r in session.execute(stmt).all()]
+
+    if not patent_row_dicts:
+        return pd.DataFrame()
+
+    patent_df = pd.DataFrame(patent_row_dicts)
+    
+    # 2. 출원인 코드 리스트 추출 (문자열로 강제 변환 및 유니크 처리)
+    patent_df['applicant_code'] = patent_df['applicant_code'].astype(str)
+    applicant_codes = patent_df['applicant_code'].str.split('/', expand=True).stack().str.strip().unique().tolist()
+    
+    # 3. 기업 상세 정보 조회 (Dict[str, Dict] 반환)
+    company_data_map = fetch_company_data_by_applicant_codes(session, applicant_codes)
+    
+    # 4. 결과 병합을 위한 DataFrame 준비
+    # applicant_code를 키로 사용하여 company_detail을 딕셔너리 형태로 PatentResult 행에 직접 추가
+    results_list = []
+    for _, row in patent_df.iterrows():
+        codes = str(row['applicant_code']).split('/')
+        # company_detail을 딕셔너리로 저장 (모든 출원인 코드를 키로 사용하여 맵핑)
+        details = {code: company_data_map.get(code.strip(), {}) for code in codes}
+        
+        row_dict = row.to_dict()
+        row_dict['company_detail'] = details
+        
+        results_list.append(row_dict)
+    
+    return pd.DataFrame(results_list)
+
+
+
+# -----------------------------------------------------------------------
+# 📄 베트남기업 기본 정보 조회 함수 (fetch_vietnam_company)
+# -----------------------------------------------------------------------
+def fetch_vietnam_company(session: Session, number: List[str]) -> Dict[str, Dict[str, Any]]:
+    if not number:
+        return {}
+
+    unique_number = list(set(number))
+    # 💡 [핵심 수정] select 문에서 컬럼명을 DB 컬럼명 그대로 사용
+    stmt = (
+        select(
+            VietnamData.no,
+            VietnamData.country,
+            VietnamData.city,
+            VietnamData.company,            # 기업명
+            VietnamData.category,           # 업종명
+            VietnamData.product_item,       # 주요상품
+            VietnamData.established_year,   # 설립년도
+            VietnamData.main_market,
+            VietnamData.overview,            # 회사설명
+            VietnamData.website           # 홈페이지주소
+        )
+        .where(VietnamData.no.in_(unique_number))
+    )
+
+    rows = session.execute(stmt).all()
+    data_list = [row._asdict() for row in rows]
+    df_result = pd.DataFrame(data_list)
+    return df_result

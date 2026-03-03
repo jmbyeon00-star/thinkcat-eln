@@ -1,7 +1,7 @@
 services:
   # backend:
   #   environment:
-  #     GPU_BACKEND_URL: "http://gpu_backend_dev:8000"
+  #     GPU_BACKEND_URL: "http://gpu_backend_dev:8009"
   #   depends_on:
   #     - gpu_backend_dev
 
@@ -11,7 +11,7 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile.gpu_backend
-    # container_name: ipforce_gpu_backend_dev
+    container_name: thinkcateln_gpu_backend_dev
     env_file:
       - ./.env
     environment:
@@ -19,12 +19,12 @@ services:
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
     ports:
-      - "8001:8000" # 외부 8001 → 내부 8000
+      - "8009:8008" # 외부 8001 → 내부 8000
     volumes:
       - ./gpu_backend:/app
     command: >
       uvicorn app.main:app
-      --host 0.0.0.0 --port 8000
+      --host 0.0.0.0 --port 8008
       --reload --reload-dir /app 
       --log-level debug
     deploy:

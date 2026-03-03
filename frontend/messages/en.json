@@ -1,10 +1,10 @@
 {
     "header": {
-        "about": "About",
-        "projectNew": "Create Project",
-        "projects": "Projects",
-        "collections": "Collections",
-        "search": "Search"
+        "about": "Service",
+        "notice": "Notice",
+        "announcement": "Announcement",
+        "search": "Search",
+        "marketplace": "Marketplace"
     },
     "common": {
         "search": "Search",
@@ -12,6 +12,30 @@
     },
     "search": {
         "placeholder": "Enter a search term",
-        "title": "Patent Search"
+        "title": "Patent Search",
+        "ai": {
+            "title": "What patent are you ",
+            "title2": "looking for?",
+            "sub_title": "AI that perfectly understands your search intent.",
+            "guide": "Try asking like this",
+            "tab": {
+                "aiSearch": "AI Search",
+                "standardSearch": "Standard Search"
+            },
+            "placeholder": {
+                "fixedChatBar": {
+                    "aiSearch": "Describe the patent or technology you're looking for...",
+                    "standardSearch": "Enter keywords, application number, or registration number...."
+                }
+            }
+        }
+    },
+    "home": {
+        "title": "ThinkCat ELN",
+        "description": "Test environment."
+    },
+    "NotFound": {
+        "title": "Page Not Found",
+        "goHome": "Go to Home"
     }
 }

@@ -37,8 +37,8 @@ export function StandardSearchBar({ loading, onSearch, searchType = "keyword" }:
 
   const getPlaceholder = () => {
     switch (searchType) {
-      case "application": return "출원번호 13자리를 입력하세요 (예: 1020240001234)";
-      case "registration": return "등록번호 13자리를 입력하세요 (예: 1016473180000)";
+      case "application": return "출원번호 13자리를 입력하세요 (예: 1020140054109)";
+      case "registration": return "등록번호 13자리를 입력하세요 (예: 1013900690000)";
       default: return "특허 핵심 키워드를 입력하세요...";
     }
   };

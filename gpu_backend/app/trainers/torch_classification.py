@@ -33,7 +33,7 @@ class TorchTextClassifierTrainer(BaseTrainer):
         self.data_scope = self.config.get("data_scope", "project").lower()
         self.source_type = self.config.get("source_type", "search").lower()
 
-        self.backend_url = self.config.get("BACKEND_URL", "http://backend:8000")
+        self.backend_url = self.config.get("BACKEND_URL", "http://backend:8008")
         self.default_path = self.config.get("DEFAULT_PATH", "/app")
         self.user_id = int(self.config["user_id"])
         self.file_id = self.config.get('file_id', None)
