@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import {
   Search,
   Globe,
@@ -177,28 +178,13 @@ function AttorneyPhoto({ agentCode, name, className = "" }: { agentCode: string;
 
 
 /**
- * [CPC 8개 섹션 분류 데이터]
- */
-const CPC_SECTORS = [
-  { id: "all", name: "전체", icon: <Globe className="w-6 h-6" /> },
-  { id: "A", name: "인간생활", icon: <Utensils className="w-6 h-6" /> },
-  { id: "B", name: "처리/운송", icon: <Truck className="w-6 h-6" /> },
-  { id: "C", name: "화학/야금", icon: <Beaker className="w-6 h-6" /> },
-  { id: "D", name: "섬유/제지", icon: <Scissors className="w-6 h-6" /> },
-  { id: "E", name: "고정구조물", icon: <HomeIcon className="w-6 h-6" /> },
-  { id: "F", name: "기계/조명", icon: <Wrench className="w-6 h-6" /> },
-  { id: "G", name: "물리학", icon: <Lightbulb className="w-6 h-6" /> },
-  { id: "H", name: "전기", icon: <Zap className="w-6 h-6" /> },
-];
-
-
-
-
-/**
  * [Marketplace Page Component]
  * 파일 경로: /app/[locale]/agent/marketplace/page.tsx
  */
 export default function MarketplacePage() {
+  const translator = useTranslations();
+  const locale = useLocale();
+
   const [view, setView] = useState<'main' | 'search'>('main');
   const [selectedSector, setSelectedSector] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -220,6 +206,22 @@ export default function MarketplacePage() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{ city?: string, gu?: string, dong?: string } | null>(null);
   const [locating, setLocating] = useState(false);
+
+  /**
+   [CPC 8개 섹션 분류 데이터]
+  **/
+  const CPC_SECTORS = [
+    { id: "all", name: translator("common.cpc_sections.all"), icon: <Globe className="w-6 h-6" /> },
+    { id: "A", name: translator("common.cpc_sections.A"), icon: <Utensils className="w-6 h-6" /> },
+    { id: "B", name: translator("common.cpc_sections.B"), icon: <Truck className="w-6 h-6" /> },
+    { id: "C", name: translator("common.cpc_sections.C"), icon: <Beaker className="w-6 h-6" /> },
+    { id: "D", name: translator("common.cpc_sections.D"), icon: <Scissors className="w-6 h-6" /> },
+    { id: "E", name: translator("common.cpc_sections.E"), icon: <HomeIcon className="w-6 h-6" /> },
+    { id: "F", name: translator("common.cpc_sections.F"), icon: <Wrench className="w-6 h-6" /> },
+    { id: "G", name: translator("common.cpc_sections.G"), icon: <Lightbulb className="w-6 h-6" /> },
+    { id: "H", name: translator("common.cpc_sections.H"), icon: <Zap className="w-6 h-6" /> },
+  ];
+
 
   const handleGetLocation = () => {
     if (typeof window === "undefined" || !navigator.geolocation) {
@@ -357,7 +359,7 @@ export default function MarketplacePage() {
   };
 
   const currentCategory = useMemo(() => CPC_SECTORS.find(s => s.id === searchCategory) || CPC_SECTORS[1], [searchCategory]);
-  const displayTitle = useMemo(() => selectedSector === "all" ? "종합 추천 순위" : `${selectedSector} 섹션 추천 사무소`, [selectedSector]);
+  const displayTitle = useMemo(() => selectedSector === "all" ? translator("agent.marketplace.rank.1") : `${selectedSector} ${translator("agent.marketplace.rank.2")}`, [selectedSector]);
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900 pb-20 text-left">
@@ -367,19 +369,19 @@ export default function MarketplacePage() {
       <div className="max-w-4xl mx-auto px-4 pt-16 pb-8 text-left">
         <div className="mb-12 text-left">
           <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-4 tracking-tight text-center">
-            전문 분야별 <span className="text-blue-600">최적의 파트너</span>를<br className="hidden md:block" /> 확인하세요
+            {translator("agent.marketplace.title.1")} <span className="text-blue-600">{translator("agent.marketplace.title.2")}</span>{translator("agent.marketplace.title.3")}<br className="hidden md:block" /> {translator("agent.marketplace.title.4")}
           </h2>
-          <p className="text-slate-400 font-bold text-lg text-center">1,600개 이상의 사무소 실적데이터를 집계하여 보여드립니다.</p>
+          <p className="text-slate-400 font-bold text-lg text-center">{translator("agent.marketplace.sub_title")}</p>
         </div>
 
         <div className="max-w-3xl mx-auto">
           <div className="relative flex items-center bg-white border-2 border-slate-100 rounded-[2.5rem] focus-within:ring-8 focus-within:ring-blue-500/5 focus-within:border-blue-600 transition-all shadow-2xl shadow-slate-200/40 h-16 md:h-20 text-left">
             <div className="relative h-full shrink-0" ref={dropdownRef}>
-              <button onClick={() => setIsTypeOpen(!isTypeOpen)} className={`flex items-center gap-2 px-6 h-full font-black text-slate-700 hover:bg-slate-50 border-r-2 border-slate-100 rounded-l-[2.5rem] ${isTypeOpen ? 'bg-slate-50' : ''}`}><div className="text-blue-600">{searchType === 'firm' ? <Building2 size={20} /> : <Hash size={20} />}</div><span className="hidden sm:inline text-sm font-black">{searchType === 'firm' ? '사무소' : '특허기반'}</span><ChevronDown size={14} className={`text-slate-400 transition-transform ${isTypeOpen ? 'rotate-180' : ''}`} /></button>
+              <button onClick={() => setIsTypeOpen(!isTypeOpen)} className={`flex items-center gap-2 px-6 h-full font-black text-slate-700 hover:bg-slate-50 border-r-2 border-slate-100 rounded-l-[2.5rem] ${isTypeOpen ? 'bg-slate-50' : ''}`}><div className="text-blue-600">{searchType === 'firm' ? <Building2 size={20} /> : <Hash size={20} />}</div><span className="hidden sm:inline text-sm font-black">{searchType === 'firm' ? translator("main.selects.office") : translator("main.selects.patent")}</span><ChevronDown size={14} className={`text-slate-400 transition-transform ${isTypeOpen ? 'rotate-180' : ''}`} /></button>
               {isTypeOpen && (
                 <div className="absolute top-[110%] left-0 w-48 bg-white rounded-3xl shadow-2xl border border-slate-100 py-2 px-1.5 z-[110] animate-in fade-in zoom-in-95 text-left">
-                  <button onClick={() => { setSearchType('firm'); setSearchQuery(""); setIsTypeOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all ${searchType === 'firm' ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}><div className="flex items-center gap-2"><Building2 size={16} /><span className="font-bold text-xs">사무소 검색</span></div>{searchType === 'firm' && <Check size={14} className="text-blue-600" />}</button>
-                  <button onClick={() => { setSearchType('keyword'); setSearchQuery(""); setIsTypeOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all ${searchType === 'keyword' ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}><div className="flex items-center gap-2"><Hash size={16} /><span className="font-bold text-xs">특허기반 검색</span></div>{searchType === 'keyword' && <Check size={14} className="text-blue-600" />}</button>
+                  <button onClick={() => { setSearchType('firm'); setSearchQuery(""); setIsTypeOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all ${searchType === 'firm' ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}><div className="flex items-center gap-2"><Building2 size={16} /><span className="font-bold text-xs">{translator("main.selects.options.office")}</span></div>{searchType === 'firm' && <Check size={14} className="text-blue-600" />}</button>
+                  <button onClick={() => { setSearchType('keyword'); setSearchQuery(""); setIsTypeOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all ${searchType === 'keyword' ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}><div className="flex items-center gap-2"><Hash size={16} /><span className="font-bold text-xs">{translator("main.selects.options.patent")}</span></div>{searchType === 'keyword' && <Check size={14} className="text-blue-600" />}</button>
                 </div>
               )}
             </div>
@@ -402,7 +404,7 @@ export default function MarketplacePage() {
               <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none text-left"><Search size={20} strokeWidth={3} /></div>
               <input
                 type="text"
-                placeholder={searchType === "firm" ? "사무소명 또는 변리사 입력 후 엔터" : "기술 키워드(예: 항암제) 입력 후 엔터"}
+                placeholder={searchType === "firm" ? translator("main.placeholder.office") : translator("main.placeholder.keyword")}
                 className="w-full h-full bg-transparent pl-14 pr-8 outline-none text-base font-medium text-slate-800 placeholder:text-slate-300 placeholder:text-sm text-left"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -440,7 +442,11 @@ export default function MarketplacePage() {
 
             {userLocation && sortBy === 'nearest' && (
               <div className="mb-10 bg-blue-50 text-blue-700 px-6 py-4 rounded-[2rem] text-sm font-bold border border-blue-100 flex items-center justify-between animate-in slide-in-from-top-2 text-left text-left">
-                <div className="flex items-center gap-3 text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left"><Compass size={18} className="text-blue-600 text-left text-left text-left text-left" /><span className="text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left">'{userLocation.city} {userLocation.gu || ""} {userLocation.dong || ""}' 주변 사무소 우선 노출 중</span></div>
+                <div className="flex items-center gap-3 text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left"><Compass size={18} className="text-blue-600 text-left text-left text-left text-left" />
+                  <span className="text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left">
+                    '{userLocation.city} {userLocation.gu || ""} {userLocation.dong || ""}' {translator("agent.marketplace.info.location")}
+                  </span>
+                </div>
                 <button onClick={() => { setUserLocation(null); setSortBy("recommend"); }} className="text-xs bg-white text-zinc-500 px-4 py-2 rounded-xl shadow-sm font-black text-left text-left">해제</button>
               </div>
             )}
@@ -462,10 +468,10 @@ export default function MarketplacePage() {
                     <div className="space-y-4 font-bold text-zinc-500 text-left mb-6 text-left text-left text-left text-left text-left text-left">
                       <div className="flex items-center gap-2 text-sm text-left text-left text-left text-left text-left"><MapPin size={16} className="text-zinc-300 text-left text-left" /> {firm.address}</div>
                     </div>
-
+                    {/* 실적 건수 */}
                     <div className="flex items-center justify-between pt-4 border-t border-slate-50 text-left text-left text-left text-left text-left text-left">
-                      <div className="flex items-center gap-2 text-blue-600 text-xl font-black text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left"><FileText size={22} className="text-left text-left" /> 실적 {firm.patentCount?.toLocaleString()}건</div>
-                      <button onClick={(e) => { e.stopPropagation(); handleFirmClick(firm.company_ko); }} className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-blue-600 transition-all shadow-lg active:scale-95 text-left text-left text-left text-left text-left text-left">상세보기 <ArrowRight size={14} strokeWidth={3} className="text-left text-left" /></button>
+                      <div className="flex items-center gap-2 text-blue-600 text-xl font-black text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left"><FileText size={22} className="text-left text-left" /> {translator("agent.marketplace.search.track_record")} {firm.patentCount?.toLocaleString()}{translator("agent.marketplace.search.track_record_number")}</div>
+                      <button onClick={(e) => { e.stopPropagation(); handleFirmClick(firm.company_ko); }} className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-blue-600 transition-all shadow-lg active:scale-95 text-left text-left text-left text-left text-left text-left">{translator("agent.marketplace.search.detail_view")} <ArrowRight size={14} strokeWidth={3} className="text-left text-left" /></button>
                     </div>
                   </div>
                 </div>
@@ -484,7 +490,26 @@ export default function MarketplacePage() {
                   {activeSearchType === 'keyword' ? `SECTOR ${activeSearchCategory}` : 'FIRM SEARCH'}
                 </span>
               </div>
-              <h2 className="text-3xl font-black text-slate-900 tracking-tight text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left">"<span className="text-blue-600 text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left">{searchRefinedKey}</span>" 검색 결과</h2>
+              {/* <h2 className="text-3xl font-black text-slate-900 tracking-tight text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left">
+                "
+                <span className="text-blue-600 text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left">
+                  {searchRefinedKey}
+                </span>
+                " {translator("agent.marketplace.search.result_title")}
+              </h2> */}
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight text-left">
+                {locale === 'en' ? (
+                  <>
+                    {translator("agent.marketplace.search.result_title")}{" "}
+                    <span className="text-blue-600">"{searchRefinedKey}"</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-blue-600">"{searchRefinedKey}"</span>{" "}
+                    {translator("agent.marketplace.search.result_title")}
+                  </>
+                )}
+              </h2>
             </div>
           </div>
 
@@ -507,8 +532,8 @@ export default function MarketplacePage() {
                           <div className="flex items-center gap-2 text-sm text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left"><MapPin size={16} className="text-zinc-300 text-left text-left text-left text-left text-left text-left text-left" /> {result.address}</div>
                         </div>
                         <div className="flex items-center justify-between pt-4 border-t border-slate-50 text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left">
-                          <div className="flex items-center gap-2 text-blue-600 text-xl font-black text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left"><FileText size={22} className="text-left text-left text-left text-left text-left text-left" /> 실적 {result.patentCount?.toLocaleString()}건</div>
-                          <button onClick={(e) => { e.stopPropagation(); handleFirmClick(result.company_ko); }} className="flex items-center gap-3 px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-blue-600 transition-all shadow-lg active:scale-95 text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left">상세보기 <ArrowRight size={14} strokeWidth={3} className="text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left" /></button>
+                          <div className="flex items-center gap-2 text-blue-600 text-xl font-black text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left"><FileText size={22} className="text-left text-left text-left text-left text-left text-left" /> {translator("agent.marketplace.search.track_record")} {result.patentCount?.toLocaleString()}{translator("agent.marketplace.search.track_record_number")}</div>
+                          <button onClick={(e) => { e.stopPropagation(); handleFirmClick(result.company_ko); }} className="flex items-center gap-3 px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-blue-600 transition-all shadow-lg active:scale-95 text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left">{translator("agent.marketplace.search.detail_view")} <ArrowRight size={14} strokeWidth={3} className="text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left text-left" /></button>
                         </div>
                       </div>
                     </div>

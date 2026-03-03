@@ -97,10 +97,12 @@ export default function Header({ onHome }: HeaderProps) {
                             <LanguageSwitcher />
 
                             <div className="h-4 w-px bg-zinc-200" />
-                            {!user ? (
+                            {authStatus === 'loading' ? (
+                                <div className="w-20 h-8 bg-zinc-50 animate-pulse rounded-xl" />
+                            ) : !user ? (
                                 <div className="flex items-center gap-5 whitespace-nowrap">
-                                    <Link href="/auth/signin" className="text-sm font-bold text-zinc-500 hover:text-zinc-900 transition-colors">로그인</Link>
-                                    <Link href="/auth/signup" className="px-5 py-2 text-sm font-black text-white bg-zinc-900 rounded-xl hover:bg-black shadow-lg transition-all active:scale-95">시작하기</Link>
+                                    <Link href="/auth/signin" className="text-sm font-bold text-zinc-500 hover:text-zinc-900 transition-colors">{translator('header.login')}</Link>
+                                    <Link href="/auth/signup" className="px-5 py-2 text-sm font-black text-white bg-zinc-900 rounded-xl hover:bg-black shadow-lg transition-all active:scale-95">{translator('header.get_started')}</Link>
                                 </div>
                             ) : (
                                 <div className="relative">
@@ -115,13 +117,13 @@ export default function Header({ onHome }: HeaderProps) {
                                     {menuOpen && (
                                         <div className="absolute right-0 mt-3 w-56 bg-white border border-zinc-100 rounded-[1.5rem] shadow-2xl py-3 z-[110] animate-in fade-in zoom-in-95 duration-200">
                                             <div className="px-4 py-2 border-b border-zinc-50 mb-2">
-                                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest text-center">Account Settings</p>
+                                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest text-center">{translator('header.account_settings')}</p>
                                             </div>
                                             <Link href="/mypage" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-zinc-600 hover:bg-blue-50 hover:text-blue-600 transition-colors">
-                                                <User size={16} /> 마이페이지
+                                                <User size={16} /> {translator('header.mypage')}
                                             </Link>
                                             <button onClick={() => { handleLogout(); setMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 transition-colors">
-                                                <LogOut size={16} /> 로그아웃
+                                                <LogOut size={16} /> {translator('header.logout')}
                                             </button>
                                         </div>
                                     )}
@@ -152,7 +154,7 @@ export default function Header({ onHome }: HeaderProps) {
                                 }
                             }}
                         >
-                            {link.label}
+                            {translator(link.label)}
                         </Link>
                     ))}
                     <div className="pt-4 border-t border-zinc-50 flex items-center justify-between px-4">

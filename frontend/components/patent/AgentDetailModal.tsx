@@ -1,6 +1,5 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { useRouter } from "@/routing";
 import { SearchX } from "lucide-react";
 import { getAgentDetail } from "@/lib/api";
 
@@ -57,7 +56,7 @@ export default function AgentDetailModal({ agentCode, onClose }: Props) {
                             <div className="flex flex-col items-center mb-6">
                                 <div className="w-32 h-32 rounded-3xl overflow-hidden shadow-lg border-4 border-white bg-slate-100 flex items-center justify-center">
                                     <img
-                                        src={`/attorney_photos/${agentCode}_${detail.name}.jpg`}
+                                        src={`${process.env.NEXT_PUBLIC_API_BASE_URL}/attorney_photos/${agentCode}_${detail.name}.jpg`}
                                         alt={detail.name}
                                         className="w-full h-full object-cover"
                                         onError={(e: any) => {

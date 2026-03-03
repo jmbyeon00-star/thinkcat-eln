@@ -1,6 +1,7 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import {
     Building2, Users, FileText, TrendingUp, MapPin,
     BarChart3, PieChart, ChevronLeft, AlertCircle,
@@ -48,22 +49,12 @@ interface CompanyStatisticsResponse {
 }
 
 // ==================== 상수 정의 ====================
-const CPC_SECTION_NAMES: Record<string, string> = {
-    "A": "인간생활",
-    "B": "처리작업/운송",
-    "C": "화학/야금",
-    "D": "섬유/제지",
-    "E": "고정구조물",
-    "F": "기계공학/조명/가열/무기",
-    "G": "물리학",
-    "H": "전기",
-    "정보없음": "정보없음"
-};
-
 const ITEMS_PER_PAGE = 5;
 
 // ==================== 메인 컴포넌트 ====================
 export default function AgentCompanyDetail() {
+    const t = useTranslations();
+    const locale = useLocale();
     const params = useParams();
     const router = useRouter();
     const agentcompany = params?.agentcompany ? decodeURIComponent(params.agentcompany as string) : "";
@@ -94,7 +85,7 @@ export default function AgentCompanyDetail() {
                     findCompanyLogo(response.company_info.company_ko);
                 }
             } catch (err: any) {
-                setError(err.message || "데이터 로드 중 오류가 발생했습니다.");
+                setError(err.message || t('agent.detail.default_error_message'));
             } finally {
                 setLoading(false);
             }
@@ -138,7 +129,7 @@ export default function AgentCompanyDetail() {
                     className="text-slate-500 hover:text-blue-600 mb-6 flex items-center gap-2 font-medium transition-colors"
                     onClick={() => router.back()}
                 >
-                    <ChevronLeft className="w-5 h-5" /> 리스트로 돌아가기
+                    <ChevronLeft className="w-5 h-5" /> {t('agent.detail.back_to_list')}
                 </button>
 
                 {/* 프로필 카드 */}
@@ -194,6 +185,7 @@ export default function AgentCompanyDetail() {
 // ==================== 섹션 컴포넌트 ====================
 
 function ProfileCard({ company_info, statistics, logoUrl, agentNames }: any) {
+    const t = useTranslations();
     return (
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mb-8">
             <div className="bg-slate-900 px-8 py-10 text-white relative overflow-hidden">
@@ -210,7 +202,7 @@ function ProfileCard({ company_info, statistics, logoUrl, agentNames }: any) {
                                 <div className="group relative flex items-center">
                                     <BadgeCheck className="w-7 h-7 md:w-8 md:h-8 text-blue-400 fill-blue-400/20 animate-in zoom-in duration-500" />
                                     <span className="absolute left-1/2 -translate-x-1/2 -top-10 scale-0 group-hover:scale-100 transition-transform bg-slate-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-20">
-                                        최근 출원건수 10건이상인 사무소
+                                        {t('agent.detail.active_firm_badge')}
                                     </span>
                                 </div>
                             )}
@@ -225,11 +217,11 @@ function ProfileCard({ company_info, statistics, logoUrl, agentNames }: any) {
                             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                                 <div className="flex items-center gap-2">
                                     <Phone className="w-4 h-4 text-blue-400 shrink-0" />
-                                    <span>{company_info.phone_number || "전화번호 미등록"}</span>
+                                    <span>{company_info.phone_number || t('agent.detail.phone_not_registered')}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Printer className="w-4 h-4 text-blue-400 shrink-0" />
-                                    <span>{company_info.fax || "FAX 미등록"}</span>
+                                    <span>{company_info.fax || t('agent.detail.fax_not_registered')}</span>
                                 </div>
                                 {company_info.homepage && (
                                     <div className="flex items-center gap-2">
@@ -265,14 +257,14 @@ function ProfileCard({ company_info, statistics, logoUrl, agentNames }: any) {
             <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <StatCard
                     icon={<FileText className="w-6 h-6" />}
-                    label="누적 대리 건수"
-                    value={`${statistics.total_patent_count.toLocaleString()} 건`}
+                    label={t('agent.detail.total_record_count')}
+                    value={t('agent.detail.cases', { count: statistics.total_patent_count })}
                     color="blue"
                 />
                 <StatCard
                     icon={<Users className="w-6 h-6" />}
-                    label="구성 변리사"
-                    value={`${agentNames.length} 명`}
+                    label={t('agent.detail.partners')}
+                    value={t('agent.detail.members_count', { count: agentNames.length })}
                     color="indigo"
                 />
             </div>
@@ -291,12 +283,14 @@ function DetailedAnalysis({
     yearPages,
     setYearPages
 }: any) {
+    const t = useTranslations();
+    const locale = useLocale();
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 items-stretch">
             {/* 기술분야별 비중 */}
             <section className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 h-full">
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                    <BarChart3 className="text-blue-600" /> 기술분야별 비중
+                    <BarChart3 className="text-blue-600" /> {t("agent.detail.tech_distribution")}
                 </h3>
                 <div className="space-y-6">
                     {(Object.entries(statistics.cpc_section_distribution) as [string, number][])
@@ -304,7 +298,7 @@ function DetailedAnalysis({
                         .map(([key, val]) => (
                             <div key={key}>
                                 <ProgressBarWithExpand
-                                    label={CPC_SECTION_NAMES[key] || key}
+                                    label={t(`common.cpc_sections.${key}`) || key}
                                     subLabel={key}
                                     value={val}
                                     max={statistics.total_patent_count}
@@ -327,7 +321,7 @@ function DetailedAnalysis({
             {/* 연도별 출원 현황 */}
             <section className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 h-full flex flex-col">
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                    <TrendingUp className="text-indigo-600" /> 연도별 출원 현황
+                    <TrendingUp className="text-indigo-600" /> {t('agent.detail.annual_filing_trends')}
                 </h3>
                 <div className="space-y-6 flex-1">
                     {statistics.filing_year_distribution && Object.entries(statistics.filing_year_distribution)
@@ -335,7 +329,7 @@ function DetailedAnalysis({
                         .map(([year, count]) => (
                             <div key={year}>
                                 <ProgressBarWithExpand
-                                    label={`${year}년`}
+                                    label={`${year}${t('common.year')}`}
                                     value={count}
                                     max={Math.max(0, ...(Object.values(statistics.filing_year_distribution) as number[]))}
                                     color="bg-indigo-500"
@@ -358,20 +352,30 @@ function DetailedAnalysis({
 }
 
 function BottomSection({ statistics, agentNames, agentCodes, onSelect }: any) {
+    const PATENT_STATUS = {
+        "등록": "registered",  // 심사 통과 후 최종 권리 확보
+        "공개": "published",   // 출원 후 1.5년 경과하여 대중에게 노출 (심사 중)
+        "거절": "rejected",    // 심사관에 의해 등록이 거절됨
+        "포기": "abandoned",   // 출원인이 심사 과정 중 대응을 하지 않아 권리를 포기함
+        "취하": "withdrawn",   // 출원인이 스스로 출원 자체를 철회함
+        "소멸": "expired",      // 등록 후 연차료 미납이나 기간 만료로 권리가 사라짐
+        "출원": "pending"
+    };
+    const t = useTranslations();
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8 items-stretch">
             {/* 상태 요약 */}
             <div className="lg:col-span-1">
                 <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 h-full">
                     <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                        <PieChart className="text-slate-600" /> 상태 요약
+                        <PieChart className="text-slate-600" /> {t('agent.detail.status_summary')}
                     </h3>
                     <div className="space-y-4">
                         {statistics.end_status_distribution && Object.entries(statistics.end_status_distribution)
                             .sort((a, b) => (b[1] as number) - (a[1] as number))
                             .map(([status, count]) => (
                                 <div key={status} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <span className="text-slate-600 font-bold">{status}</span>
+                                    <span className="text-slate-600 font-bold">{t(`search.result.${PATENT_STATUS[status]}`)}</span>
                                     <span className="text-slate-900 font-black text-lg">{(count as number).toLocaleString()}</span>
                                 </div>
                             ))}
@@ -390,6 +394,7 @@ function BottomSection({ statistics, agentNames, agentCodes, onSelect }: any) {
 }
 
 function NoDataView({ agentNames, agentCodes, onSelect }: any) {
+    const t = useTranslations();
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8 items-stretch">
             <div className="lg:col-span-2">
@@ -397,13 +402,13 @@ function NoDataView({ agentNames, agentCodes, onSelect }: any) {
                     <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-8">
                         <SearchX className="w-12 h-12 text-slate-300" />
                     </div>
-                    <h3 className="text-2xl font-bold text-slate-900 mb-3">상세 분석 데이터 부재</h3>
+                    <h3 className="text-2xl font-bold text-slate-900 mb-3">{t('agent.detail.no_data_title')}</h3>
                     <p className="text-slate-500 max-w-sm text-lg leading-relaxed mb-10">
-                        DB에 매칭되는 특허데이터가 없습니다
+                        {t('agent.detail.no_data_desc')}
                     </p>
                     <div className="flex gap-3">
-                        <span className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-full text-sm font-bold border border-slate-200">기본 정보 제공</span>
-                        <span className="px-5 py-2.5 bg-blue-50 text-blue-600 rounded-full text-sm font-bold border border-blue-100 text-nowrap">분석 대기</span>
+                        <span className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-full text-sm font-bold border border-slate-200">{t('agent.detail.basic_info_provided')}</span>
+                        <span className="px-5 py-2.5 bg-blue-50 text-blue-600 rounded-full text-sm font-bold border border-blue-100 text-nowrap">{t('agent.detail.waiting_for_analysis')}</span>
                     </div>
                 </div>
             </div>
@@ -420,20 +425,21 @@ function NoDataView({ agentNames, agentCodes, onSelect }: any) {
 // ==================== UI 컴포넌트 ====================
 
 function AgentListSection({ agentNames, agentCodes, onSelect }: any) {
+    const t = useTranslations();
     return (
         <>
             <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
-                <h3 className="text-lg font-bold text-slate-900">소속 변리사</h3>
+                <h3 className="text-lg font-bold text-slate-900">{t('agent.detail.member_attorneys')}</h3>
                 <span className="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-1 rounded-md">
-                    총 {agentNames.length}명
+                    {t('agent.detail.total_members', { count: agentNames.length })}
                 </span>
             </div>
             <div className="flex-1 overflow-y-auto bg-white min-h-[300px]">
                 <table className="w-full text-left">
                     <thead className="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold sticky top-0">
                         <tr>
-                            <th className="px-8 py-4">성명</th>
-                            <th className="px-8 py-4 text-right">상세보기</th>
+                            <th className="px-8 py-4">{t('agent.detail.attorney_name')}</th>
+                            <th className="px-8 py-4 text-right">{t('agent.detail.view_details')}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -446,7 +452,7 @@ function AgentListSection({ agentNames, agentCodes, onSelect }: any) {
                                 <td className="px-8 py-4 font-bold text-slate-700 group-hover:text-blue-600">{name}</td>
                                 <td className="px-8 py-4 text-right">
                                     <div className="inline-flex items-center gap-1 text-xs font-bold text-slate-300 group-hover:text-blue-600 transition-colors">
-                                        상세 정보
+                                        {t('agent.detail.detail_info')}
                                         <ChevronRight className="w-4 h-4" />
                                     </div>
                                 </td>
@@ -477,6 +483,7 @@ function StatCard({ icon, label, value, color }: any) {
 }
 
 function ProgressBarWithExpand({ label, subLabel, value, max, color, isExpanded, onToggle }: any) {
+    const t = useTranslations();
     const percentage = (value / max) * 100;
 
     return (
@@ -487,7 +494,7 @@ function ProgressBarWithExpand({ label, subLabel, value, max, color, isExpanded,
                     {subLabel && <span className="text-[10px] text-slate-400 font-mono">{subLabel}</span>}
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className="text-slate-900 font-bold text-sm">{value.toLocaleString()}건</span>
+                    <span className="text-slate-900 font-bold text-sm">{t('agent.detail.cases', { count: value })}</span>
                     <button onClick={onToggle} className="p-1.5 hover:bg-slate-100 rounded-md transition-colors">
                         {isExpanded ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                     </button>
@@ -504,7 +511,6 @@ function ProgressBarWithExpand({ label, subLabel, value, max, color, isExpanded,
 }
 
 function PatentList({ patents, currentPage, onPageChange }: any) {
-    const totalPages = Math.ceil(patents.length / ITEMS_PER_PAGE);
     const currentItems = patents.slice(
         currentPage * ITEMS_PER_PAGE,
         (currentPage + 1) * ITEMS_PER_PAGE
@@ -534,28 +540,30 @@ function PatentList({ patents, currentPage, onPageChange }: any) {
 }
 
 function LoadingSpinner() {
+    const t = useTranslations();
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
             <div className="w-12 h-12 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mb-4" />
-            <p className="text-slate-500 font-bold animate-pulse">분석 데이터를 불러오고 있습니다...</p>
+            <p className="text-slate-500 font-bold animate-pulse">{t('agent.detail.loading_analysis')}</p>
         </div>
     );
 }
 
 function ErrorView({ message }: { message: string | null }) {
+    const t = useTranslations();
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
             <div className="max-w-md w-full text-center p-10 bg-white rounded-3xl shadow-xl border border-slate-100">
                 <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-6" />
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">데이터 로드 오류</h2>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('agent.detail.data_load_error')}</h2>
                 <p className="text-slate-500 mb-8 leading-relaxed">
-                    {message || "정보를 불러오는 중 문제가 발생했습니다."}
+                    {message || t('agent.detail.default_error_message')}
                 </p>
                 <button
                     onClick={() => window.location.reload()}
                     className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all active:scale-[0.98]"
                 >
-                    새로고침
+                    {t('agent.detail.refresh')}
                 </button>
             </div>
         </div>

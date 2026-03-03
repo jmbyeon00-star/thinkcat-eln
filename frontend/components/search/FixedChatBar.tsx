@@ -1,37 +1,9 @@
 import React, { useState } from 'react';
+import { useTranslations } from "next-intl";
 import { ArrowUp, ChevronDown, FileText, Settings2, Trash2, Scale, Target, FileStack, History } from 'lucide-react';
 import { useSearchContext } from '@/contexts/SearchContext';
-import { useTranslations } from "next-intl";
 
 type SearchMethodType = 'centroid' | 'weighted' | 'script_score';
-
-// 검색 방식 정보
-const SEARCH_METHODS = {
-    centroid: {
-        name: '균형 검색',
-        shortDesc: '6:4 비율',
-        desc: '검색어와 선택 특허를 균형있게 반영',
-        icon: Scale,
-        color: 'text-indigo-500',
-        bgColor: 'bg-indigo-50',
-    },
-    weighted: {
-        name: '검색어 우선',
-        shortDesc: '8:2 비율',
-        desc: '검색어 의도를 더 중요하게 반영',
-        icon: Target,
-        color: 'text-amber-500',
-        bgColor: 'bg-amber-50',
-    },
-    script_score: {
-        name: '특허 우선',
-        shortDesc: '4:6 비율',
-        desc: '선택한 특허와 유사한 결과 위주',
-        icon: FileStack,
-        color: 'text-emerald-500',
-        bgColor: 'bg-emerald-50',
-    },
-} as const;
 
 interface FixedChatBarProps {
     onSearch: () => void;
@@ -48,6 +20,34 @@ export const FixedChatBar = ({ onSearch, isLoading, onOpenBasket, onOpenTrash, o
     const [isToolOpen, setIsToolOpen] = useState(false);
     const [isMethodOpen, setIsMethodOpen] = useState(false);
     const translator = useTranslations();
+
+    // 검색 방식 정보
+    const SEARCH_METHODS = {
+        centroid: {
+            name: translator("search.ai.fixedChatBar.search_method.centroid"),
+            shortDesc: translator("search.ai.fixedChatBar.description.centroidShortDesc"),
+            desc: translator("search.ai.fixedChatBar.description.centroidDesc"),
+            icon: Scale,
+            color: 'text-indigo-500',
+            bgColor: 'bg-indigo-50',
+        },
+        weighted: {
+            name: translator("search.ai.fixedChatBar.search_method.weighted"),
+            shortDesc: translator("search.ai.fixedChatBar.description.weightedShortDesc"),
+            desc: translator("search.ai.fixedChatBar.description.weightedDesc"),
+            icon: Target,
+            color: 'text-amber-500',
+            bgColor: 'bg-amber-50',
+        },
+        script_score: {
+            name: translator("search.ai.fixedChatBar.search_method.script_score"),
+            shortDesc: translator("search.ai.fixedChatBar.description.script_scoreShortDesc"),
+            desc: translator("search.ai.fixedChatBar.description.script_scoreDesc"),
+            icon: FileStack,
+            color: 'text-emerald-500',
+            bgColor: 'bg-emerald-50',
+        },
+    } as const;
 
     // 선택된 특허 총 개수
     const totalSelectedCount = (Object.values(selectedPatents) as any[][]).reduce((sum, arr) => sum + arr.length, 0);
@@ -96,7 +96,7 @@ export const FixedChatBar = ({ onSearch, isLoading, onOpenBasket, onOpenTrash, o
                                 }`}
                         >
                             <Settings2 size={16} />
-                            <span className="font-black">도구</span>
+                            <span className="font-black">{translator("search.ai.fixedChatBar.tools")}</span>
                         </button>
 
                         {/* 도구 팝업 메뉴 */}
@@ -130,15 +130,15 @@ export const FixedChatBar = ({ onSearch, isLoading, onOpenBasket, onOpenTrash, o
                                 <div className="h-[1px] bg-slate-100 my-1 mx-2" />
                                 <button onClick={() => { onOpenBasket(); setIsToolOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 rounded-2xl">
                                     <FileText size={16} className="text-slate-400" />
-                                    <span>아티팩트</span>
+                                    <span>{translator("search.ai.fixedChatBar.basket")}</span>
                                 </button>
                                 <button onClick={() => { onOpenTrash(); setIsToolOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-rose-600 hover:bg-rose-50 rounded-2xl">
                                     <Trash2 size={16} />
-                                    <span>휴지통</span>
+                                    <span>{translator("search.ai.fixedChatBar.trash")}</span>
                                 </button>
                                 <button onClick={() => { onOpenHistory(); setIsToolOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 rounded-2xl">
                                     <History size={16} className="text-slate-400" />
-                                    <span>기록</span>
+                                    <span>{translator("search.ai.fixedChatBar.history")}</span>
                                 </button>
                             </div>
                         )}
@@ -167,7 +167,7 @@ export const FixedChatBar = ({ onSearch, isLoading, onOpenBasket, onOpenTrash, o
                     className="flex items-center gap-1.5 px-4 py-2 bg-white/60 backdrop-blur-md border border-slate-200 rounded-full hover:bg-white hover:border-indigo-300 transition-all shadow-sm group"
                 >
                     <FileText size={14} className="text-slate-500 group-hover:text-indigo-600" />
-                    <span className="text-xs font-bold text-slate-600 group-hover:text-indigo-700 whitespace-nowrap">아티팩트</span>
+                    <span className="text-xs font-bold text-slate-600 group-hover:text-indigo-700 whitespace-nowrap">{translator("search.ai.fixedChatBar.basket")}</span>
                     {totalSelectedCount > 0 && (
 
                         <span className="ml-0.5 bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center font-black">
@@ -182,7 +182,7 @@ export const FixedChatBar = ({ onSearch, isLoading, onOpenBasket, onOpenTrash, o
                     className="flex items-center gap-1.5 px-4 py-2 bg-white/60 backdrop-blur-md border border-slate-200 rounded-full hover:bg-white hover:border-rose-300 transition-all shadow-sm group"
                 >
                     <Trash2 size={14} className="text-slate-500 group-hover:text-rose-600" />
-                    <span className="text-xs font-bold text-slate-600 group-hover:text-rose-700 whitespace-nowrap">휴지통</span>
+                    <span className="text-xs font-bold text-slate-600 group-hover:text-rose-700 whitespace-nowrap">{translator("search.ai.fixedChatBar.trash")}</span>
                     {hiddenPatents.length > 0 && (
                         <span className="ml-0.5 bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center font-black">
                             {hiddenPatents.length}
@@ -196,7 +196,7 @@ export const FixedChatBar = ({ onSearch, isLoading, onOpenBasket, onOpenTrash, o
                     className="flex items-center gap-1.5 px-4 py-2 bg-white/60 backdrop-blur-md border border-slate-200 rounded-full hover:bg-white hover:border-indigo-300 transition-all shadow-sm group"
                 >
                     <History size={14} className="text-slate-500 group-hover:text-indigo-600" />
-                    <span className="text-xs font-bold text-slate-600 group-hover:text-indigo-700 whitespace-nowrap">기록</span>
+                    <span className="text-xs font-bold text-slate-600 group-hover:text-indigo-700 whitespace-nowrap">{translator("search.ai.fixedChatBar.history")}</span>
                 </button>
 
                 <div className="w-[1px] h-4 bg-slate-300 mx-1 flex-shrink-0" />

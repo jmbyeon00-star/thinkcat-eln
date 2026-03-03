@@ -37,7 +37,7 @@ const CPC_SECTORS = [
 ];
 
 export default function Home() {
-  const t = useTranslations('home');
+  const translator = useTranslations();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState("firm");
@@ -68,7 +68,6 @@ export default function Home() {
   };
 
   const currentCategory = useMemo(() => CPC_SECTORS.find(s => s.id === searchCategory) || CPC_SECTORS[1], [searchCategory]);
-
   return (
     <main id="main-snap-container" className="bg-white selection:bg-blue-100">
       <style jsx global>{`
@@ -106,7 +105,7 @@ export default function Home() {
           </h1>
 
           <p className="max-w-xl mx-auto text-lg md:text-xl text-zinc-400 font-medium leading-relaxed">
-            전문 분야별 최적의 파트너를 확인하세요
+            {translator("main.sub_title")}
           </p>
 
           {/* Agent Search Section */}
@@ -115,17 +114,17 @@ export default function Home() {
               <div className="relative h-full shrink-0" ref={dropdownRef}>
                 <button onClick={() => setIsTypeOpen(!isTypeOpen)} className={`flex items-center gap-2 px-6 h-full font-black text-slate-700 hover:bg-slate-50 border-r-2 border-slate-100 rounded-l-[2.5rem] ${isTypeOpen ? 'bg-slate-50' : ''}`}>
                   <div className="text-blue-600">{searchType === 'firm' ? <Building2 size={20} /> : <Hash size={20} />}</div>
-                  <span className="hidden sm:inline text-sm font-black">{searchType === 'firm' ? '사무소' : '특허기반'}</span>
+                  <span className="hidden sm:inline text-sm font-black">{searchType === 'firm' ? translator("main.selects.office") : translator("main.selects.patent")}</span>
                   <ChevronDown size={14} className={`text-slate-400 transition-transform ${isTypeOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {isTypeOpen && (
                   <div className="absolute top-[110%] left-0 w-48 bg-white rounded-3xl shadow-2xl border border-slate-100 py-2 px-1.5 z-[110]">
                     <button onClick={() => { setSearchType('firm'); setSearchQuery(""); setIsTypeOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all ${searchType === 'firm' ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}>
-                      <div className="flex items-center gap-2"><Building2 size={16} /><span className="font-bold text-xs">사무소 검색</span></div>
+                      <div className="flex items-center gap-2"><Building2 size={16} /><span className="font-bold text-xs">{translator("main.selects.options.office")}</span></div>
                       {searchType === 'firm' && <Check size={14} className="text-blue-600" />}
                     </button>
                     <button onClick={() => { setSearchType('keyword'); setSearchQuery(""); setIsTypeOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all ${searchType === 'keyword' ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}>
-                      <div className="flex items-center gap-2"><Hash size={16} /><span className="font-bold text-xs">특허기반 검색</span></div>
+                      <div className="flex items-center gap-2"><Hash size={16} /><span className="font-bold text-xs">{translator("main.selects.options.patent")}</span></div>
                       {searchType === 'keyword' && <Check size={14} className="text-blue-600" />}
                     </button>
                   </div>
@@ -157,7 +156,7 @@ export default function Home() {
                 <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"><Search size={20} strokeWidth={3} /></div>
                 <input
                   type="text"
-                  placeholder={searchType === "firm" ? "사무소명 또는 변리사 입력 후 엔터" : "기술 키워드(예: 항암제) 입력 후 엔터"}
+                  placeholder={searchType === "firm" ? translator("main.placeholder.office") : translator("main.placeholder.keyword")}
                   className="w-full h-full bg-transparent pl-14 pr-8 outline-none text-base font-medium text-slate-800 placeholder:text-slate-300 placeholder:text-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -168,7 +167,7 @@ export default function Home() {
                   className="mr-3 px-6 h-10 md:h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-black text-sm transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 group shrink-0"
                 >
                   <Search size={18} strokeWidth={3} className="group-hover:scale-110 transition-transform" />
-                  <span className="hidden sm:inline">검색</span>
+                  <span className="hidden sm:inline">{translator("common.search.menu")}</span>
                 </button>
               </div>
             </div>
@@ -178,12 +177,12 @@ export default function Home() {
             <Link href="/search"
               className="px-10 py-5 border-2 border-blue-600 text-blue-600 rounded-2xl font-black transition-all hover:bg-blue-600 hover:text-white hover:scale-105 active:scale-95 flex items-center gap-2"
             >
-              특허 찾기<ArrowRight size={20} />
+              {translator("header.search")}<ArrowRight size={20} />
             </Link>
             <Link href="/announcement"
               className="px-10 py-5 bg-zinc-900 text-white rounded-2xl font-black shadow-2xl hover:bg-black transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
             >
-              R&D 공고<ArrowRight size={20} />
+              {translator("header.announcement")}<ArrowRight size={20} />
             </Link>
           </div>
         </div>

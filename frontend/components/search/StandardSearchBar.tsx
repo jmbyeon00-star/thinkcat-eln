@@ -1,17 +1,6 @@
 import { useState, FormEvent } from "react";
+import { useTranslations } from "next-intl";
 import { Search, Loader2, Info, ChevronDown, Sparkles, ArrowRight } from "lucide-react";
-
-const CPC_SECTIONS = [
-  { value: "a", label: "A - 생활필수품" },
-  { value: "b", label: "B - 처리/운수" },
-  { value: "c", label: "C - 화학/야금" },
-  { value: "d", label: "D - 섬유/지류" },
-  { value: "e", label: "E - 건설" },
-  { value: "f", label: "F - 기계/조명/난방" },
-  { value: "g", label: "G - 물리" },
-  { value: "h", label: "H - 전기" },
-  { value: "y", label: "Y - 범용 신기술" },
-];
 
 type Props = {
   loading: boolean;
@@ -20,6 +9,19 @@ type Props = {
 };
 
 export function StandardSearchBar({ loading, onSearch, searchType = "keyword" }: Props) {
+  const translator = useTranslations();
+
+  const CPC_SECTIONS = [
+    { value: "a", label: translator("common.cpc_sections.A") },
+    { value: "b", label: translator("common.cpc_sections.B") },
+    { value: "c", label: translator("common.cpc_sections.C") },
+    { value: "d", label: translator("common.cpc_sections.D") },
+    { value: "e", label: translator("common.cpc_sections.E") },
+    { value: "f", label: translator("common.cpc_sections.F") },
+    { value: "g", label: translator("common.cpc_sections.G") },
+    { value: "h", label: translator("common.cpc_sections.H") },
+    { value: "y", label: translator("common.cpc_sections.Y") },
+  ];
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState("a");
 
@@ -37,9 +39,9 @@ export function StandardSearchBar({ loading, onSearch, searchType = "keyword" }:
 
   const getPlaceholder = () => {
     switch (searchType) {
-      case "application": return "출원번호 13자리를 입력하세요 (예: 1020140054109)";
-      case "registration": return "등록번호 13자리를 입력하세요 (예: 1013900690000)";
-      default: return "특허 핵심 키워드를 입력하세요...";
+      case "application": return translator("search.standard.placeholder.application");
+      case "registration": return translator("search.standard.placeholder.registration");
+      default: return translator("search.standard.placeholder.keyword");
     }
   };
 

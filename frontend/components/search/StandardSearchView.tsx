@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Search, Hash, FileCheck } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { StandardSearchBar } from "@/components/search/StandardSearchBar";
 import { searchPagination, searchByApplication, searchByRegistration } from "@lib/api";
 import { PaginationSearchResp } from "@lib/types";
@@ -36,6 +37,7 @@ interface StandardProps {
 }
 
 export const StandardSearchView = (props: StandardProps) => {
+    const translator = useTranslations();
     const isFirstMount = useRef(true);
 
     const performSearch = async (page: number = 1, category: string = "a", overrideKeyword?: string) => {
@@ -155,9 +157,9 @@ export const StandardSearchView = (props: StandardProps) => {
     }, [props.currentPage]);
 
     const typeOptions = [
-        { id: "keyword", label: "키워드 검색", icon: <Search size={14} /> },
-        { id: "application", label: "출원번호", icon: <Hash size={14} /> },
-        { id: "registration", label: "등록번호", icon: <FileCheck size={14} /> },
+        { id: "keyword", label: translator("search.standard.tabs.keyword"), icon: <Search size={14} /> },
+        { id: "application", label: translator("search.standard.tabs.application"), icon: <Hash size={14} /> },
+        { id: "registration", label: translator("search.standard.tabs.registration"), icon: <FileCheck size={14} /> },
     ];
 
     return (

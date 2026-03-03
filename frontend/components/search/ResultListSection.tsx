@@ -2,8 +2,20 @@
 
 import React, { useState } from 'react';
 import { useRouter } from '@/routing';
+import { useTranslations } from 'next-intl';
 import { ChevronRight, ChevronLeft, ExternalLink, Check, LayoutList, LayoutGrid, Trash2 } from 'lucide-react';
 import { useSearchContext } from '@/contexts/SearchContext';
+
+
+const PATENT_STATUS = {
+    "등록": "registered",  // 심사 통과 후 최종 권리 확보
+    "공개": "published",   // 출원 후 1.5년 경과하여 대중에게 노출 (심사 중)
+    "거절": "rejected",    // 심사관에 의해 등록이 거절됨
+    "포기": "abandoned",   // 출원인이 심사 과정 중 대응을 하지 않아 권리를 포기함
+    "취하": "withdrawn",   // 출원인이 스스로 출원 자체를 철회함
+    "소멸": "expired",      // 등록 후 연차료 미납이나 기간 만료로 권리가 사라짐
+    "출원": "pending"
+};
 
 interface ResultListSectionProps {
     searchType: "keyword" | "application" | "registration";
@@ -27,6 +39,7 @@ export const ResultListSection = ({
 
     const { searchTab, submittedQuery, togglePatentSelection, isPatentSelected, hidePatent, isPatentHidden } = useSearchContext();
     const router = useRouter();
+    const translator = useTranslations();
     const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
     const totalPages = Math.ceil(Math.min(totalHits, 1000) / pageSize);
     const pageNumbers = Array.from({ length: Math.min(10, totalPages) }, (_, i) => i + 1);
@@ -58,8 +71,6 @@ export const ResultListSection = ({
             </div>
         );
     }
-
-
 
     // 상세 페이지로 이동
     const goToDetail = (appNum: string) => {
@@ -101,7 +112,7 @@ export const ResultListSection = ({
             {/* 결과 헤더 */}
             <div className="flex items-center justify-between px-2 pt-10 border-t border-slate-100 text-left">
                 <h2 className="text-2xl font-black text-slate-900">
-                    검색 결과 <span className={searchTab === 'ai' ? 'text-indigo-600' : 'text-blue-600'}>{totalHits.toLocaleString()}</span>
+                    {translator("common.search.result_title")} <span className={searchTab === 'ai' ? 'text-indigo-600' : 'text-blue-600'}>{totalHits.toLocaleString()}</span>
                 </h2>
 
                 {/* AI 검색일 때만 뷰 토글 표시 */}
@@ -254,7 +265,7 @@ export const ResultListSection = ({
                                         }}
                                         className={`p-2 rounded-xl bg-slate-100 text-slate-500 transition-all ${searchTab === 'ai' ? 'hover:bg-indigo-600 hover:text-white' : 'hover:bg-blue-600 hover:text-white'
                                             }`}
-                                        title="상세 페이지로 이동"
+                                        title={translator("common.search.detail_page")}
                                     >
                                         <ExternalLink size={18} />
                                     </button>
@@ -268,7 +279,7 @@ export const ResultListSection = ({
                                             });
                                         }}
                                         className="p-2 rounded-xl bg-slate-100 text-slate-500 hover:bg-rose-500 hover:text-white transition-all"
-                                        title="검색 결과에서 숨기기"
+                                        title={translator("common.search.hide_from_search_results")}
                                     >
                                         <Trash2 size={18} />
                                     </button>
@@ -280,7 +291,8 @@ export const ResultListSection = ({
                                             ${status === '등록' ? 'bg-green-100 text-green-700' :
                                                 status === '거절' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}
                                         >
-                                            {status}
+                                            {/* {status} */}
+                                            {translator(`search.result.${PATENT_STATUS[status]}`)}
                                         </span>
                                         <span className="text-xs font-bold text-slate-400">#{appNum}</span>
                                     </div>
@@ -296,19 +308,19 @@ export const ResultListSection = ({
 
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2 pt-4 border-t border-slate-50 text-sm">
                                         <div>
-                                            <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">출원인</p>
+                                            <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">{translator("common.search.applicant")}</p>
                                             <p className="font-semibold text-slate-700 truncate">{item._source.applicant_name}</p>
                                         </div>
                                         <div>
-                                            <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">발명인</p>
+                                            <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">{translator("common.search.inventor")}</p>
                                             <p className="font-semibold text-slate-700 truncate">{item._source.inventor_name}</p>
                                         </div>
                                         <div>
-                                            <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">출원일</p>
+                                            <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">{translator("common.search.application_date")}</p>
                                             <p className="font-semibold text-slate-700">{item._source.filing_date}</p>
                                         </div>
                                         <div className="hidden md:block">
-                                            <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">요약</p>
+                                            <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">{translator("common.search.abstract")}</p>
                                             <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed italic">
                                                 "{item._source.abstract?.substring(0, 50)}..."
                                             </p>
