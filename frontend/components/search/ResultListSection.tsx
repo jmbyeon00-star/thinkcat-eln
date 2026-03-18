@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from '@/routing';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'; // ✅ App Router
 import { useTranslations } from 'next-intl';
 import { ChevronRight, ChevronLeft, ExternalLink, Check, LayoutList, LayoutGrid, Trash2 } from 'lucide-react';
 import { useSearchContext } from '@/contexts/SearchContext';
@@ -38,7 +38,9 @@ export const ResultListSection = ({
 }: ResultListSectionProps) => {
 
     const { searchTab, submittedQuery, togglePatentSelection, isPatentSelected, hidePatent, isPatentHidden } = useSearchContext();
-    const router = useRouter();
+    const router = useRouter();       // ✅ App Router
+    const pathname = usePathname();   // ✅ 현재 경로
+    const searchParams = useSearchParams(); // ✅ URL 파라미터 읽기
     const translator = useTranslations();
     const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
     const totalPages = Math.ceil(Math.min(totalHits, 1000) / pageSize);
@@ -49,6 +51,14 @@ export const ResultListSection = ({
         const appNum = item._source.application_number ?? item._source.address;
         return !isPatentHidden(appNum);
     });
+
+    // ✅ 페이지 변경 시 URL도 함께 업데이트 (App Router)
+    const handlePageChange = (pageNum: number) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('page', pageNum.toString());
+        router.push(`${pathname}?${params.toString()}`);
+        onPageChange(pageNum);
+    };
 
     // 로딩 상태 UI
     if (isLoading) {
@@ -75,7 +85,9 @@ export const ResultListSection = ({
     // 상세 페이지로 이동
     const goToDetail = (appNum: string) => {
         if (!appNum) return;
-        sessionStorage.setItem('search_scroll_pos', window.scrollY.toString());
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem('search_scroll_pos', window.scrollY.toString());
+        }
 
         let targetPath = "";
         if (searchType === "application") {
@@ -83,10 +95,9 @@ export const ResultListSection = ({
         } else if (searchType === "registration") {
             targetPath = `/registrationNum/${appNum}`;
         } else {
-            // 키워드 검색 등에서 기본적으로 출원번호 상세로 이동
             targetPath = `/applicationNum/${appNum}`;
         }
-        router.push(targetPath);
+        router.push(targetPath); // ✅ App Router push (문자열 그대로 동작)
     };
 
     // 행 클릭 핸들러: AI 검색이면 선택 토글, 일반 검색이면 상세 페이지 이동
@@ -291,8 +302,7 @@ export const ResultListSection = ({
                                             ${status === '등록' ? 'bg-green-100 text-green-700' :
                                                 status === '거절' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}
                                         >
-                                            {/* {status} */}
-                                            {translator(`search.result.${PATENT_STATUS[status]}`)}
+                                            {status}
                                         </span>
                                         <span className="text-xs font-bold text-slate-400">#{appNum}</span>
                                     </div>
@@ -306,24 +316,22 @@ export const ResultListSection = ({
                                         {item._source.title}
                                     </h3>
 
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2 pt-4 border-t border-slate-50 text-sm">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-2 pt-4 border-t border-slate-50 text-sm">
                                         <div>
-                                            <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">{translator("common.search.applicant")}</p>
-                                            <p className="font-semibold text-slate-700 truncate">{item._source.applicant_name}</p>
+                                            <p className="text-slate-400 font-bold mb-1 text-[10px] uppercase tracking-wider">출원일</p>
+                                            <p className="font-semibold text-slate-700">{item._source.filing_date || "정보 없음"}</p>
                                         </div>
                                         <div>
-                                            <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">{translator("common.search.inventor")}</p>
-                                            <p className="font-semibold text-slate-700 truncate">{item._source.inventor_name}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">{translator("common.search.application_date")}</p>
-                                            <p className="font-semibold text-slate-700">{item._source.filing_date}</p>
+                                            <p className="text-slate-400 font-bold mb-1 text-[10px] uppercase tracking-wider flex items-center gap-1">CPC 분류</p>
+                                            <p className="font-mono text-[11px] text-blue-600 font-bold truncate bg-blue-50/50 px-2 py-1 rounded-lg border border-blue-100/50">
+                                                {Array.isArray(item._source.cpc_code)
+                                                    ? item._source.cpc_code.map((c: any) => typeof c === 'object' ? c.code : c).filter(Boolean).join(", ")
+                                                    : (item._source.cpc_code || "분류 정보 없음")}
+                                            </p>
                                         </div>
                                         <div className="hidden md:block">
-                                            <p className="text-slate-400 font-bold mb-1 text-xs uppercase tracking-wider">{translator("common.search.abstract")}</p>
-                                            <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed italic">
-                                                "{item._source.abstract?.substring(0, 50)}..."
-                                            </p>
+                                            <p className="text-slate-400 font-bold mb-1 text-[10px] uppercase tracking-wider">기술 요약</p>
+                                            <p className="text-slate-500 text-xs line-clamp-2 italic">"{item._source.abstract?.substring(0, 100)}..."</p>
                                         </div>
                                     </div>
                                 </div>
@@ -338,7 +346,7 @@ export const ResultListSection = ({
                 <div className="flex items-center gap-2">
                     <button
                         disabled={currentPage === 1 || isLoading}
-                        onClick={() => onPageChange(currentPage - 1)}
+                        onClick={() => handlePageChange(currentPage - 1)}
                         className="p-2 rounded-xl hover:bg-slate-100 disabled:opacity-20 transition-all text-slate-600"
                     >
                         <ChevronLeft size={20} />
@@ -347,7 +355,7 @@ export const ResultListSection = ({
                     {pageNumbers.map((pageNum) => (
                         <button
                             key={pageNum}
-                            onClick={() => onPageChange(pageNum)}
+                            onClick={() => handlePageChange(pageNum)}
                             className={`w-10 h-10 rounded-xl font-black text-xs transition-all
                                 ${currentPage === pageNum
                                     ? searchTab === 'ai'
@@ -361,7 +369,7 @@ export const ResultListSection = ({
 
                     <button
                         disabled={currentPage >= totalPages || isLoading}
-                        onClick={() => onPageChange(currentPage + 1)}
+                        onClick={() => handlePageChange(currentPage + 1)}
                         className="p-2 rounded-xl hover:bg-slate-100 disabled:opacity-20 transition-all text-slate-600"
                     >
                         <ChevronRight size={20} />

@@ -1,11 +1,12 @@
 // frontend/lib/api.ts
 
-import { PathParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
-
 // -----------------------------
-// API 유틸리티 함수
+// API 유틸리티 및 설정
 // -----------------------------
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+// ✅ GPU 백엔드 서버 주소 (8001 포트)
+export const GPU_SERVER_URL = "http://192.168.1.149:8009";
+
 export async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, {
     headers: { "Content-Type": "application/json" },
@@ -16,11 +17,26 @@ export async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T
   return res.json();
 }
 
+/**
+ * [GPU 백엔드 전용] fetch 유틸리티 (8001 포트)
+ */
+export async function fetchGPU<T>(url: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${GPU_SERVER_URL}${url}`, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`GPU API Error: ${res.status} - ${errorText}`);
+  }
+  return res.json();
+}
+
 // -----------------------------
 // 특허 검색 API 함수들
 // -----------------------------
 
-// ✅ 키워드 검색 (BGEM3 + MLT)
+// ✅ 키워드 검색 (BGEM3 + MLT - POST 방식)
 export async function searchKeyword({
   keyword,
   category, // section
@@ -40,43 +56,7 @@ export async function searchKeyword({
   });
 }
 
-// // ✅ 출원번호 검색
-// export async function searchByApplication({
-//   application_number,
-//   page,
-//   size,
-// }: {
-//   application_number: string;
-//   page: number;
-//   size: number;
-// }) {
-//   return fetchAPI(`/api/search/appnum`, {
-//     method: "POST",
-//     body: JSON.stringify({ application_number, page, size }),
-//   });
-// }
-
-// // ✅ 등록번호 검색
-// export async function searchByRegistration({
-//   registration_number,
-//   page,
-//   size,
-// }: {
-//   registration_number: string;
-//   page: number;
-//   size: number;
-// }) {
-//   return fetchAPI(`/api/search/regnum`, {
-//     method: "POST",
-//     body: JSON.stringify({ registration_number, page, size }),
-//   });
-// }
-
-// export async function getPatentPrice(appNumber: string) {
-//     const
-
-// ------------------------------------------------------------
-// ✅ 페이지네이션 검색
+// ✅ 페이지네이션 검색 (GET 방식)
 export async function searchPagination({
   section,
   keyword,
@@ -109,8 +89,6 @@ export async function searchPagination({
 
 // ✅ 특허 가격 조회
 export async function getPatentPrice(appNumber: string) {
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-
   const requestBody = { app_number: appNumber };
 
   const res = await fetch(`${API_BASE}/api/patent/price`, {
@@ -126,7 +104,6 @@ export async function getPatentPrice(appNumber: string) {
 
   return res.json();
 }
-
 
 // ✅ 출원번호 검색
 export async function searchByApplication(appNumber: string) {
@@ -148,6 +125,7 @@ export async function searchByApplicant(applicantCode: string) {
 export async function patentByCitpredict(appNumber: string): Promise<any> {
   return fetchAPI<any>(`/api/patent/citpredict/${appNumber}`);
 }
+
 // ✅ 특허 네비게이션 데이터
 export async function patentByNavigate(appNumber: string, code: string) {
   return fetchAPI(`/api/patent/navigate?appNumber=${appNumber}&code=${code}`);
@@ -176,23 +154,70 @@ export async function getUmapData(collectionCode: string | string[]) {
   });
 }
 
-//  2026-02-04 ~
 // ================ 기업 네비게이션 ===============================
 export async function applicantByNavigate(appNumber: string, code: string) {
   return fetchAPI(`/api/patent/applicant-navigate?appNumber=${appNumber}&code=${code}`);
 }
 
+// =============== 대리인 관련 기능 ================================
+
 // =============== 대리인 추천기능 ================================
 export async function agentRecommend(appNumber: string, code: string) {
   return fetchAPI(`/api/agent/recommend?appNumber=${appNumber}&code=${code}`);
 }
-// ============== 대리인 사무소 통게 조회 =================================
+
+// ============== 대리인 사무소 통계 조회 =================================
 export async function getAgentStatistics(agentCompany: string) {
   return fetchAPI(`/api/agent/company/${encodeURIComponent(agentCompany)}`);
 }
+
 // ============== 대리인 조회 =====================================
 export async function getAgentDetail(agentCode: string) {
   return fetchAPI(`/api/agent/people/${agentCode}`);
+}
+
+// ============= 사무소 추천정렬 ===================================
+export async function getAgentSorting(
+  option: string,
+  params?: {
+    city?: string;
+    gu?: string;
+    dong?: string;
+    page?: number;
+    page_size?: number;
+    sort?: string; // 'recommend' | 'nearest' | 'oldest'
+  }
+) {
+  const query = new URLSearchParams({
+    option: option.toLowerCase(),
+    page: (params?.page || 1).toString(),
+    page_size: (params?.page_size || 10).toString(),
+  });
+
+  if (params?.sort) query.append("sort", params.sort);
+  if (params?.city) query.append("city", params.city);
+  if (params?.gu) query.append("gu", params.gu);
+  if (params?.dong) query.append("dong", params.dong);
+
+  return fetchAPI(`/api/agent/sorting?${query.toString()}`);
+}
+
+// ============== 사무소 명칭 검색 =====================================
+export async function searchAgentCompany(query: string) {
+  const encodedQuery = encodeURIComponent(query.trim());
+  return fetchAPI(`/api/agent/search-company?q=${encodedQuery}`);
+}
+
+// ============= 사무소 키워드 검색 ====================================
+export async function searchAgentKeyword(query: string, section: string, size: number = 60) {
+  return fetchAPI(`/api/agent/search-keyword`, {
+    method: 'POST',
+    body: JSON.stringify({
+      query: query.trim(),
+      section: section,
+      size: size
+    })
+  });
 }
 
 
@@ -208,7 +233,7 @@ export async function getStats(): Promise<any> {
 }
 
 /**
- * 공고 목록 조회 (기존 fetch를 이 함수로 대체하여 사용 가능)
+ * 공고 목록 조회
  */
 export async function getAnnouncements(params: any = {}): Promise<any> {
   const queryParams = new URLSearchParams();
@@ -239,7 +264,6 @@ export function calculateDday(endDate: string | null | undefined): string {
   const end = new Date(endDate);
   end.setHours(0, 0, 0, 0);
 
-  // 날짜 형식이 유효하지 않은 경우 처리
   if (isNaN(end.getTime())) return '-';
 
   const diffTime = end.getTime() - today.getTime();
@@ -250,59 +274,64 @@ export function calculateDday(endDate: string | null | undefined): string {
   return `D-${diffDays}`;
 }
 
-export async function getAgentSorting(
-  option: string,
-  params?: {
-    city?: string;
-    gu?: string;
-    dong?: string;
-    page?: number;
-    page_size?: number;
-    sort?: string; // 'recommend' | 'nearest' | 'oldest'
-  }
-) {
-  const query = new URLSearchParams({
-    option: option.toLowerCase(),
-    // 기본값 설정 (페이지 1, 사이즈 10)
-    page: (params?.page || 1).toString(),
-    page_size: (params?.page_size || 10).toString(),
-  });
 
-  // 1. 정렬 기준이 있다면 추가 (recommend, nearest, oldest 등)
-  if (params?.sort) {
-    query.append("sort", params.sort);
-  }
+// -----------------------------
+// 특허 검색 API 함수들 (GPU 서버 호출)
+// -----------------------------
 
-  // 2. 위치 정보가 있을 경우에만 쿼리에 추가
-  // (이 로직을 통해 '가까운순'일 때만 좌표 정보가 백엔드로 전달됩니다)
-  if (params?.city) query.append("city", params.city);
-  if (params?.gu) query.append("gu", params.gu);
-  if (params?.dong) query.append("dong", params.dong);
-
-  return fetchAPI(`/api/agent/sorting?${query.toString()}`);
-}
-
-
-
-// ============== 사무소 명칭 검색 =====================================
-export async function searchAgentCompany(query: string) {
-  // query가 '한양'일 경우 확실하게 인코딩하여 전달합니다.
-  const encodedQuery = encodeURIComponent(query.trim());
-  return fetchAPI(`/api/agent/search-company?q=${encodedQuery}`);
-}
-
-
-// ============= 사무소 키워드 검색 ====================================
-export async function searchAgentKeyword(query: string, section: string, size: number = 60) {
-  return fetchAPI(`/api/agent/search-keyword`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+/**
+ * ✅ Neo4j GPU 벡터 검색 (8001 포트)
+ * StandardSearchView 혹은 [keyword].tsx 에서 호출
+ */
+export async function searchNeo4jVector({
+  keyword,
+  section,
+  page = 1,
+  page_size = 10,
+}: {
+  keyword: string;
+  section: string | null;
+  page: number;
+  page_size: number;
+}) {
+  return fetchGPU(`/gpu/neo4j/vector`, {
+    method: "POST",
     body: JSON.stringify({
-      query: query.trim(),
-      section: section,
-      size: size
-    })
+      keyword: keyword.trim(),
+      section: section === "all" ? null : section, // 'all'이면 null로 보내 전체 검색 유도
+      page: page,
+      size: page_size, // 백엔드 수신 필드명 size
+    }),
   });
+}
+
+export async function getPatentNavigationGpu(appNumber: string, code: string) {
+  // 백엔드 라우터: @router.get("/navigate")
+  // 호출 구조: /gpu/neo4j/navigate?appNumber=...&code=...
+  const sectionCode = code;
+
+  return fetchGPU(
+    `/gpu/neo4j/navigate?appNumber=${appNumber.trim()}&code=${sectionCode}`,
+    {
+      method: "GET",
+    }
+  );
+}
+
+export async function getApplicantNavigate(
+  appNumber: string,
+  code: string,
+  maxsize: number = 100,
+  top_n: number = 10
+) {
+  // 백엔드 라우터 : @router.get("/applicant-navigate")
+  // 호출 구조: /gpu/neo4j/applicant-navigate?
+  const sectionCode = code;
+
+  return fetchGPU(
+    `/gpu/neo4j/applicant-navigate?appNumber=${appNumber.trim()}&code=${sectionCode}`,
+    {
+      method: "GET",
+    }
+  );
 }

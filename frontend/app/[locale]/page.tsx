@@ -22,16 +22,16 @@ import {
 } from "lucide-react";
 
 /**
- * [CPC 8개 섹션 분류 데이터]
+ * [CPC 8개 섹션 분류 데이터 + 전체 추가]
  */
 const CPC_SECTORS = [
-  { id: "all", name: "전체", icon: <Globe className="w-6 h-6" /> },
+  { id: "all", name: "전체검색", icon: <Globe className="w-6 h-6" /> },
   { id: "A", name: "인간생활", icon: <Utensils className="w-6 h-6" /> },
-  { id: "B", name: "처리/운송", icon: <Truck className="w-6 h-6" /> },
-  { id: "C", name: "화학/야금", icon: <Beaker className="w-6 h-6" /> },
-  { id: "D", name: "섬유/제지", icon: <Scissors className="w-6 h-6" /> },
+  { id: "B", name: "처리·운송", icon: <Truck className="w-6 h-6" /> },
+  { id: "C", name: "화학·야금", icon: <Beaker className="w-6 h-6" /> },
+  { id: "D", name: "섬유·제지", icon: <Scissors className="w-6 h-6" /> },
   { id: "E", name: "고정구조물", icon: <HomeIcon className="w-6 h-6" /> },
-  { id: "F", name: "기계/조명", icon: <Wrench className="w-6 h-6" /> },
+  { id: "F", name: "기계·조명", icon: <Wrench className="w-6 h-6" /> },
   { id: "G", name: "물리학", icon: <Lightbulb className="w-6 h-6" /> },
   { id: "H", name: "전기", icon: <Zap className="w-6 h-6" /> },
 ];
@@ -41,7 +41,7 @@ export default function Home() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState("firm");
-  const [searchCategory, setSearchCategory] = useState("A");
+  const [searchCategory, setSearchCategory] = useState("all"); // 초기값을 'all'로 변경
   const [isTypeOpen, setIsTypeOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -57,7 +57,6 @@ export default function Home() {
   }, []);
 
   const executeSearch = (q: string, type: string, cat: string) => {
-    // /agent/marketplace 페이지로 이동하면서 검색 파라미터 전달
     if (typeof window !== "undefined") {
       const params = new URLSearchParams();
       params.set('q', q);
@@ -67,7 +66,8 @@ export default function Home() {
     }
   };
 
-  const currentCategory = useMemo(() => CPC_SECTORS.find(s => s.id === searchCategory) || CPC_SECTORS[1], [searchCategory]);
+  const currentCategory = useMemo(() => CPC_SECTORS.find(s => s.id === searchCategory) || CPC_SECTORS[0], [searchCategory]);
+
   return (
     <main id="main-snap-container" className="bg-white selection:bg-blue-100">
       <style jsx global>{`
@@ -90,10 +90,8 @@ export default function Home() {
                     position: relative;
                 }
             `}</style>
-
-      {/* SECTION 1: Hero & Search */}
+  
       <section className="px-6 text-center">
-        {/* Background Decor */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full -z-10 pointer-events-none opacity-40">
           <div className="absolute top-[10%] right-[10%] w-96 h-96 bg-blue-50 rounded-full blur-[120px]" />
           <div className="absolute bottom-[10%] left-[10%] w-72 h-72 bg-zinc-50 rounded-full blur-[100px]" />
@@ -108,9 +106,10 @@ export default function Home() {
             {translator("main.sub_title")}
           </p>
 
-          {/* Agent Search Section */}
           <div className="max-w-3xl mx-auto mt-8">
             <div className="relative flex items-center bg-white border-2 border-slate-100 rounded-[2.5rem] focus-within:ring-8 focus-within:ring-blue-500/5 focus-within:border-blue-600 transition-all shadow-2xl shadow-slate-200/40 h-16 md:h-20">
+              
+              {/* 검색 타입 드롭다운 */}
               <div className="relative h-full shrink-0" ref={dropdownRef}>
                 <button onClick={() => setIsTypeOpen(!isTypeOpen)} className={`flex items-center gap-2 px-6 h-full font-black text-slate-700 hover:bg-slate-50 border-r-2 border-slate-100 rounded-l-[2.5rem] ${isTypeOpen ? 'bg-slate-50' : ''}`}>
                   <div className="text-blue-600">{searchType === 'firm' ? <Building2 size={20} /> : <Hash size={20} />}</div>
@@ -130,6 +129,8 @@ export default function Home() {
                   </div>
                 )}
               </div>
+              
+              {/* 🎯 분야 선택 (CPC 섹션) */}
               {searchType === 'keyword' && (
                 <div className="relative h-full shrink-0" ref={categoryRef}>
                   <button onClick={() => setIsCategoryOpen(!isCategoryOpen)} className="flex items-center gap-2 px-5 h-full font-black text-blue-600 hover:bg-blue-50 transition-all border-r-2 border-slate-100">
@@ -141,8 +142,15 @@ export default function Home() {
                     <div className="absolute top-[110%] left-0 w-[320px] bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 p-5 z-[110]">
                       <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4 px-2">검색 분야</p>
                       <div className="grid grid-cols-2 gap-2">
-                        {CPC_SECTORS.filter(s => s.id !== 'all').map((sector) => (
-                          <button key={sector.id} onClick={() => { setSearchCategory(sector.id); setIsCategoryOpen(false); }} className={`flex items-center gap-3 p-3 rounded-2xl transition-all border ${searchCategory === sector.id ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-slate-50 border-transparent text-slate-600 hover:bg-slate-100'}`}>
+                        {/* 🎯 "전체" 카테고리는 col-span-2를 사용하여 첫 번째 행을 꽉 채우도록 수정 */}
+                        {CPC_SECTORS.map((sector) => (
+                          <button 
+                            key={sector.id} 
+                            onClick={() => { setSearchCategory(sector.id); setIsCategoryOpen(false); }} 
+                            className={`flex items-center gap-3 p-3 rounded-2xl transition-all border 
+                              ${sector.id === 'all' ? 'col-span-2' : ''} 
+                              ${searchCategory === sector.id ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-slate-50 border-transparent text-slate-600 hover:bg-slate-100'}`}
+                          >
                             <div className={searchCategory === sector.id ? 'text-white' : 'text-blue-600'}>{sector.icon}</div>
                             <span className="font-bold text-xs">{sector.name}</span>
                           </button>
@@ -152,6 +160,8 @@ export default function Home() {
                   )}
                 </div>
               )}
+
+              {/* 검색 입력창 */}
               <div className="flex-1 relative h-full flex items-center">
                 <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"><Search size={20} strokeWidth={3} /></div>
                 <input

@@ -11,7 +11,7 @@ import {
     ZAxis,
     ReferenceLine,
 } from "recharts";
-import { applicantByNavigate } from "@/lib/api";
+import { applicantByNavigate, getApplicantNavigate } from "@/lib/api";
 import { Network, AlertCircle, CheckCircle2, Ship } from "lucide-react";
 
 
@@ -23,6 +23,12 @@ type ApplicantData = {
     min_distance: number; 
     max_filing_year: number; 
     application_count: number; 
+};
+
+type ApplicantApiResponse = {
+    success: boolean;
+    total_count: number;
+    data: ApplicantData[];
 };
 
 type NavigationData = {
@@ -42,6 +48,8 @@ type PatNavigationProps = {
     code: string; 
     myPatentFilingDate?: string; 
 };
+
+
 
 // --- CustomTooltip 컴포넌트 ---
 const CustomTooltip = ({ active, payload }: any) => {
@@ -92,7 +100,8 @@ export default function ApplicantNavigationChart({
         const fetchData = async () => {
             try {
                 setIsLoading(true);
-                const apiResult = await applicantByNavigate(applicationNumber, code);
+                // const apiResult = await applicantByNavigate(applicationNumber, code);
+                const apiResult = (await getApplicantNavigate(applicationNumber, code)) as ApplicantApiResponse;
                 
                 if (!apiResult || !Array.isArray(apiResult.data)) {
                     setPlotData([]);
@@ -160,16 +169,30 @@ export default function ApplicantNavigationChart({
     const minRawDistance = activeComparisonData.length > 0 
         ? Math.min(...activeComparisonData.map(d => d.raw_distance ?? Infinity))
         : 0;
-    const nearRiskThreshold = minRawDistance + 0.03;
+
+    const sorted = [...activeComparisonData].sort(
+        (a,b) => (a.raw_distance ?? 1) - (b.raw_distance ?? 1)
+    );
+
+    const riskCodes = new Set(
+        sorted.slice(0, 2).map(d => d.applicant_code)
+    );
 
     const scatterData = plotData.map((item) => {
-        const isNearRisk = !item.isMyPatent && (item.raw_distance ?? Infinity) <= nearRiskThreshold;
+        const isNearRisk = riskCodes.has(item.applicant_code);
+
         return {
             ...item,
-            color: item.isMyPatent ? "#2563eb" : (isNearRisk ? "#ef4444" : "#facc15"),
+            color: item.isMyPatent
+                ? "#2563eb"
+                : isNearRisk
+                ? "#ef4444"
+                : "#facc15",
             isNearRisk
         };
     });
+
+
 
     const riskCount = scatterData.filter(d => d.isNearRisk).length;
     const totalCount = scatterData.length;
