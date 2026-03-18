@@ -172,8 +172,9 @@ def fetch_patent_by_appnum(session: Session, app_num: str) -> Dict[str, Any]:
         "abstract": row.abstract,
         "filing_date": row.filing_date,
         "grant_date": row.grant_date,
-        "cpc_code": (row.cpc_code or "").split('|')[0][:4],
+        "cpc_code": (row.cpc_code or ""),
         "ipc_code" : row.ipc_code or "",
+        "end_status": row.end_status
     }
 
     # claim 필드가 존재하고 NULL이 아닌경우 파싱
@@ -203,8 +204,9 @@ def fetch_patent_by_regnum(session: Session, reg_num: str) -> Dict[str, Any]:
         "abstract": row.abstract,
         "filing_date": row.filing_date,
         "grant_date": row.grant_date,
-        "cpc_code": (row.cpc_code or "").split('|')[0][:4],
+        "cpc_code": (row.cpc_code or ""),
         "ipc_code" : row.ipc_code or "",
+        "end_status": row.end_status
     }
 
     # claim 필드가 존재하고 NULL이 아닌경우 파싱

@@ -4,8 +4,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 
 from app.core.db import get_session
-from ..services import patent_navigation_service
-
+from app.api.services import patent_navigation_service
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/patent", tags=["patent"])
@@ -83,16 +82,16 @@ def milvus_get_vector(
 # ─────────────────────────────────────
 
 # 구) backend : milvusgraph_API.py결과로 front : PatNavigation.js구현
-@router.get("/navigate")
-def search_app(
-    appNumber: str = Query(..., description="출원번호"),
-    code: str = Query(..., description="컬렉션 코드"),
-    db: Session = Depends(get_session)
-):
-    """특허 네비게이션 API 엔드포인트"""
-    data, error = patent_navigation_service.search_app_service(db, application_number=appNumber, index_code=code[0])
+# @router.get("/navigate")
+# def search_app(
+#     appNumber: str = Query(..., description="출원번호"),
+#     code: str = Query(..., description="컬렉션 코드"),
+#     db: Session = Depends(get_session)
+# ):
+#     """특허 네비게이션 API 엔드포인트"""
+#     data, error = patent_navigation_service.search_app_service(db, application_number=appNumber, index_code=code[0])
 
-    if error:
-        raise HTTPException(status_code=404, detail=error)
+#     if error:
+#         raise HTTPException(status_code=404, detail=error)
 
-    return JSONResponse(content=data, status_code=200)
+#     return JSONResponse(content=data, status_code=200)

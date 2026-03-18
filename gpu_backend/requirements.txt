@@ -24,6 +24,7 @@ matplotlib
 requests
 python-multipart
 
+
 # PyTorch 생태계 (CUDA 12.1용)
 torch==2.3.0+cu121
 torchvision==0.18.0+cu121
@@ -44,3 +45,7 @@ peft==0.8.2
 
 #######
 statsmodels==0.14.5
+
+
+# Neo4j(GraphDB) 다운로드
+neo4j==5.28.0

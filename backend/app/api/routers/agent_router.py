@@ -3,7 +3,8 @@ from typing import Optional, List, Dict, Any
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app.core.db import get_sync_session
-from app.api.services import agent_service
+from app.api.services import new_agent_service as agent_service
+
 from pydantic import BaseModel, Field
 
 
