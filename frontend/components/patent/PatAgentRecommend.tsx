@@ -6,7 +6,7 @@ import { UserCheck, CheckCircle2, MapPin, Building2 } from "lucide-react";
 
 interface PatentResult {
   app_number: string;
-  l2_distance: number;
+  is_mine: boolean;      // l2_distance 대신
   agent_code: string;
   name_ko: string;
   company_ko: string;
@@ -70,8 +70,11 @@ export default function AgentRecommendTable({ applicationNumber, code }: AgentNa
     );
   }
 
-  const myPatents = results.data.filter(item => item.l2_distance === 0);
-  const recommendations = results.data.filter(item => item.l2_distance !== 0);
+  // const myPatents = results.data.filter(item => item.l2_distance === 0);
+  // const recommendations = results.data.filter(item => item.l2_distance !== 0);
+
+  const myPatents = results.data.filter(item => item.is_mine);
+  const recommendations = results.data.filter(item => !item.is_mine);
 
   return (
     <div className="w-full text-left font-sans space-y-6">

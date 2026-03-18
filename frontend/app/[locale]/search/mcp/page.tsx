@@ -188,7 +188,7 @@ export default function SearchPage() {
                                         placeholder="키워드를 직접 입력하거나 수정하세요..."
                                     />
                                     <button onClick={() => handleStandardSearch(currentPage)} className="mt-4 w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2 hover:bg-black transition-all active:scale-[0.98] shadow-xl shadow-slate-200">
-                                        {standardLoading ? <div className="w-4 h-4 border-2 border-slate-300 border-t-white rounded-full animate-spin" /> : <><Search size={14} /> 키워드 검색</>}
+                                        {standardLoading ? <div className="w-4 h-4 border-2 border-slate-300 border-t-white rounded-full animate-spin" /> : <><Search size={14} /> 키워드검색</>}
                                     </button>
                                 </section>
                             </div>

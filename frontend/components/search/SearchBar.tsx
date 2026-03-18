@@ -1,13 +1,14 @@
 import { useState, FormEvent } from "react";
-import { Search, Loader2, Info, ChevronDown, Sparkles } from "lucide-react";
+import { Search, Loader2, Info, ChevronDown, Sparkles, ArrowRight } from "lucide-react";
 
 const CPC_SECTIONS = [
+  { value: "all", label: "전체"}
   { value: "a", label: "A - 생활필수품" },
-  { value: "b", label: "B - 처리/운수" },
-  { value: "c", label: "C - 화학/야금" },
-  { value: "d", label: "D - 섬유/지류" },
+  { value: "b", label: "B - 처리·운수" },
+  { value: "c", label: "C - 화학·야금" },
+  { value: "d", label: "D - 섬유·지류" },
   { value: "e", label: "E - 건설" },
-  { value: "f", label: "F - 기계/조명/난방" },
+  { value: "f", label: "F - 기계·조명" },
   { value: "g", label: "G - 물리" },
   { value: "h", label: "H - 전기" },
   { value: "y", label: "Y - 범용 신기술" },
@@ -21,7 +22,7 @@ type Props = {
 
 export function SearchBar({ loading, onSearch, searchType = "keyword" }: Props) {
   const [keyword, setKeyword] = useState("");
-  const [category, setCategory] = useState("a");
+  const [category, setCategory] = useState("all");
 
   const handleSubmit = (e: FormEvent | MouseEvent | KeyboardEvent) => {
     if (e && 'preventDefault' in e) e.preventDefault();
@@ -135,5 +136,3 @@ export function SearchBar({ loading, onSearch, searchType = "keyword" }: Props) 
   );
 }
 
-// 아이콘 미포함 시를 위한 추가 임포트 (필요 시)
-import { ArrowRight } from "lucide-react";

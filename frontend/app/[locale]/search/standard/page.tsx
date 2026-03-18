@@ -22,13 +22,14 @@ export default function SearchIndexPage() {
     };
 
     const typeOptions = [
-        { id: "keyword", label: "키워드 검색", icon: <Search size={14} /> },
+        { id: "keyword", label: "키워드검색", icon: <Search size={14} /> },
         { id: "application", label: "출원번호", icon: <Hash size={14} /> },
         { id: "registration", label: "등록번호", icon: <FileCheck size={14} /> },
     ];
 
     return (
         <div className="w-full max-w-5xl mx-auto space-y-12 py-10">
+            
             {/* 🎯 레이아웃 내에서 최적의 비율을 유지하는 검색 섹션 */}
             <div className="flex justify-center animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <div className="inline-flex bg-zinc-50 p-1.5 rounded-[1.5rem] border border-zinc-100 shadow-inner">
@@ -53,7 +54,7 @@ export default function SearchIndexPage() {
             {/* 메인 검색 카드 */}
             <div className="relative group animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200">
                 <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/5 to-indigo-600/5 rounded-[3.5rem] opacity-0 group-focus-within:opacity-100 transition-opacity blur-2xl" />
-
+                    
                 <div className="relative bg-white rounded-[3rem] shadow-2xl shadow-zinc-200/60 border border-zinc-100 p-4 md:p-6 transition-all duration-500 group-focus-within:border-blue-200">
                     <SearchBar
                         loading={false}

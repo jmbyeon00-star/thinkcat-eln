@@ -32,10 +32,16 @@ export default withAuth(
       pathname === "/favicon.ico";
 
     // 로그인이 필요한 리퀘스트인데 토큰이 없는 경우
+    // 로그인이 필요한 리퀘스트인데 토큰이 없는 경우
     if (!isPublicPath && !token) {
       // 현재 적용된 로케일을 찾음 (URL의 첫 번째 세그먼트)
       const segments = pathname.split('/');
-      const locale = locales.includes(segments[1]) ? segments[1] : 'ko';
+      const currentSegment = segments[1];
+      
+      // [최종 해결] currentSegment를 먼저 any로 취급하여 includes 검사를 통과시킵니다.
+      const locale = locales.includes(currentSegment as any) 
+        ? (currentSegment as any) 
+        : 'ko';
 
       const signInUrl = new URL(`/${locale}/auth/signin`, req.nextUrl.origin);
       signInUrl.searchParams.set("callbackUrl", pathname);
