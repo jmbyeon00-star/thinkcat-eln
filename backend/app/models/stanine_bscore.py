@@ -13,6 +13,7 @@ class StanineBscore(Base):
     age: Mapped[int | None] = mapped_column(Integer, default=0)
     em_cnt: Mapped[int | None] = mapped_column(Integer)
     cr_grd: Mapped[int | None] = mapped_column(Integer, default=0)
+    real_cr_grd: Mapped[str | None] = mapped_column(String(20), nullable=True)  # 신용등급 raw값
 
     _2022out: Mapped[int | None] = mapped_column("2022out", Integer, default=0)
     _2021out: Mapped[int | None] = mapped_column("2021out", Integer, default=0)

@@ -5,7 +5,10 @@ from sqlalchemy.orm import Session
 from app.core.db import get_sync_session
 from app.api.services import patent_price_service, patent_citation_service, patent_navigation_service, patent_npecheck_service
 from app.api.services import applicant_navigation_service
-from app.schemas.patent_schema import PatentPriceRequest, PatentPriceResponse
+from app.schemas.patent_schema import PatentPriceRequest, PatentPriceResponse, NewPatentPriceResponse
+
+# 테스트
+from app.api.services import new_patent_price_service
 
 router = APIRouter(prefix="/patent", tags=["patent"])
 
@@ -133,5 +136,15 @@ def search_similar_companies(
     
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+
+@router.post("/new-price", response_model=NewPatentPriceResponse)
+def patent_price(req: PatentPriceRequest, session: Session = Depends(get_sync_session)):
+    try:
+        result = new_patent_price_service.eval_patent_price(session, req.app_number)
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

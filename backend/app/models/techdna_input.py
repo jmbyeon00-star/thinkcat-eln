@@ -18,14 +18,21 @@ class TechdnaIpforce(Base):
     after_regi_year: Mapped[int | None] = mapped_column(Integer, default=0)
     f_cit_cnt: Mapped[int | None] = mapped_column(Integer, default=0)
 
+    # raw 피처 컬럼 추가
+    family_country_count: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 해외 패밀리 수
+    division_app: Mapped[int | None] = mapped_column(Integer, nullable=True)          # 분할출원 여부
+    early_disclosure: Mapped[int | None] = mapped_column(Integer, nullable=True)      # 조기공개 여부
+    image_cnt: Mapped[int | None] = mapped_column(Integer, nullable=True)             # 도면 수
+    inventor_cnt: Mapped[int | None] = mapped_column(Integer, nullable=True)          # 발명자수
+
     # 마지막 수정일
     last_modified_date: Mapped[datetime | None] = mapped_column(
         DateTime,
-        default=func.now(),  # 레코드 생성 시 자동 입력
-        onupdate=func.now(),  # 레코드 갱신 시 자동 갱신
+        default=func.now(),
+        onupdate=func.now(),
         nullable=True
     )
-    price : Mapped[int | None] = mapped_column(Integer, default=0)
+    price: Mapped[int | None] = mapped_column(Integer, default=0)
 
     def __repr__(self) -> str:
         return f"<TECHDNA_INPUT app={self.application_number}>"

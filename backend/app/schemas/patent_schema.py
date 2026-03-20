@@ -14,6 +14,23 @@ class PatentPriceResponse(BaseModel):
     predicted_price: int
     real_price: str
 
+
+class NewPatentPriceResponse(BaseModel):
+    application_number: int
+    tech: float
+    tech_feature_data: Optional[dict] = {}
+    legal: float
+    legal_feature_data: Optional[dict] = {}
+    market: float
+    market_feature_data: Optional[dict] = {}
+    economy: float
+    economy_feature_data: Optional[dict] = {}
+    strategy: float
+    strategy_feature_data: Optional[dict] = {}
+    predicted_price: int
+    real_price: str
+
+
 # ==============================================================
 # 📘 StanineTechdna Schema
 # ==============================================================
