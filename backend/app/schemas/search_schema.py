@@ -47,6 +47,7 @@ class PatentSearchRequest(BaseModel):
 
 
 class KeywordSearchRequest(BaseModel):
+    category: str = Field(..., description="검색 카테고리 (a~h, y 또는 1~9)")
     keyword: str = Field(..., description="검색어")
     page: int = Field(1, ge=1, description="페이지 번호")
     size: int = Field(10, ge=1, le=100, description="검색 결과 길이")

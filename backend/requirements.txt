@@ -1,22 +1,35 @@
+# Task Scheduling
+apscheduler==3.10.4
+
+# Web Scraping
+lxml==5.1.0
+
+# Utilities
+# pydantic==2.5.3
+
 fastapi==0.112.2
 uvicorn[standard]==0.30.6
 email-validator>=2.1.0.post1
-FlagEmbedding>=1.2.10
-elasticsearch==7.17.9
-milvus
+beautifulsoup4==4.13.3
+pymilvus==2.5.4
+umap-learn
 pydantic[email]
 pydantic-settings
+openpyxl
 sqlalchemy
 pymysql
 passlib
-pandas
 python-dotenv
 httpx
 python-jose[cryptography]
 requests
 python-multipart
 pydantic_settings
+aiomysql
 
-
-#####
-statsmodels==0.14.5
+# 🚀 [핵심] statsmodels와 scipy의 호환성 고정
+numpy<2.0.0
+pandas<2.2.0
+scipy<1.14.0      # 1.14.0 이상에서 _lazywhere 관련 ImportError 발생
+statsmodels==0.14.4
+patsy>=0.5.6

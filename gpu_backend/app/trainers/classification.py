@@ -28,7 +28,7 @@ class SklearnTextClassifierTrainer(BaseTrainer):
     def __init__(self, params: Optional[Dict] = None):
         super().__init__(params)
         self.pipeline: Optional[Pipeline] = None
-        self.backend_url: str = self.params.get("BACKEND_URL") or os.getenv("BACKEND_URL", "http://backend:8000")
+        self.backend_url: str = self.params.get("BACKEND_URL") or os.getenv("BACKEND_URL", "http://backend:8008")
         self.model_id: Optional[int] = self.params.get("model_id")
 
         # 하이퍼파라미터 기본값
@@ -57,7 +57,7 @@ class SklearnTextClassifierTrainer(BaseTrainer):
             return
         try:
             httpx.post(
-                f"{self.backend_url}/api/progress/{self.model_id}",
+                f"{self.backend_url}/api/status/progress/{self.model_id}",
                 json={"progress": int(value)},
                 timeout=3.0
             )

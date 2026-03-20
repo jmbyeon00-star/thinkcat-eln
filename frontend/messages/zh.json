@@ -1,0 +1,213 @@
+{
+    "language": {
+        "zh": "简体中文",
+        "en": "英语(English)",
+        "ko": "韩语(한국어)",
+        "ja": "日语(日本語)"
+    },
+    "header": {
+        "about": "服务",
+        "notice": "通知",
+        "announcement": "R&D公告",
+        "search": "专利查询",
+        "marketplace": "专利代理商",
+        "login": "登录",
+        "get_started": "开始使用",
+        "mypage": "个人中心",
+        "logout": "退出登录",
+        "account_settings": "账号设置",
+        "select_language": "选择语言"
+    },
+    "common": {
+        "search": {
+            "menu": "查询",
+            "result_title": "查询结果",
+            "applicant": "申请人",
+            "inventor": "发明人",
+            "application_date": "申请日",
+            "abstract": "摘要",
+            "application_number": "申请号",
+            "registration_number": "注册号",
+            "detail_page": "详细页面",
+            "hide_from_search_results": "隐藏搜索结果"
+        },
+        "loading": "加载中...",
+        "year": "年",
+        "cpc_sections": {
+            "all": "全部",
+            "A": "生活必需品",
+            "B": "作业/运输",
+            "C": "化学/冶金",
+            "D": "纺织/造纸",
+            "E": "固定建筑物",
+            "F": "机械工程/照明",
+            "G": "物理",
+            "H": "电学",
+            "Y": "通用新技术",
+            "정보없음": "无信息"
+        }
+    },
+    "main": {
+        "sub_title": "查找各专业领域的最佳合作伙伴。",
+        "selects": {
+            "office": "事务所",
+            "patent": "基于专利",
+            "options": {
+                "office": "事务所查询",
+                "patent": "专利查询"
+            }
+        },
+        "placeholder": {
+            "office": "输入事务所名称或代理人后按Enter键",
+            "keyword": "输入技术关键词（如：抗癌剂）后按Enter键"
+        }
+    },
+    "agent": {
+        "marketplace": {
+            "title": {
+                "1": "按专业领域",
+                "2": "查找最佳合作伙伴",
+                "3": " ",
+                "4": " "
+            },
+            "sub_title": "汇总显示1,600多家专利事务所的业绩数据。",
+            "rank": {
+                "1": "综合推荐排名",
+                "2": "分板块推荐事务所"
+            },
+            "info": {
+                "location": "优先显示周边事务所"
+            },
+            "search": {
+                "result_title": "查询结果",
+                "result_subtitle": "",
+                "track_record": "业绩",
+                "track_record_number": "件",
+                "detail_view": "查看详情"
+            }
+        },
+        "detail": {
+            "total_record_count": "累计代理件数",
+            "partners": "构成专利代理师",
+            "tech_distribution": "技术领域占比",
+            "annual_filing_trends": "逐年申请情况",
+            "cpc_section_names": {
+                "A": "生活必需品",
+                "B": "作业/运输",
+                "C": "化学/冶金",
+                "D": "纺织/造纸",
+                "E": "固定建筑物",
+                "F": "机械工程/照明/加热/武器",
+                "G": "物理",
+                "H": "电学",
+                "정보없음": "无信息"
+            },
+            "back_to_list": "返回列表",
+            "active_firm_badge": "最近申请量超过10件的事务所",
+            "phone_not_registered": "电话未登记",
+            "fax_not_registered": "传真未登记",
+            "cases": "{count} 件",
+            "members_count": "{count} 名",
+            "status_summary": "状态摘要",
+            "no_data_title": "缺少详细分析数据",
+            "no_data_desc": "数据库中没有匹配的专利数据",
+            "basic_info_provided": "提供基本信息",
+            "waiting_for_analysis": "等待分析",
+            "member_attorneys": "所属专利代理商",
+            "total_members": "共 {count}名",
+            "attorney_name": "姓名",
+            "view_details": "查看详情",
+            "detail_info": "详细信息",
+            "loading_analysis": "正在加载分析数据...",
+            "data_load_error": "数据加载错误",
+            "default_error_message": "加载信息时出现问题。",
+            "refresh": "刷新"
+        }
+    },
+    "search": {
+        "placeholder": "请输入查询词",
+        "title": "专利查询",
+        "result": {
+            "application_number": "申请号",
+            "registration_number": "注册号",
+            "status": "状态",
+            "published": "公开",
+            "registered": "注册",
+            "rejected": "驳回",
+            "pending": "出愿",
+            "abandoned": "放弃",
+            "withdrawn": "撤回",
+            "expired": "过期"
+        },
+        "ai": {
+            "title": "您在寻找",
+            "title2": "什么样的专利？",
+            "sub_title": "人工智能完美理解您的查询意图。",
+            "guide": "尝试这样提问",
+            "tab": {
+                "aiSearch": "AI查询",
+                "standardSearch": "普通查询"
+            },
+            "placeholder": {
+                "fixedChatBar": {
+                    "aiSearch": "请输入查询意图（例：2020年以后三星电子的自动驾驶专利）。",
+                    "standardSearch": "请输入普通查询词。"
+                }
+            },
+            "fixedChatBar": {
+                "basket": "产出物",
+                "trash": "回收站",
+                "history": "查询历史",
+                "tools": "工具",
+                "search_method": {
+                    "centroid": "均衡查询",
+                    "weighted": "查询词优先",
+                    "script_score": "专利优先"
+                },
+                "description": {
+                    "centroidShortDesc": "6:4 比例",
+                    "weightedShortDesc": "8:2 比例",
+                    "script_scoreShortDesc": "4:6 比例",
+                    "centroidDesc": "均衡反映查询词和所选专利",
+                    "weightedDesc": "更侧重反映查询意图",
+                    "script_scoreDesc": "侧重于与所选专利相似的结果"
+                }
+            }
+        },
+        "standard": {
+            "tabs": {
+                "keyword": "关键词查询",
+                "application": "申请号",
+                "registration": "注册号"
+            },
+            "status": {
+                "registered": "已注册",
+                "filed": "已申请"
+            },
+            "placeholder": {
+                "keyword": "请输入专利核心关键词...",
+                "application": "请输入13位申请号 (例: 1020140054109)",
+                "registration": "请输入13位注册号 (例: 1013900690000)"
+            },
+            "helper": {
+                "keyword": "结合CPC分类和关键词推论最相似的技术背景。",
+                "application": "开始基于申请号的精确查询。",
+                "registration": "通过确定的注册号查询知识资产。",
+                "category_keyword": "Category & Keyword Search",
+                "reference_number": "Reference Number"
+            },
+            "button": {
+                "searching": "分析中",
+                "search": "查询"
+            }
+        }
+    },
+    "home": {
+        "title": "ThinkCat ELN",
+        "description": "这是测试环境。"
+    },
+    "NotFound": {
+        "title": "找不到页面。",
+        "goHome": "返回首页"
+    }
+}

@@ -1,0 +1,95 @@
+/* components/Header.module.css */
+.header {
+  background: #fff;
+  border-bottom: 1px solid #eaeaea;
+  padding: 0.5rem 2rem;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  .logo img {
+    height: 48px;
+  }
+
+  .nav {
+    display: flex;
+    gap: 2rem;
+  }
+
+  .nav a {
+    text-decoration: none;
+    color: #333;
+    font-weight: 500;
+  }
+
+  .nav a:hover {
+    color: #0070f3;
+  }
+
+  .link {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    margin-left: 1rem;
+    text-decoration: underline;
+  }
+
+
+  .authGroup {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 10px;
+    font-weight: 800;
+    font-size: 14px;
+    text-decoration: none;
+    line-height: 1;
+    transition: transform .02s, background-color .15s, color .15s, box-shadow .15s, border-color .15s;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .ctaOutline {
+    border: 1.5px solid #1e5aa8;
+    color: #1e5aa8;
+    background: #fff;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, .02);
+  }
+
+  .ctaOutline:hover {
+    background: #f3f7fd;
+    box-shadow: 0 2px 8px rgba(30, 90, 168, .10);
+  }
+
+  .ctaPrimary {
+    border: 1.5px solid #1e5aa8;
+    background: #1e5aa8;
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(30, 90, 168, .20);
+  }
+
+  .ctaPrimary:hover {
+    background: #17427e;
+    border-color: #17427e;
+    box-shadow: 0 4px 14px rgba(23, 66, 126, .25);
+  }
+
+  .cta:active {
+    transform: translateY(1px);
+  }

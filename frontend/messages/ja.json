@@ -1,0 +1,203 @@
+{
+    "language": {
+        "ja": "日本語",
+        "en": "英語(English)",
+        "ko": "韓国語(한국어)",
+        "zh": "中国語(中文简体)"
+    },
+    "header": {
+        "about": "サービス",
+        "notice": "お知らせ",
+        "announcement": "R&D公告",
+        "search": "特許検索",
+        "marketplace": "弁理士",
+        "login": "ログイン",
+        "get_started": "今すぐ始める",
+        "mypage": "マイページ",
+        "logout": "ログアウト",
+        "account_settings": "アカウント設定",
+        "select_language": "言語選択"
+    },
+    "common": {
+        "search": {
+            "menu": "検索",
+            "result_title": "検索結果",
+            "applicant": "申請人",
+            "inventor": "発明人",
+            "application_date": "申請日",
+            "abstract": "要約",
+            "application_number": "申請番号",
+            "registration_number": "特許番号",
+            "detail_page": "詳細ページ",
+            "hide_from_search_results": "検索結果から非表示"
+        },
+        "loading": "読み込み中...",
+        "year": "年",
+        "cpc_sections": {
+            "all": "全体",
+            "A": "生活必需品",
+            "B": "処理操作/運輸",
+            "C": "化学/冶金",
+            "D": "繊維/紙",
+            "E": "固定構造物",
+            "F": "機械工学/照明/加熱/武器",
+            "G": "物理学",
+            "H": "電気",
+            "Y": "通用技術",
+            "Z": "その他",
+            "정보없음": "情報なし"
+        }
+    },
+    "main": {
+        "sub_title": "専門分野別の最適なパートナーを確認してください。",
+        "selects": {
+            "office": "事務所",
+            "patent": "特許ベース",
+            "options": {
+                "office": "事務所検索",
+                "patent": "特許検索"
+            }
+        },
+        "placeholder": {
+            "office": "事務所名または弁理士を入力してEnter",
+            "keyword": "技術キーワード（例：抗がん剤）を入力してEnter"
+        }
+    },
+    "agent": {
+        "marketplace": {
+            "title": {
+                "1": "専門分野別",
+                "2": "最適なパートナー",
+                "3": "を",
+                "4": "確認してください"
+            },
+            "sub_title": "1,600以上の特許事務所の実績データを集計して表示します。",
+            "rank": {
+                "1": "総合推薦ランキング",
+                "2": "セクション別推薦事務所"
+            },
+            "info": {
+                "location": "周辺の事務所を優先的に表示中"
+            },
+            "search": {
+                "result_title": "検索結果",
+                "result_subtitle": "",
+                "track_record": "実績",
+                "track_record_number": "件",
+                "detail_view": "詳細を見る"
+            }
+        },
+        "detail": {
+            "total_record_count": "累計代理件数",
+            "partners": "構成弁理士",
+            "tech_distribution": "技術分野別比率",
+            "annual_filing_trends": "年次別出願状況",
+            "back_to_list": "リストに戻る",
+            "active_firm_badge": "直近の出願件数が10件以上の事務所",
+            "phone_not_registered": "電話番号未登録",
+            "fax_not_registered": "FAX未登録",
+            "cases": "{count} 件",
+            "members_count": "{count} 名",
+            "status_summary": "ステータス概要",
+            "no_data_title": "詳細分析データなし",
+            "no_data_desc": "データベースに一致する特許データがありません",
+            "basic_info_provided": "基本情報提供",
+            "waiting_for_analysis": "分析待機中",
+            "member_attorneys": "所属弁理士",
+            "total_members": "計 {count}名",
+            "attorney_name": "氏名",
+            "view_details": "詳細を見る",
+            "detail_info": "詳細情報",
+            "loading_analysis": "分析データを読み込んでいます...",
+            "data_load_error": "データ読み込みエラー",
+            "default_error_message": "情報の読み込み中に問題が発生しました。",
+            "refresh": "更新"
+        }
+    },
+    "search": {
+        "placeholder": "検索語を入力してください",
+        "title": "特許検索",
+        "result": {
+            "application_number": "出願番号",
+            "registration_number": "登録番号",
+            "status": "状態",
+            "published": "公開",
+            "registered": "登録",
+            "rejected": "拒絶",
+            "pending": "出願",
+            "abandoned": "放棄",
+            "withdrawn": "取下",
+            "expired": "消滅"
+        },
+        "ai": {
+            "title": "どのような特許を",
+            "title2": "お探しですか？",
+            "sub_title": "AIがあなたの検索意図を完璧に理解します。",
+            "guide": "このように質問してみてください",
+            "tab": {
+                "aiSearch": "AI検索",
+                "standardSearch": "一般検索"
+            },
+            "placeholder": {
+                "fixedChatBar": {
+                    "aiSearch": "特許の意図を入力してください（例：2020年以降のサムスン電子の自動運転特許）。",
+                    "standardSearch": "一般検索語を入力してください。"
+                }
+            },
+            "fixedChatBar": {
+                "basket": "アーティファクト",
+                "trash": "ゴミ箱",
+                "history": "検索履歴",
+                "tools": "ツール",
+                "search_method": {
+                    "centroid": "バランス検索",
+                    "weighted": "検索語優先",
+                    "script_score": "特許優先"
+                },
+                "description": {
+                    "centroidShortDesc": "6:4比率",
+                    "weightedShortDesc": "8:2比率",
+                    "script_scoreShortDesc": "4:6比率",
+                    "centroidDesc": "検索語と選択した特許をバランスよく反映",
+                    "weightedDesc": "検索語の意図をより重視して反映",
+                    "script_scoreDesc": "選択した特許と類似した結果を重視"
+                }
+            }
+        },
+        "standard": {
+            "tabs": {
+                "keyword": "キーワード検索",
+                "application": "出願番号",
+                "registration": "登録番号"
+            },
+            "status": {
+                "registered": "登録",
+                "filed": "出願"
+            },
+            "placeholder": {
+                "keyword": "特許のキーワードを入力してください...",
+                "application": "出願番号13桁を入力してください (例: 1020140054109)",
+                "registration": "登録番号13桁を入力してください (例: 1013900690000)"
+            },
+            "helper": {
+                "keyword": "CPC分類とキーワードの組み合わせから、最も類似した技術文脈を推論します。",
+                "application": "出願番号に基づいた精密な検索を開始します。",
+                "registration": "確定した登録番号を通じて知的資産を照会します。",
+                "category_keyword": "Category & Keyword Search",
+                "reference_number": "Reference Number"
+            },
+            "button": {
+                "searching": "分析中",
+                "search": "検索"
+            }
+        }
+    },
+    "home": {
+        "title": "ThinkCat ELN",
+        "description": "テスト環境です。"
+    },
+    "NotFound": {
+        "title": "ページが見つかりません。",
+        "goHome": "ホームに戻る"
+    }
+}

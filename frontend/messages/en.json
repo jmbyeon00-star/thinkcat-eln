@@ -1,0 +1,205 @@
+{
+    "language": {
+        "en": "English",
+        "ko": "Korean(한국어)",
+        "ja": "Japanese(日本語)",
+        "zh": "Chinese(中文简体)"
+    },
+    "header": {
+        "about": "Service",
+        "notice": "Notice",
+        "announcement": "Announcement",
+        "search": "Search Patent",
+        "marketplace": "Marketplace",
+        "login": "Login",
+        "get_started": "Get Started",
+        "mypage": "My Page",
+        "logout": "Logout",
+        "account_settings": "Account Settings",
+        "select_language": "Select Language"
+    },
+    "common": {
+        "search": {
+            "menu": "Search",
+            "result_title": "Search for",
+            "applicant": "Applicant",
+            "inventor": "Inventor",
+            "application_date": "Application Date",
+            "abstract": "Abstract",
+            "application_number": "Application Number",
+            "registration_number": "Registration Number",
+            "detail_page": "Detail Page",
+            "hide_from_search_results": "Hide from search results"
+        },
+        "loading": "Loading...",
+        "year": "",
+        "cpc_sections": {
+            "all": "All",
+            "A": "Necessities",
+            "B": "Operations",
+            "C": "Chemistry",
+            "D": "Textiles",
+            "E": "Constructions",
+            "F": "Mechanical",
+            "G": "Physics",
+            "H": "Electricity",
+            "Y": "Universal New Technology",
+            "Z": "etc",
+            "정보없음": "None"
+        }
+    },
+    "main": {
+        "sub_title": "Find the ideal partner for your area of expertise.",
+        "selects": {
+            "office": "Office",
+            "patent": "Patent",
+            "options": {
+                "office": "Office Search",
+                "patent": "Patent Search"
+            }
+        },
+        "placeholder": {
+            "office": "Enter firm name or attorney and press Enter",
+            "keyword": "Enter tech keywords (e.g., Anticancer) and press Enter"
+        }
+    },
+    "agent": {
+        "marketplace": {
+            "title": {
+                "1": "Find",
+                "2": "the Perfect Partner ",
+                "3": "for",
+                "4": "Your Expertise"
+            },
+            "sub_title": "Aggregate data from over 1,600 patent firms' performance.",
+            "rank": {
+                "1": "Top Recommendations",
+                "2": "Top Firms by Section"
+            },
+            "info": {
+                "location": "area: Showing nearby firms first"
+            },
+            "search": {
+                "result_title": "Results for",
+                "result_subtitle": "",
+                "track_record": "Track Record",
+                "track_record_number": " cases",
+                "detail_view": "Detail View"
+            }
+        },
+        "detail": {
+            "total_record_count": "Total Record Count",
+            "partners": "Partners",
+            "tech_distribution": "Technology Distribution",
+            "annual_filing_trends": "Annual Filing Trends",
+            "back_to_list": "Back to list",
+            "active_firm_badge": "Firm with 10+ recent filings",
+            "phone_not_registered": "Phone not registered",
+            "fax_not_registered": "FAX not registered",
+            "cases": "{count} cases",
+            "members_count": "{count} members",
+            "status_summary": "Status Summary",
+            "no_data_title": "No analytical data available",
+            "no_data_desc": "No matching patent data exists in the database",
+            "basic_info_provided": "Basic info provided",
+            "waiting_for_analysis": "Waiting for analysis",
+            "member_attorneys": "Member Attorneys",
+            "total_members": "Total {count}",
+            "attorney_name": "Name",
+            "view_details": "View Details",
+            "detail_info": "Detail Info",
+            "loading_analysis": "Loading analytical data...",
+            "data_load_error": "Data load error",
+            "default_error_message": "There was a problem loading the information.",
+            "refresh": "Refresh"
+        }
+    },
+    "search": {
+        "placeholder": "Enter a search term",
+        "title": "Patent Search",
+        "result": {
+            "application_number": "Application Number",
+            "registration_number": "Registration Number",
+            "status": "Status",
+            "published": "Published",
+            "registered": "Registered",
+            "rejected": "Rejected",
+            "pending": "Pending",
+            "abandoned": "Abandoned",
+            "withdrawn": "Withdrawn",
+            "expired": "Expired"
+        },
+        "ai": {
+            "title": "What patent are you ",
+            "title2": "looking for?",
+            "sub_title": "AI that perfectly understands your search intent.",
+            "guide": "Try asking like this",
+            "tab": {
+                "aiSearch": "AI Search",
+                "standardSearch": "Standard Search"
+            },
+            "placeholder": {
+                "fixedChatBar": {
+                    "aiSearch": "Describe the patent or technology you're looking for...",
+                    "standardSearch": "Enter keywords, application number, or registration number...."
+                }
+            },
+            "fixedChatBar": {
+                "basket": "Artifacts",
+                "trash": "Trash",
+                "history": "Search History",
+                "tools": "Tools",
+                "search_method": {
+                    "centroid": "Balanced Search",
+                    "weighted": "Keyword Priority",
+                    "script_score": "Patent Priority"
+                },
+                "description": {
+                    "centroidShortDesc": "6:4 ratio",
+                    "weightedShortDesc": "8:2 ratio",
+                    "script_scoreShortDesc": "4:6 ratio",
+                    "centroidDesc": "Balances query and selected patents",
+                    "weightedDesc": "Prioritizes query intent",
+                    "script_scoreDesc": "Focuses on similar results to selected patents"
+                }
+            }
+        },
+        "standard": {
+            "tabs": {
+                "keyword": "Keyword Search",
+                "application": "Application No.",
+                "registration": "Registration No."
+            },
+            "status": {
+                "registered": "Registered",
+                "filed": "Filed"
+            },
+            "placeholder": {
+                "keyword": "Enter key patent keywords...",
+                "application": "Enter 13-digit application number (e.g., 1020140054109)",
+                "registration": "Enter 13-digit registration number (e.g., 1013900690000)"
+            },
+            "helper": {
+                "keyword": "Infer the most similar technical context using CPC classification and keyword combinations.",
+                "application": "Start a precise search based on the application number.",
+                "registration": "Query intellectual assets through the confirmed registration number."
+            },
+            "label": {
+                "category_keyword": "Category & Keyword Search",
+                "reference_number": "Reference Number"
+            },
+            "button": {
+                "searching": "Analyzing",
+                "search": "Search"
+            }
+        }
+    },
+    "home": {
+        "title": "ThinkCat ELN",
+        "description": "Test environment."
+    },
+    "NotFound": {
+        "title": "Page Not Found",
+        "goHome": "Go to Home"
+    }
+}

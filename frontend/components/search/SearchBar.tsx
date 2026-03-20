@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, Info, ChevronDown, Sparkles } from "lucide-react";
 
 const CPC_SECTIONS = [
   { value: "a", label: "A - 생활필수품" },
@@ -16,126 +16,124 @@ const CPC_SECTIONS = [
 type Props = {
   loading: boolean;
   onSearch: (params: { keyword: string; category: string }) => void;
+  searchType?: "keyword" | "application" | "registration";
 };
 
-export function SearchBar({ loading, onSearch }: Props) {
+export function SearchBar({ loading, onSearch, searchType = "keyword" }: Props) {
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState("a");
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e: FormEvent | MouseEvent | KeyboardEvent) => {
+    if (e && 'preventDefault' in e) e.preventDefault();
+
     if (!keyword.trim()) return;
-    onSearch({ keyword: keyword.trim(), category });
+    onSearch({
+      keyword: keyword.trim(),
+      category: searchType === "keyword" ? category : ""
+    });
+  };
+
+  const getPlaceholder = () => {
+    switch (searchType) {
+      case "application": return "출원번호 13자리를 입력하세요 (예: 1020140054109)";
+      case "registration": return "등록번호 13자리를 입력하세요 (예: 1013900690000)";
+      default: return "특허 핵심 키워드를 입력하세요...";
+    }
+  };
+
+  const getHelperText = () => {
+    switch (searchType) {
+      case "application": return "출원번호 기반의 정밀 탐색을 시작합니다.";
+      case "registration": return "확정 등록번호를 통해 지식 자산을 조회합니다.";
+      default: return "CPC 분류와 키워드 조합으로 가장 유사한 기술 문맥을 추론합니다.";
+    }
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-6">
-      <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
-          <h2 className="text-xl font-semibold text-white mb-2">
-            특허 검색
-          </h2>
-          <p className="text-blue-100 text-sm">
-            CPC 분류와 키워드로 특허를 검색하세요
-          </p>
-        </div>
+    <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
-        {/* Content */}
-        <div className="p-8 space-y-6">
-          {/* Category Selector */}
-          <div>
-            <label className="block text-sm font-semibold text-zinc-700 mb-3 flex items-center gap-2">
-              <div className="w-1 h-4 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
-              CPC 분류 선택
+      <div className="space-y-6">
+        {/* 1. Category Selector - 키워드 검색일 때만 상단에 세련되게 노출 */}
+        {searchType === "keyword" && (
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
+              <Sparkles size={12} className="text-blue-600" /> Technology Category
             </label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-5 py-3.5 bg-white border-2 border-zinc-200 rounded-xl text-zinc-900 font-medium 
-                focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100
-                transition-all duration-200 cursor-pointer hover:border-blue-400
-                shadow-sm hover:shadow-md"
-            >
-              {CPC_SECTIONS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
+            <div className="relative group">
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full appearance-none px-6 py-4 bg-zinc-50 border border-zinc-100 rounded-2xl text-zinc-900 font-bold focus:bg-white focus:ring-4 focus:ring-blue-50 outline-none transition-all cursor-pointer shadow-inner"
+              >
+                {CPC_SECTIONS.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none group-hover:text-zinc-900 transition-colors" size={18} />
+            </div>
           </div>
+        )}
 
-          {/* Search Input */}
-          <div>
-            <label className="block text-sm font-semibold text-zinc-700 mb-3 flex items-center gap-2">
-              <div className="w-1 h-4 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full" />
-              검색어 입력
-            </label>
-            <div className="flex items-stretch shadow-lg hover:shadow-xl transition-shadow duration-200 rounded-xl overflow-hidden">
-              <div className="relative flex-1">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none">
-                  <Search size={20} />
-                </div>
+        {/* 2. Main Search Input Group */}
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">
+            <Search size={12} className="text-blue-600" />
+            {searchType === "keyword" ? "Keyword Search" : "Reference Number"}
+          </label>
+
+          <div className="flex flex-col md:flex-row items-stretch gap-3">
+            <div className="relative flex-1 group">
+              {/* 입력 필드 포커스 시 배경 글로우 */}
+              <div className="absolute -inset-1 bg-blue-600/5 rounded-2xl opacity-0 group-focus-within:opacity-100 transition-opacity blur-lg" />
+
+              <div className="relative">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-300 group-focus-within:text-blue-600 transition-colors" size={22} />
                 <input
                   type="text"
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit(e)}
-                  placeholder="특허 검색어를 입력하세요..."
+                  placeholder={getPlaceholder()}
                   disabled={loading}
-                  className="w-full pl-12 pr-4 py-4 bg-white border-2 border-zinc-200 
-                    focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100
-                    text-zinc-900 placeholder-zinc-400 
-                    transition-all duration-200
-                    disabled:bg-zinc-50 disabled:cursor-not-allowed
-                    rounded-l-xl border-r-0"
+                  className="w-full pl-16 pr-6 py-5 bg-zinc-50 border-none rounded-[1.5rem] focus:bg-white focus:ring-4 focus:ring-blue-50 outline-none transition-all text-lg font-black text-zinc-900 placeholder:text-zinc-200 shadow-inner"
                 />
               </div>
-              <button
-                onClick={handleSubmit}
-                disabled={loading || !keyword.trim()}
-                className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 
-                  text-white font-bold text-base
-                  hover:from-blue-700 hover:to-indigo-700
-                  disabled:from-zinc-300 disabled:to-zinc-400 disabled:cursor-not-allowed
-                  transition-all duration-200
-                  flex items-center justify-center gap-2 min-w-[120px]
-                  rounded-r-xl"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 size={20} className="animate-spin" />
-                    <span>검색중</span>
-                  </>
-                ) : (
-                  <>
-                    <Search size={20} />
-                    <span>검색</span>
-                  </>
-                )}
-              </button>
             </div>
-          </div>
 
-          {/* Helper Text */}
-          <div className="flex items-start gap-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-4">
-            <div className="text-blue-600 mt-0.5">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
-              </svg>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm text-blue-900 font-semibold mb-1">
-                검색 팁
-              </p>
-              <p className="text-xs text-blue-800 leading-relaxed">
-                CPC 분류를 선택하고 관련 키워드를 입력하면 더 정확한 검색 결과를 얻을 수 있습니다. 
-                여러 단어를 입력하면 OR 검색으로 처리됩니다.
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading || !keyword.trim()}
+              className="px-10 py-5 bg-zinc-900 text-white font-black text-lg rounded-[1.5rem] shadow-xl hover:bg-black disabled:bg-zinc-100 disabled:text-zinc-300 disabled:shadow-none transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 min-w-[160px] group"
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={24} className="animate-spin text-zinc-500" />
+                  <span className="tracking-tighter">분석 중</span>
+                </>
+              ) : (
+                <>
+                  <span className="tracking-tighter font-black">검색</span>
+                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
+            </button>
           </div>
         </div>
+      </div>
+
+      {/* 3. Bottom Info Bar */}
+      <div className="flex items-center gap-4 p-5 bg-blue-50/50 rounded-2xl border border-blue-100/50 transition-colors hover:bg-blue-50">
+        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-blue-600 shadow-sm shrink-0">
+          <Info size={16} />
+        </div>
+        <p className="text-xs font-bold text-blue-700/80 leading-relaxed">
+          {getHelperText()}
+        </p>
       </div>
     </div>
   );
 }
+
+// 아이콘 미포함 시를 위한 추가 임포트 (필요 시)
+import { ArrowRight } from "lucide-react";

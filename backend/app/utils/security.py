@@ -2,15 +2,13 @@ from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from typing import Optional
-
 import os, secrets, string
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
 # -------------------------
-# Password Hashing
+# Password Hashing (✅ 유지: ImportError 방지)
 # -------------------------
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -20,9 +18,8 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-
 # -------------------------
-# Verification Code
+# Verification Code (✅ 유지)
 # -------------------------
 DEFAULT_ALPHABET = string.ascii_uppercase + string.digits
 AMBIGUOUS = "O0I1L"
@@ -40,10 +37,9 @@ def generate_code(length: int = 6) -> str:
 # -------------------------
 # JWT Config
 # -------------------------
-SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key")
+SECRET_KEY = os.getenv("SECRET_KEY", "ipforce_secret")
 ALGORITHM = "HS256"
-# ACCESS_TOKEN_EXPIRE_MINUTES = 30 # 30분
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7일 (일주일)
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7일
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
@@ -51,69 +47,96 @@ class TokenData(BaseModel):
     user_id: Optional[int] = None
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """
+    data에는 보통 {"sub": "<user_id>"} 형태가 들어옴
+    """
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 # -------------------------
-# Current User
+# Helpers
 # -------------------------
-def get_current_user(token: str = Depends(oauth2_scheme)) -> TokenData:
-    """FastAPI Depends 방식"""
-    credentials_exception = HTTPException(
+def _credentials_exception(detail: str):
+    return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail=detail,  # ✅ TOKEN_EXPIRED / INVALID_TOKEN / NOT_AUTHENTICATED
         headers={"WWW-Authenticate": "Bearer"},
     )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
-        if user_id is None:
-            raise credentials_exception
-        return TokenData(user_id=int(user_id))
-    except JWTError:
-        raise credentials_exception
-
-def get_jwt_identity(request: Request) -> Optional[int]:
-    """Flask의 get_jwt_identity()와 유사하게 동작"""
-    auth: str = request.headers.get("Authorization")
-    if not auth or not auth.startswith("Bearer "):
-        return None
-    token = auth.split(" ")[1]
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return int(payload.get("sub")) if payload.get("sub") else None
-    except JWTError:
-        return None
 
 def _get_token_from_request(request: Request) -> Optional[str]:
-    # 1) Authorization 헤더 우선
     auth: str = request.headers.get("Authorization") or request.headers.get("authorization")
-    if auth:
-        # print("[DEBUG] found Authorization header:", auth[:30], "...")
-        if auth.startswith("Bearer "):
-            return auth.split(" ", 1)[1]
-    
-    # 2) 쿠키에서 찾기
-    cookie_token = request.cookies.get("access_token")
-    if cookie_token:
-        # print("[DEBUG] found access_token cookie:", cookie_token[:30], "...")
-        return cookie_token
-    print("[DEBUG] no token found in header or cookie")
+    if auth and auth.startswith("Bearer "):
+        token = auth.split(" ", 1)[1]
+        # 필요 시 디버그
+        # print(f"[DEBUG] Extracted token: {token[:30]}...")
+        return token
     return None
 
-def get_current_user_from_request(request: Request):
-    token = _get_token_from_request(request)
-    if token is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Not authenticated",
-                            headers={"WWW-Authenticate": "Bearer"})
+# -------------------------
+# Current User (Depends 방식)
+# -------------------------
+def get_current_user(token: str = Depends(oauth2_scheme)) -> TokenData:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
-        if user_id is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-        return int(user_id)
+        if not user_id:
+            raise _credentials_exception("INVALID_TOKEN")
+        return TokenData(user_id=int(user_id))
+    except jwt.ExpiredSignatureError:
+        raise _credentials_exception("TOKEN_EXPIRED")
     except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
+        raise _credentials_exception("INVALID_TOKEN")
+
+def get_current_user_id(token_data: TokenData = Depends(get_current_user)) -> int:
+    return token_data.user_id
+
+# -------------------------
+# Flask get_jwt_identity 유사
+# -------------------------
+def get_jwt_identity(request: Request) -> Optional[int]:
+    token = _get_token_from_request(request)
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        sub = payload.get("sub")
+        return int(sub) if sub else None
+    except jwt.ExpiredSignatureError:
+        return None
+    except JWTError:
+        return None
+
+# -------------------------
+# Request에서 직접 유저 꺼내기
+# -------------------------
+def get_current_user_from_request(request: Request) -> int:
+    token = _get_token_from_request(request)
+    if token is None:
+        raise _credentials_exception("NOT_AUTHENTICATED")
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        user_id = payload.get("sub")
+        exp = payload.get("exp")
+
+        if exp:
+            exp_time = datetime.fromtimestamp(exp, tz=timezone.utc)
+            now = datetime.now(timezone.utc)
+            print(f"[DEBUG] Token expires at: {exp_time.isoformat()}")
+            print(f"[DEBUG] Current time: {now.isoformat()}")
+            print(f"[DEBUG] Time remaining: {exp_time - now}")
+
+        if not user_id:
+            raise _credentials_exception("INVALID_TOKEN")
+
+        return int(user_id)
+
+    except jwt.ExpiredSignatureError:
+        print("[DEBUG] Token has expired")
+        raise _credentials_exception("TOKEN_EXPIRED")
+    except JWTError as e:
+        print(f"[DEBUG] JWT Error: {str(e)}")
+        raise _credentials_exception("INVALID_TOKEN")
