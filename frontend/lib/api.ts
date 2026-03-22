@@ -91,7 +91,7 @@ export async function searchPagination({
 export async function getPatentPrice(appNumber: string) {
   const requestBody = { app_number: appNumber };
 
-  const res = await fetch(`${API_BASE}/api/patent/price`, {
+  const res = await fetch(`${API_BASE}/api/patent/new-price`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(requestBody),
