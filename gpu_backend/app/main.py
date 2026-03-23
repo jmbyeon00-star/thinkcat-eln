@@ -57,7 +57,7 @@ app = FastAPI(title="ipforce_next API", version="0.1.0", lifespan=lifespan)
 origins = [
     "http://localhost:3000",
     "http://frontend:3000",
-    "http://192.168.1.149:3000",
+    "http://192.168.1.20:3000",
     "http://175.118.126.24",
 ]
 
