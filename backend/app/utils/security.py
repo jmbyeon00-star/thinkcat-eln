@@ -6,6 +6,8 @@ import os, secrets, string
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from pydantic import BaseModel
+import base64
+from app.core.config import settings
 
 # -------------------------
 # Password Hashing (✅ 유지: ImportError 방지)
@@ -37,7 +39,7 @@ def generate_code(length: int = 6) -> str:
 # -------------------------
 # JWT Config
 # -------------------------
-SECRET_KEY = os.getenv("SECRET_KEY", "ipforce_secret")
+SECRET_KEY = os.getenv("SECRET_KEY", "thinkcateln_secret")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7일
 
@@ -74,6 +76,52 @@ def _get_token_from_request(request: Request) -> Optional[str]:
         return token
     return None
 
+
+# -------------------------
+# 통합 로그인(AuthServer, thinkcat.kr) JWT 검증
+# -------------------------
+def _verify_authserver_token(token: str) -> dict:
+    """AuthServer 발급 access_token(JWT)을 HS256 공유 시크릿으로 검증(서명·iss·aud·exp)."""
+    secret = base64.b64decode(settings.AUTH_JWT_SECRET)
+    claims = jwt.decode(
+        token,
+        secret,
+        algorithms=["HS256"],
+        issuer=settings.AUTH_JWT_ISSUER,
+        audience=settings.AUTH_JWT_AUDIENCE,
+    )
+    # refresh 토큰을 access 슬롯에 끼워넣는 시도 차단
+    if claims.get("tokenType") != "ACCESS":
+        raise JWTError("not an access token")
+    return claims
+
+
+def _resolve_user_from_cookie(request: Request) -> Optional[int]:
+    """
+    통합 로그인 쿠키(access_token)가 있으면 검증 후 eln user_id 반환.
+    - 시크릿 미설정 또는 쿠키 없음 → None (자체 토큰 방식으로 폴백)
+    - 쿠키는 있으나 검증 실패 → JWTError 전파(상위에서 401 처리)
+    """
+    if not settings.AUTH_JWT_SECRET:
+        return None
+    cookie = request.cookies.get(settings.AUTH_COOKIE_NAME)
+    if not cookie:
+        return None
+    claims = _verify_authserver_token(cookie)
+    email = claims.get("email")
+    if not email:
+        raise _credentials_exception("NO_EMAIL_IN_TOKEN")
+    # 지연 import (crud.user ↔ security 순환 방지)
+    from app.crud.user import get_or_create_user_by_email
+    from app.core.db import SyncSessionLocal
+    db = SyncSessionLocal()
+    try:
+        user = get_or_create_user_by_email(db, email, claims.get("personName"))
+        return user.id
+    finally:
+        db.close()
+
+
 # -------------------------
 # Current User (Depends 방식)
 # -------------------------
@@ -96,6 +144,14 @@ def get_current_user_id(token_data: TokenData = Depends(get_current_user)) -> in
 # Flask get_jwt_identity 유사
 # -------------------------
 def get_jwt_identity(request: Request) -> Optional[int]:
+    # 1. 통합 로그인 쿠키 우선 (운영)
+    try:
+        uid = _resolve_user_from_cookie(request)
+        if uid is not None:
+            return uid
+    except (JWTError, HTTPException):
+        return None  # optional 경로 — 쿠키 토큰 검증 실패 시 비로그인 취급
+    # 2. 자체 토큰(헤더) 폴백 (개발)
     token = _get_token_from_request(request)
     if not token:
         return None
@@ -103,40 +159,33 @@ def get_jwt_identity(request: Request) -> Optional[int]:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         sub = payload.get("sub")
         return int(sub) if sub else None
-    except jwt.ExpiredSignatureError:
-        return None
-    except JWTError:
+    except (jwt.ExpiredSignatureError, JWTError):
         return None
 
 # -------------------------
 # Request에서 직접 유저 꺼내기
 # -------------------------
 def get_current_user_from_request(request: Request) -> int:
+    # 1. 통합 로그인 쿠키 우선 (운영)
+    try:
+        uid = _resolve_user_from_cookie(request)
+    except JWTError:
+        raise _credentials_exception("INVALID_TOKEN")
+    if uid is not None:
+        return uid
+
+    # 2. 자체 토큰(헤더) 폴백 (개발)
     token = _get_token_from_request(request)
     if token is None:
         raise _credentials_exception("NOT_AUTHENTICATED")
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-
         user_id = payload.get("sub")
-        exp = payload.get("exp")
-
-        if exp:
-            exp_time = datetime.fromtimestamp(exp, tz=timezone.utc)
-            now = datetime.now(timezone.utc)
-            print(f"[DEBUG] Token expires at: {exp_time.isoformat()}")
-            print(f"[DEBUG] Current time: {now.isoformat()}")
-            print(f"[DEBUG] Time remaining: {exp_time - now}")
-
         if not user_id:
             raise _credentials_exception("INVALID_TOKEN")
-
         return int(user_id)
-
     except jwt.ExpiredSignatureError:
-        print("[DEBUG] Token has expired")
         raise _credentials_exception("TOKEN_EXPIRED")
-    except JWTError as e:
-        print(f"[DEBUG] JWT Error: {str(e)}")
+    except JWTError:
         raise _credentials_exception("INVALID_TOKEN")

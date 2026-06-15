@@ -30,9 +30,9 @@ interface StandardProps {
     keywordCache: Record<string, PaginationSearchResp>;
     setKeywordCache: (key: string, data: any) => void;
     pageSize: number;
-    keywordQuery: string;
-    applicationQuery: string;
-    registrationQuery: string;
+    keywordQuery?: string;
+    applicationQuery?: string;
+    registrationQuery?: string;
 }
 
 export const StandardSearchView = (props: StandardProps) => {
@@ -48,9 +48,9 @@ export const StandardSearchView = (props: StandardProps) => {
     };
 
     const [localSearchType, setLocalSearchType] = useState<"keyword" | "application" | "registration">(getInitialType);
-    const [localKeyword, setLocalKeyword] = useState(props.keywordQuery);
-    const [localApplication, setLocalApplication] = useState(props.applicationQuery);
-    const [localRegistration, setLocalRegistration] = useState(props.registrationQuery);
+    const [localKeyword, setLocalKeyword] = useState(props.keywordQuery ?? "");
+    const [localApplication, setLocalApplication] = useState(props.applicationQuery ?? "");
+    const [localRegistration, setLocalRegistration] = useState(props.registrationQuery ?? "");
     const isSwitchingTab = useRef(false);
 
     const currentInputValue =

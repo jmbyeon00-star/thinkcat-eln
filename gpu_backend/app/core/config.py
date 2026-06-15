@@ -3,11 +3,11 @@
 from pydantic_settings import BaseSettings
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parents[2]  # ipforce_next/
+BASE_DIR = Path(__file__).resolve().parents[2]  # thinkcat-eln/
 ENV_PATH = BASE_DIR / ".env"
 
 class Settings(BaseSettings):
-    DB_URL: str = "mysql+pymysql://root:doslvkdlqm!@192.168.1.20/ipforce?charset=utf8mb4"
+    DB_URL: str = "mysql+pymysql://root:doslvkdlqm!@192.168.1.20/thinkcateln?charset=utf8mb4"
     SQL_ECHO: bool = False
     POOL_PRE_PING: bool = True
     

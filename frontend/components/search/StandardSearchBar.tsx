@@ -78,7 +78,7 @@ export function StandardSearchBar({
       <div className="space-y-3">
         <label className="flex items-center gap-2 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
           <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
-          {searchType === "keyword" ? "Industry Category & Tech Keyword" : "Patent Reference Number"}
+          {searchType === "keyword" ? "카테고리 및 자연어 검색" : "특허 참조 번호 사용"}
         </label>
 
         <div className="flex flex-col md:flex-row items-stretch gap-3">
@@ -113,11 +113,10 @@ export function StandardSearchBar({
                             setCategory(s.value);
                             setIsDropdownOpen(false);
                           }}
-                          className={`flex items-center justify-between w-full px-5 py-3 text-[13px] font-bold transition-all hover:bg-slate-50 ${
-                            category === s.value
-                              ? "text-blue-600 bg-blue-50/30"
-                              : "text-slate-600"
-                          }`}
+                          className={`flex items-center justify-between w-full px-5 py-3 text-[13px] font-bold transition-all hover:bg-slate-50 ${category === s.value
+                            ? "text-blue-600 bg-blue-50/30"
+                            : "text-slate-600"
+                            }`}
                         >
                           {s.label}
                           {category === s.value && <Check size={14} strokeWidth={3} />}

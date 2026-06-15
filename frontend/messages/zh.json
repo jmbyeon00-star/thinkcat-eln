@@ -10,13 +10,15 @@
         "notice": "通知",
         "announcement": "R&D公告",
         "search": "专利查询",
+        "pdf": "PDF提取",
         "marketplace": "专利代理商",
         "login": "登录",
         "get_started": "开始使用",
         "mypage": "个人中心",
         "logout": "退出登录",
         "account_settings": "账号设置",
-        "select_language": "选择语言"
+        "select_language": "选择语言",
+        "priorArt": "现有技术调查"
     },
     "common": {
         "search": {

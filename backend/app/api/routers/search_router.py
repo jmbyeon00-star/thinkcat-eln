@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_sync_session
 from app.schemas.search_schema import SearchRequest, SearchResponse, Hit, Row, KeywordSearchRequest
 from app.utils.security import get_jwt_identity
-from ..services import search_service
+from app.services import search_service
 
 import os
 import traceback

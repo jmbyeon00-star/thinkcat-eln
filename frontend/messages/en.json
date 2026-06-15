@@ -10,13 +10,15 @@
         "notice": "Notice",
         "announcement": "Announcement",
         "search": "Search Patent",
+        "pdf": "PDF Extract",
         "marketplace": "Marketplace",
         "login": "Login",
         "get_started": "Get Started",
         "mypage": "My Page",
         "logout": "Logout",
         "account_settings": "Account Settings",
-        "select_language": "Select Language"
+        "select_language": "Select Language",
+        "priorArt": "Prior Art Search"
     },
     "common": {
         "search": {

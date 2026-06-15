@@ -1,9 +1,5 @@
 import React from "react";
-import Header from "@/components/layouts/AgentHeader";
 import {
-  Building2,
-  Menu,
-  X,
   ChevronRight,
   Clock
 } from "lucide-react";
@@ -41,7 +37,7 @@ export default function AttorneyPage() {
             href="/agent/marketplace"
             className="inline-flex items-center gap-2 px-8 py-4 bg-zinc-900 text-white font-black rounded-2xl hover:bg-blue-600 transition-all shadow-lg active:scale-95"
           >
-            사무소 검색 이용하기 <ChevronRight size={18} />
+            변리사 검색 이용하기 <ChevronRight size={18} />
           </a>
         </div>
       </main>

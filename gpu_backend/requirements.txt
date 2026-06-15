@@ -10,42 +10,35 @@ httpx
 
 # 데이터 처리
 setuptools>=70.0.0
-elasticsearch==7.17.9
 pymilvus==2.5.4
 FlagEmbedding==1.3.4
-numpy==1.24.4
+numpy>=1.26.1,<2.0.0
 pandas==2.2.3
 beautifulsoup4==4.13.3
 scikit-learn==1.6.1
-pymysql== 1.1.1
+pymysql==1.1.1
+elasticsearch
+neo4j
 sqlalchemy
 tqdm
-matplotlib
 requests
 python-multipart
 
-
 # PyTorch 생태계 (CUDA 12.1용)
 torch==2.3.0+cu121
-torchvision==0.18.0+cu121
-torchaudio==2.3.0+cu121
 --extra-index-url https://download.pytorch.org/whl/cu121
 
-# NLP/모델 관련 (선택: HuggingFace)
+# NLP/모델 관련 (HuggingFace)
 transformers==4.44.2
-datasets==2.21.0
-safetensors
 fastmcp
-langchain-core
-langchain-openai
 pydantic
-openai
-peft==0.8.2
 
-
-#######
+# 통계
 statsmodels==0.14.5
 
-
-# Neo4j(GraphDB) 다운로드
-neo4j==5.28.0
+# PDF 추출
+marker-pdf==0.2.15
+surya-ocr==0.4.14
+PyMuPDF
+Pillow
+anthropic==0.89.0

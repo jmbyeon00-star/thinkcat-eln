@@ -2,7 +2,7 @@ import { useState, FormEvent } from "react";
 import { Search, Loader2, Info, ChevronDown, Sparkles, ArrowRight } from "lucide-react";
 
 const CPC_SECTIONS = [
-  { value: "all", label: "전체"}
+  { value: "all", label: "전체" },
   { value: "a", label: "A - 생활필수품" },
   { value: "b", label: "B - 처리·운수" },
   { value: "c", label: "C - 화학·야금" },

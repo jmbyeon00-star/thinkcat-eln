@@ -5,6 +5,8 @@ node_modules/
 .next/
 out/
 dist/
+_docs/
+_samples/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -16,10 +18,11 @@ pnpm-lock.yaml
 .vscode/
 .ipynb_checkpoints
 
-# docker-compose.yml
-# docker-compose.gpu.yml
-# docker-compose.prod.yml
-# docker-compose.prod.gpu.yml
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+deploy.sh
+deploy_prod.sh
 
 # Python / FastAPI
 __pycache__/
@@ -94,4 +97,10 @@ frontend/.vercel/
 frontend/.turbo/
 infra/.cache/
 
+readme.md
+
 # End of .gitignore
+*.backup.tsx
+*.bak
+tsconfig.tsbuildinfo
+samples/

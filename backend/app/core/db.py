@@ -18,7 +18,6 @@ DB_NAME = os.getenv("DB_NAME", "thinkcateln")
 DB_CHARSET = os.getenv("DB_CHAR", "utf8mb4")
 
 # 기존 DB_URL 환경 변수가 있다면 사용하고, 없으면 재구성합니다.
-# DB_URL_BASE = os.getenv("DB_URL", "mysql+pymysql://root:doslvkdlqm!@192.168.1.20/ipforce?charset=utf8mb4")
 DB_URL_BASE = os.getenv("DB_URL", f"{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset={DB_CHARSET}")
 
 # Base Model 정의 (ORM 모델의 기반 클래스)

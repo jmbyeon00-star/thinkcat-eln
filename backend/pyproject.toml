@@ -1,0 +1,45 @@
+[project]
+name = "thinkcateln-backend"
+version = "0.1.0"
+requires-python = "==3.11.*"
+dependencies = [
+    # Task Scheduling
+    "apscheduler==3.10.4",
+    # Web Scraping
+    "lxml==5.1.0",
+    # Web Framework
+    "fastapi==0.112.2",
+    "uvicorn[standard]==0.30.6",
+    "python-multipart",
+    # Auth / Security
+    "passlib",
+    "python-jose[cryptography]",
+    # Validation
+    "email-validator>=2.1.0.post1",
+    "pydantic[email]",
+    "pydantic-settings",
+    # Database
+    "sqlalchemy",
+    "pymysql",
+    "aiomysql",
+    # Vector DB
+    "pymilvus==2.5.4",
+    # Data Science
+    "umap-learn",
+    "numpy<2.0.0",
+    "pandas<2.2.0",
+    "matplotlib>=3.5.0",
+    "scipy<1.14.0",
+    "statsmodels==0.14.4",
+    "patsy>=0.5.6",
+    # Utilities
+    "openpyxl",
+    "python-dotenv",
+    "httpx",
+    "requests",
+    "beautifulsoup4==4.13.3",
+    "setuptools>=70.0.0,<71",
+]
+
+[dependency-groups]
+dev = []

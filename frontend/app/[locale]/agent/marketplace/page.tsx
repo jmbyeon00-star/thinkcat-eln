@@ -44,6 +44,7 @@ import {
 
 import { getAgentSorting, searchAgentCompany, searchAgentKeyword } from "@/lib/api";
 import { getLogoManifest, findLogoInManifest } from "@/lib/logo-utils";
+import PageShell from "@/components/layouts/PageShell";
 
 // 2. API 타입 정의
 interface ApiResponse {
@@ -352,14 +353,11 @@ export default function MarketplacePage() {
   const displayTitle = useMemo(() => selectedSector === "all" ? translator("agent.marketplace.rank.1") : `${selectedSector} ${translator("agent.marketplace.rank.2")}`, [selectedSector]);
 
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-900 pb-20">
-      <div className="max-w-4xl mx-auto px-4 pt-16 pb-8">
-        <div className="mb-12">
-          <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-4 tracking-tight text-center">
-            {translator("agent.marketplace.title.1")} <span className="text-blue-600">{translator("agent.marketplace.title.2")}</span>{translator("agent.marketplace.title.3")}<br className="hidden md:block" /> {translator("agent.marketplace.title.4")}
-          </h2>
-          <p className="text-slate-400 font-bold text-lg text-center">{translator("agent.marketplace.sub_title")}</p>
-        </div>
+    <PageShell
+      title="변리사검색"
+      description={translator("agent.marketplace.sub_title")}
+    >
+      <div className="max-w-4xl mx-auto">
 
         <div className="max-w-3xl mx-auto">
           <div className="relative flex items-center bg-white border-2 border-slate-100 rounded-[2.5rem] focus-within:ring-8 focus-within:ring-blue-500/5 focus-within:border-blue-600 transition-all shadow-2xl shadow-slate-200/40 h-16 md:h-20">
@@ -372,7 +370,7 @@ export default function MarketplacePage() {
               {isTypeOpen && (
                 <div className="absolute top-[110%] left-0 w-48 bg-white rounded-3xl shadow-2xl border border-slate-100 py-2 px-1.5 z-[110] animate-in fade-in zoom-in-95">
                   <button onClick={() => { setSearchType('firm'); setSearchQuery(""); setIsTypeOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all ${searchType === 'firm' ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}>
-                    <div className="flex items-center gap-2"><Building2 size={16} /><span className="font-bold text-xs">사무소 검색</span></div>
+                    <div className="flex items-center gap-2"><Building2 size={16} /><span className="font-bold text-xs">변리사 검색</span></div>
                     {searchType === 'firm' && <Check size={14} className="text-blue-600" />}
                   </button>
                   <button onClick={() => { setSearchType('keyword'); setSearchQuery(""); setIsTypeOpen(false); }} className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all ${searchType === 'keyword' ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}>
@@ -645,6 +643,6 @@ export default function MarketplacePage() {
           </div>
         </main>
       )}
-    </div>
+    </PageShell>
   );
 }

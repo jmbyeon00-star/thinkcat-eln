@@ -7,7 +7,7 @@ DB_HOST = os.getenv("DB_HOST", "192.168.1.20")
 DB_PORT = os.getenv("DB_PORT", "3306")
 DB_USER = os.getenv("DB_USER", "root")
 DB_PASS = os.getenv("DB_PASS", "doslvkdlqm!")
-DB_TYPE = os.getenv("DB_TYPE", "ipforce")
+DB_TYPE = os.getenv("DB_TYPE", "thinkcateln")
 DB_CHAR = os.getenv("DB_CHAR", "utf8mb4")
 DB_DATA = os.getenv("DB_DATA", "dict")
 

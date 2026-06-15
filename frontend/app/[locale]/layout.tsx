@@ -12,9 +12,9 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
     title: "ThinkCat ELN",
-    description: "IPFORCE AI 기반 R&D 솔루션",
-    keywords: "특허, AI, IP, R&D, IPFORCE, 아이피포스",
-    authors: [{ name: "IPFORCE" }],
+    description: "ThinkCat AI 기반 R&D 솔루션",
+    keywords: "특허, AI, IP, R&D, ThinkCat, 씽크캣",
+    authors: [{ name: "ThinkCat" }],
     icons: {
         icon: "/favicon.ico",
     },
