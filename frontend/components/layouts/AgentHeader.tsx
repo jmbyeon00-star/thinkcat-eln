@@ -8,10 +8,12 @@ import { useSession, signOut } from "next-auth/react";
 import { Link, useRouter, usePathname } from "@/routing";
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useTranslations } from "next-intl";
+import { loginHref, signupHref } from "@/lib/authNav";
 
-// 통합 계정(thinkcat.kr 포털)으로 신규 유입을 보낸다 — 기존 /auth/signin은 SSO 연동 전까지 임시 유지
-const PORTAL_LOGIN_URL = "https://www.thinkcat.kr/portal/login";
-const PORTAL_SIGNUP_URL = "https://www.thinkcat.kr/portal/signup";
+// 로그인/회원가입 진입점은 환경에 따라 분기된다(@/lib/authNav):
+// 운영(통합) → thinkcat.kr 포털, 개발 → 자체 /auth/signin·/auth/signup
+const PORTAL_LOGIN_URL = loginHref;
+const PORTAL_SIGNUP_URL = signupHref;
 
 /**
  * Header 컴포넌트

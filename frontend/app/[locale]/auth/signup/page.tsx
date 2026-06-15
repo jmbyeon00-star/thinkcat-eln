@@ -1,7 +1,12 @@
 import { redirect } from 'next/navigation';
+import { isIntegratedAuth, signupHref } from '@/lib/authNav';
+import SignupForm from './SignupForm';
 
-// 회원가입은 통합 계정(thinkcat.kr 포털)에서만 받는다.
-// 기존 자체 가입 폼은 page.form-backup.tsx.bak 참고 (SSO 연동 전 임시 조치)
+// 운영(통합 모드): 회원가입은 thinkcat.kr 포털에서만 → 포털로 리다이렉트
+// 개발: 통합 쿠키를 받을 수 없으므로 자체 가입 폼 사용
 export default function SignupPage() {
-    redirect('https://www.thinkcat.kr/portal/signup');
+    if (isIntegratedAuth) {
+        redirect(signupHref);
+    }
+    return <SignupForm />;
 }

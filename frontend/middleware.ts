@@ -58,11 +58,17 @@ export default withAuth(
       // locale prefix 제거한 순수 경로로 callbackUrl 구성 (이중 locale 방지: /ko/ko/... 버그)
       const callbackPath = pathWithoutLocale.startsWith('/') ? pathWithoutLocale : `/${pathWithoutLocale}`;
 
+      // 리버스 프록시(Apache) 뒤에서는 req.nextUrl.origin 이 내부 주소(localhost:3000)로 잡히므로
+      // X-Forwarded-Host/Proto 로 실제 외부 origin(patents.thinkcat.kr)을 재구성한다.
+      const fwdHost = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+      const fwdProto = req.headers.get("x-forwarded-proto") ?? "https";
+      const realOrigin = fwdHost ? `${fwdProto}://${fwdHost}` : req.nextUrl.origin;
+
       // 운영(.thinkcat.kr): 통합 인증서버로, 개발: 자체 signin 으로 분기
       const authLoginUrl = process.env.NEXT_PUBLIC_AUTH_LOGIN_URL;
       if (authLoginUrl) {
         const url = new URL(authLoginUrl);
-        url.searchParams.set("redirect", `${req.nextUrl.origin}/${locale}${callbackPath}`);
+        url.searchParams.set("redirect", `${realOrigin}/${locale}${callbackPath}`);
         return NextResponse.redirect(url);
       }
 
