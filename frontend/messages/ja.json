@@ -10,13 +10,15 @@
         "notice": "お知らせ",
         "announcement": "R&D公告",
         "search": "特許検索",
+        "pdf": "PDF抽出",
         "marketplace": "弁理士",
         "login": "ログイン",
         "get_started": "今すぐ始める",
         "mypage": "マイページ",
         "logout": "ログアウト",
         "account_settings": "アカウント設定",
-        "select_language": "言語選択"
+        "select_language": "言語選択",
+        "priorArt": "先行技術調査"
     },
     "common": {
         "search": {

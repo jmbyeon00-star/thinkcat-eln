@@ -1,16 +1,8 @@
 'use client';
 
-import React, { useState } from "react";
-import Header from "@/components/layouts/AgentHeader";
+import React from "react";
 import {
   ChevronRight,
-  Building2,
-  Menu,
-  X,
-  Bell,
-  Info,
-  TrendingUp,
-  AlertCircle
 } from "lucide-react";
 
 /**

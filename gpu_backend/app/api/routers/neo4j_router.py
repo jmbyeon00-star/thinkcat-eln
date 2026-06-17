@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
-from app.api.services.neo4j_service import neo4j_service, patent_service
+from app.services.neo4j_service import neo4j_service, patent_service
 
 router = APIRouter(prefix = '/neo4j', tags = ["Neo4j Vector Search"])
 

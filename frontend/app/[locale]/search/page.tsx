@@ -1,108 +1,72 @@
 'use client';
 
 import React from 'react';
+import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 import { useSearchContext } from '@/contexts/SearchContext';
-
-// 분리한 컴포넌트들 임포트
 import { ResultListSection } from '@/components/search/ResultListSection';
-import { AiSearchView } from '@/components/search/AiSearchView';
 import { StandardSearchView } from '@/components/search/StandardSearchView';
-import { useTranslations } from "next-intl";
-import { Sparkles, Settings } from "lucide-react";
+import { ShieldCheck } from 'lucide-react';
+import PageShell from '@/components/layouts/PageShell';
 
 export default function SearchPage() {
+    const { data: session } = useSession();
+    const isAdmin = (session as any)?.user?.role === 'admin';
+
     const {
-        searchTab, setSearchTab,
         searchMode, setSearchMode,
         searchType, setSearchType,
         query, setQuery,
         results, setResults,
-        targetKeyword, setTargetKeyword,
         totalHits, setTotalHits,
         options, setOptions,
         hasSearched, setHasSearched,
         currentPage, setCurrentPage,
         keywordCache, setKeywordCache,
         isLoading, setIsLoading,
-        lastPages, setLastPage,
         pageSize,
     } = useSearchContext();
 
-    const handleTabChange = (tab: 'ai' | 'standard') => {
-        if (searchTab === tab) return; // 이미 같은 탭이면 무시
-
-        // 1. 탭 상태 변경
-        setSearchTab(tab);
-
-        // 2. 검색 상태 완전 초기화 (데이터 꼬임 방지)
-        setResults([]);         // 리스트 비우기
-        setTotalHits(0);        // 검색 건수 리셋
-        setHasSearched(false);  // 검색 전 상태로 되돌리기 (가이드 페이지 노출)
-        setCurrentPage(1);      // 페이지 번호 초기화
-        setIsLoading(false);    // 로딩 상태 해제
-    };
-
-    const translator = useTranslations();
-
     return (
-        <div className="min-h-screen bg-white font-sans">
-            <main className={`flex flex-col items-center w-full transition-all duration-700  ${!hasSearched ? 'pt-28 pb-40' : 'pt-10 pb-60'}`}>
-                
-                {/* 탭 스위처 */}
-                <div className={`flex bg-slate-100 p-1.5 rounded-2xl mb-8 z-10 transition-all ${!hasSearched ? 'scale-110' : 'scale-100'}`}>
-                    <button onClick={() => handleTabChange('ai')} className={`flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-black transition-all ${searchTab === 'ai' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>
-                        <Sparkles size={16} /> {translator("search.ai.tab.aiSearch")}
-                    </button>
-                    <button onClick={() => handleTabChange('standard')} className={`flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-black transition-all ${searchTab === 'standard' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>
-                        <Settings size={16} /> {translator("search.ai.tab.standardSearch")}
-                    </button>
+        <PageShell
+            title="특허검색"
+            description="국내외 특허 데이터베이스를 통합 검색하여 기술 동향과 선행기술을 분석합니다."
+        >
+            {isAdmin && (
+                <div className="fixed bottom-6 right-6 z-50">
+                    <Link
+                        href="/admin"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold rounded-2xl shadow-xl transition-all duration-200 hover:scale-105"
+                    >
+                        <ShieldCheck size={14} />
+                        Admin 패널
+                    </Link>
                 </div>
+            )}
+            <div className={`flex flex-col items-center w-full transition-all duration-700 ${!hasSearched ? 'pt-10 pb-32' : 'pt-2 pb-40'}`}>
+                <StandardSearchView
+                    searchType={searchType}
+                    setSearchType={setSearchType}
+                    query={query}
+                    setQuery={setQuery}
+                    options={options}
+                    setOptions={setOptions}
+                    currentPage={currentPage}
+                    setCurrentPage={setCurrentPage}
+                    isLoading={isLoading}
+                    setIsLoading={setIsLoading}
+                    results={results}
+                    setResults={setResults}
+                    setTotalHits={setTotalHits}
+                    setHasSearched={setHasSearched}
+                    hasSearched={hasSearched}
+                    setSearchMode={setSearchMode}
+                    totalHits={totalHits}
+                    keywordCache={keywordCache}
+                    setKeywordCache={setKeywordCache}
+                    pageSize={pageSize}
+                />
 
-                {/* 🎯 뷰 스위칭: 로직은 각 컴포넌트가 담당! */}
-                {searchTab === 'ai' ? (
-                    <AiSearchView
-                        currentPage={currentPage}
-                        searchMode={searchMode}
-                        setSearchMode={setSearchMode}
-                        query={query}
-                        setQuery={setQuery}
-                        options={options}
-                        setOptions={setOptions}
-                        isLoading={isLoading}
-                        setIsLoading={setIsLoading}
-                        results={results}
-                        setResults={setResults}
-                        setTotalHits={setTotalHits}
-                        setTargetKeyword={setTargetKeyword}
-                        hasSearched={hasSearched}
-                        setHasSearched={setHasSearched}
-                        targetKeyword={targetKeyword}
-                    />
-                ) : (
-                    <StandardSearchView
-                        searchType={searchType}
-                        setSearchType={setSearchType}
-                        query={query} // 🎯 일반 검색도 검색어 관리가 필요함
-                        setQuery={setQuery}
-                        options={options}
-                        setOptions={setOptions}
-                        currentPage={currentPage}
-                        setCurrentPage={setCurrentPage}
-                        isLoading={isLoading}
-                        setIsLoading={setIsLoading}
-                        results={results}
-                        setResults={setResults}
-                        setTotalHits={setTotalHits}
-                        setHasSearched={setHasSearched}
-                        hasSearched={hasSearched}
-                        setSearchMode={setSearchMode}
-                        keywordCache={keywordCache} // 🎯 캐시 기능 추가
-                        setKeywordCache={setKeywordCache} // 🎯 캐시 기능 추가
-                        pageSize={pageSize}
-                    />
-                )}
-
-                {/* 🎯 결과 리스트: 데이터가 있으면 누구든 여기를 통해 보여줌 */}
                 {hasSearched && (
                     <ResultListSection
                         results={results}
@@ -114,7 +78,7 @@ export default function SearchPage() {
                         searchType={searchType}
                     />
                 )}
-            </main>
-        </div>
+            </div>
+        </PageShell>
     );
 }

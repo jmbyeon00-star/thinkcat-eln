@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Query 
 
 from app.schemas.search_schema import SearchRequest, SearchResponse, Hit, Row, PatentDetailResponse
-from ..services import search_service, page_search_service
+from app.services import search_service, page_search_service
 
 import traceback
 

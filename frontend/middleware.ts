@@ -31,20 +31,49 @@ export default withAuth(
       pathname.includes("/_next/") ||
       pathname === "/favicon.ico";
 
+    const isAdminPath = pathWithoutLocale.startsWith("/admin");
+
+    // admin 경로: 토큰 없거나 role이 admin이 아니면 홈으로 차단
+    if (isAdminPath) {
+      if (!token || (token as any).role !== "admin") {
+        const segments = pathname.split('/');
+        const currentSegment = segments[1];
+        const locale = locales.includes(currentSegment as any) ? (currentSegment as any) : 'ko';
+        return NextResponse.redirect(new URL(`/${locale}`, req.nextUrl.origin));
+      }
+    }
+
+    // 통합 로그인 쿠키(access_token)가 있으면 NextAuth 토큰이 아직 없어도 로그인으로 간주
+    // (클라이언트 SsoBootstrap이 NextAuth 세션을 곧 생성함)
+    const hasSsoCookie = !!req.cookies.get("access_token");
+
     // 로그인이 필요한 리퀘스트인데 토큰이 없는 경우
-    // 로그인이 필요한 리퀘스트인데 토큰이 없는 경우
-    if (!isPublicPath && !token) {
-      // 현재 적용된 로케일을 찾음 (URL의 첫 번째 세그먼트)
+    if (!isPublicPath && !token && !hasSsoCookie) {
       const segments = pathname.split('/');
       const currentSegment = segments[1];
-      
-      // [최종 해결] currentSegment를 먼저 any로 취급하여 includes 검사를 통과시킵니다.
-      const locale = locales.includes(currentSegment as any) 
-        ? (currentSegment as any) 
+      const locale = locales.includes(currentSegment as any)
+        ? (currentSegment as any)
         : 'ko';
 
+      // locale prefix 제거한 순수 경로로 callbackUrl 구성 (이중 locale 방지: /ko/ko/... 버그)
+      const callbackPath = pathWithoutLocale.startsWith('/') ? pathWithoutLocale : `/${pathWithoutLocale}`;
+
+      // 리버스 프록시(Apache) 뒤에서는 req.nextUrl.origin 이 내부 주소(localhost:3000)로 잡히므로
+      // X-Forwarded-Host/Proto 로 실제 외부 origin(patents.thinkcat.kr)을 재구성한다.
+      const fwdHost = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+      const fwdProto = req.headers.get("x-forwarded-proto") ?? "https";
+      const realOrigin = fwdHost ? `${fwdProto}://${fwdHost}` : req.nextUrl.origin;
+
+      // 운영(.thinkcat.kr): 통합 인증서버로, 개발: 자체 signin 으로 분기
+      const authLoginUrl = process.env.NEXT_PUBLIC_AUTH_LOGIN_URL;
+      if (authLoginUrl) {
+        const url = new URL(authLoginUrl);
+        url.searchParams.set("redirect", `${realOrigin}/${locale}${callbackPath}`);
+        return NextResponse.redirect(url);
+      }
+
       const signInUrl = new URL(`/${locale}/auth/signin`, req.nextUrl.origin);
-      signInUrl.searchParams.set("callbackUrl", pathname);
+      signInUrl.searchParams.set("callbackUrl", `/${locale}${callbackPath}`);
       return NextResponse.redirect(signInUrl);
     }
 

@@ -1,24 +1,21 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer
 
-from app.api.routers import announcement_router, patent_router, search_router, search_history, user_router, agent_router
+from app.api.routers import announcement_router, patent_router, search_router, search_history, user_router, agent_router, invalidation_router, pdf_router
 
 import os
 
 app = FastAPI(title="thinkcateln_next API", version="0.1.0")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 ENV = os.getenv("ENV", "dev")
 
 if ENV == "prod":
     origins = [
-        "https://ipforce.co.kr",
-        "https://www.ipforce.co.kr",
+        "https://patents.thinkcat.kr",
     ]
 else:
     origins = ["*"]
-    
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -26,14 +23,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 app.include_router(agent_router.router, prefix="/api")
 app.include_router(announcement_router.router, prefix="/api")
 app.include_router(patent_router.router, prefix="/api")
 app.include_router(search_router.router, prefix="/api")
 app.include_router(search_history.router, prefix="/api")
 app.include_router(user_router.router, prefix="/api")
-app.include_router(agent_router.router, prefix="/api")
+app.include_router(invalidation_router.router, prefix="/api")
+app.include_router(pdf_router.router, prefix="/api")
+
 @app.get("/healthz")
 def healthz():
-    print(Depends(oauth2_scheme))
     return {"ok": True}

@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 
 from app.core.db import get_session
-from app.api.services import patent_navigation_service
+from app.services import patent_navigation_service
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/patent", tags=["patent"])

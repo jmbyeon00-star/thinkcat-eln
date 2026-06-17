@@ -4,7 +4,7 @@ from app.core.db import get_sync_session, get_async_session
 
 # ✅ 임포트 경로 수정: 둘 다 schemas에서 가져옵니다.
 from app.schemas.announcement_schema import AnnouncementSearchParams, BudgetUpdateRequest
-from app.api.services.announcement_service import AnnouncementService
+from app.services.announcement_service import AnnouncementService
 
 router = APIRouter(prefix="/announcements", tags=["Announcements"])
 

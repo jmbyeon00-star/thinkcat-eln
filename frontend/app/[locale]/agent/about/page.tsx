@@ -1,5 +1,4 @@
 import React from "react";
-import Header from "@/components/layouts/AgentHeader";
 import { BarChart3, Shield, TrendingUp, Globe } from "lucide-react";
 
 /**
@@ -19,7 +18,7 @@ export default function AboutPage() {
             대한민국 특허 시장의<br />새로운 기준을 제시합니다.
           </h2>
           <p className="text-zinc-500 text-xl leading-relaxed max-w-3xl font-medium">
-            THINKCAT-ELN은 복잡하고 불투명했던 특허 사무소 검색 시스템을 혁신하여,
+            THINKCAT-ELN은 복잡하고 불투명했던 특허 변리사 검색 시스템을 혁신하여,
             실적 데이터 기반의 신뢰할 수 있는 매칭 서비스를 제공합니다. 기술과 사람을 잇는 가장 똑똑한 방법입니다.
           </p>
         </div>

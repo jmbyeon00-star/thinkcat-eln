@@ -19,10 +19,12 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (status === 'authenticated') {
+            // callbackUrl은 이미 locale prefix(/ko/...)를 포함하므로 locale을 자동으로 붙이는
+            // @/routing router.push 대신 raw 네비게이션을 써서 /ko/ko/... 이중 prefix를 방지한다.
             const callbackUrl = searchParams.get('callbackUrl') || '/';
-            router.push(callbackUrl);
+            window.location.href = callbackUrl;
         }
-    }, [status, router, searchParams]);
+    }, [status, searchParams]);
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -54,28 +56,17 @@ export default function LoginPage() {
     }
 
     return (
-        <main className="min-h-screen bg-white selection:bg-blue-100 flex items-center justify-center p-6 relative overflow-hidden">
-            {/* 배경 장식 (심플한 블러 효과) */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full -z-10 pointer-events-none opacity-40">
-                <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-blue-50 rounded-full blur-[120px]" />
-                <div className="absolute bottom-[-10%] left-[-10%] w-72 h-72 bg-zinc-100 rounded-full blur-[100px]" />
-            </div>
-
-            <div className="w-full max-w-[440px] animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <div className="w-full max-w-[480px] animate-in fade-in slide-in-from-bottom-4 duration-1000">
                 {/* 상단 로고 및 텍스트 */}
-                <div className="text-center mb-10">
-                    <Link href="/" className="inline-block mb-8 group transition-transform active:scale-95">
+                <div className="text-center mb-8">
+                    {/* <Link href="/" className="inline-block mb-8 group transition-transform active:scale-95">
                         <span className="text-3xl font-black tracking-tighter text-zinc-900 leading-none">
-                            IPFORCE<span className="text-blue-600 transition-colors group-hover:text-indigo-600">.</span>
+                            THINKCAT-ELN
+                            <span className="text-orange-600 transition-colors group-hover:text-red-600">.</span>
                         </span>
-                    </Link>
-
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-50 border border-zinc-100 text-zinc-400 mb-4">
-                        <Sparkles size={12} className="fill-zinc-400" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Secure Access</span>
-                    </div>
+                    </Link> */}
                     <h1 className="text-3xl font-black text-zinc-900 tracking-tight mb-2">다시 오신 것을 환영합니다</h1>
-                    <p className="text-zinc-500 font-medium">분석 워크스페이스에 접속하여 통찰력을 발견하세요.</p>
+                    <p className="text-zinc-500 font-medium text-sm">분석 워크스페이스에 접속하여 통찰력을 발견하세요.</p>
                 </div>
 
                 {/* 로그인 카드 */}
@@ -92,15 +83,15 @@ export default function LoginPage() {
                         <div className="space-y-5">
                             {/* 이메일 입력 */}
                             <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-1">
+                                {/* <label className="flex items-center gap-2 text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-1">
                                     <Mail size={12} className="text-blue-600" /> Email Address
-                                </label>
+                                </label> */}
                                 <input
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="you@company.com"
-                                    className="w-full px-6 py-4 bg-zinc-50 border-none rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-50 outline-none transition-all font-medium text-zinc-900 placeholder:text-zinc-300 shadow-inner"
+                                    className="w-full px-6 py-3.5 bg-zinc-50 border-none rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-50 outline-none transition-all font-medium text-zinc-900 placeholder:text-zinc-300 shadow-inner"
                                     disabled={loading}
                                     required
                                 />
@@ -108,23 +99,23 @@ export default function LoginPage() {
 
                             {/* 비밀번호 입력 */}
                             <div className="space-y-2">
-                                <div className="flex justify-between items-end ml-1">
-                                    <label className="flex items-center gap-2 text-[11px] font-black text-zinc-400 uppercase tracking-widest">
-                                        <Lock size={12} className="text-blue-600" /> Password
-                                    </label>
-                                    <Link href="/forgot" className="text-[10px] font-bold text-zinc-400 hover:text-blue-600 transition-colors">
-                                        비밀번호를 잊으셨나요?
-                                    </Link>
-                                </div>
                                 <input
                                     type="password"
                                     value={pw}
                                     onChange={(e) => setPw(e.target.value)}
                                     placeholder="••••••••"
-                                    className="w-full px-6 py-4 bg-zinc-50 border-none rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-50 outline-none transition-all font-medium text-zinc-900 placeholder:text-zinc-300 shadow-inner"
+                                    className="w-full px-6 py-3.5 bg-zinc-50 border-none rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-50 outline-none transition-all font-medium text-zinc-900 placeholder:text-zinc-300 shadow-inner"
                                     disabled={loading}
                                     required
                                 />
+                                <div className="flex justify-between items-end ml-1">
+                                    {/* <label className="flex items-center gap-2 text-[11px] font-black text-zinc-400 uppercase tracking-widest">
+                                        <Lock size={12} className="text-blue-600" /> Password
+                                    </label> */}
+                                    <Link href="/forgot" className="text-[10px] font-bold text-zinc-400 hover:text-blue-600 transition-colors">
+                                        비밀번호를 잊으셨나요?
+                                    </Link>
+                                </div>
                             </div>
                         </div>
 
@@ -170,7 +161,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* 푸터 영역 */}
-                <div className="mt-10 flex flex-col items-center gap-6">
+                <div className="mt-8 flex flex-col items-center gap-6">
                     <p className="text-sm font-bold text-zinc-400">
                         계정이 없으신가요?{' '}
                         <Link href="/auth/signup" className="text-blue-600 hover:text-blue-700 underline underline-offset-4 decoration-2">
@@ -182,7 +173,6 @@ export default function LoginPage() {
                         <ArrowLeft size={14} /> Back to main
                     </button>
                 </div>
-            </div>
-        </main>
+        </div>
     );
 }

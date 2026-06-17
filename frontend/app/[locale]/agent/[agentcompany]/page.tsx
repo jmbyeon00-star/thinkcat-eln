@@ -375,7 +375,7 @@ function BottomSection({ statistics, agentNames, agentCodes, onSelect }: any) {
                             .sort((a, b) => (b[1] as number) - (a[1] as number))
                             .map(([status, count]) => (
                                 <div key={status} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <span className="text-slate-600 font-bold">{t(`search.result.${PATENT_STATUS[status as keyof typeof PATENT_STATUS]}`)}</span>
+                                    <span className="text-slate-600 font-bold">{PATENT_STATUS[status as keyof typeof PATENT_STATUS] ? t(`search.result.${PATENT_STATUS[status as keyof typeof PATENT_STATUS]}`) : status}</span>
                                     <span className="text-slate-900 font-black text-lg">{(count as number).toLocaleString()}</span>
                                 </div>
                             ))}

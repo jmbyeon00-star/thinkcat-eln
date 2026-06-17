@@ -63,7 +63,7 @@ export default function SearchLayout({
 
       {/* 4. Mini Footer: 전문성 강조 */}
       <footer className="mt-20 pt-10 border-t border-zinc-50 flex items-center justify-between opacity-30">
-        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em]">IPFORCE Search Mesh v2.0</p>
+        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em]">Thinkcat-ELN Search Mesh v2.0</p>
         <div className="flex gap-4">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="System Online" />
           <div className="w-1.5 h-1.5 rounded-full bg-blue-500" title="AI Training Ready" />

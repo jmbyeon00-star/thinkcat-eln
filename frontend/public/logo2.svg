@@ -1,9 +1,0 @@
-<!-- frontend/public/logo.svg -->
-<svg width="200" height="40" viewBox="0 0 200 40" xmlns="http://www.w3.org/2000/svg">
-  <text x="0" y="28" font-family="Arial, sans-serif" font-size="28" font-weight="800" fill="#333">
-    IP
-  </text>
-  <text x="45" y="28" font-family="Arial, sans-serif" font-size="28" font-weight="300" fill="#007bff">
-    FORCE
-  </text>
-</svg>

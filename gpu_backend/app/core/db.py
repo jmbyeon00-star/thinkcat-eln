@@ -3,7 +3,8 @@ from sqlalchemy.orm import sessionmaker, Session, declarative_base
 import os
 
 # MariaDB 연결 문자열
-SQLALCHEMY_DATABASE_URL = "mysql+pymysql://root:doslvkdlqm!@192.168.1.20/ipforce?charset=utf8mb4"
+DB_URL_BASE = os.getenv("DB_URL", "root:doslvkdlqm!@192.168.1.20/thinkcateln?charset=utf8mb4")
+SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{DB_URL_BASE}"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
 SyncSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
