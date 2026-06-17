@@ -12,10 +12,10 @@ set -a
 source "$SCRIPT_DIR/../.env"
 set +a
 
-# 도커 대신 네이티브 실행. 포트 8009 = dev .env의 GPU 주소(192.168.1.20:8009)와 일치
+# 포트는 .env의 GPU_PORT 사용 (팀원별 다르게). 없으면 8009
 exec uvicorn app.main:app \
   --host 0.0.0.0 \
-  --port 8009 \
+  --port "${GPU_PORT:-8009}" \
   --reload \
   --reload-dir "$SCRIPT_DIR/app" \
   --log-level debug
