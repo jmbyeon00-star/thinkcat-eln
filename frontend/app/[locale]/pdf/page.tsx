@@ -40,7 +40,7 @@ const COLOR_MAP = {
     emerald: { border: "border-emerald-200",bg: "bg-emerald-50",text: "text-emerald-600",ring: "ring-emerald-200",active: "bg-emerald-600"},
 };
 
-const GPU_BASE_URL = process.env.NEXT_PUBLIC_GPU_BASE_URL || "http://localhost:8001";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 export default function PdfExtractPage() {
     const [file, setFile] = useState<File | null>(null);
@@ -96,9 +96,10 @@ export default function PdfExtractPage() {
         }
 
         try {
-            const res = await fetch(`${GPU_BASE_URL}/gpu/pdf/extract`, {
+            const res = await fetch(`${API_BASE_URL}/api/pdf/extract`, {
                 method: "POST",
                 body: formData,
+                credentials: "include",
             });
 
             if (!res.ok) {

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import announcement_router, patent_router, search_router, search_history, user_router, agent_router, invalidation_router
+from app.api.routers import announcement_router, patent_router, search_router, search_history, user_router, agent_router, invalidation_router, pdf_router
 
 import os
 
@@ -31,6 +31,7 @@ app.include_router(search_router.router, prefix="/api")
 app.include_router(search_history.router, prefix="/api")
 app.include_router(user_router.router, prefix="/api")
 app.include_router(invalidation_router.router, prefix="/api")
+app.include_router(pdf_router.router, prefix="/api")
 
 @app.get("/healthz")
 def healthz():

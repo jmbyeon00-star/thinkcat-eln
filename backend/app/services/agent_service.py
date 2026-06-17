@@ -18,8 +18,7 @@ from fastapi import HTTPException
 # ──────────────────────────────────────────
 # ⚙️ GPU Backend 전역 설정
 # ──────────────────────────────────────────
-# GPU_BACKEND_URL = os.getenv("GPU_BACKEND_URL", "http://gpu_backend:8009")
-GPU_BACKEND_URL = "http://192.168.1.149:8009"
+GPU_BACKEND_URL = os.getenv("GPU_BACKEND_URL", "http://125.141.113.2:7001")
 _embedding_cache: Dict[str, List[float]] = {}
 
 
