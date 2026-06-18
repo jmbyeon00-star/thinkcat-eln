@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { Upload, FileText, Zap, FlaskConical, Bot, Copy, Check, X, Loader2, ChevronDown } from "lucide-react";
+import { apiFetch } from "@/lib/apiFetch";
 
 type Method = "marker" | "nougat" | "ollama";
 
@@ -96,7 +97,7 @@ export default function PdfExtractPage() {
         }
 
         try {
-            const res = await fetch(`${API_BASE_URL}/api/pdf/extract`, {
+            const res = await apiFetch(`${API_BASE_URL}/api/pdf/extract`, {
                 method: "POST",
                 body: formData,
                 credentials: "include",

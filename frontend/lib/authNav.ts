@@ -23,3 +23,10 @@ export const signupHref = isIntegratedAuth ? PORTAL_SIGNUP_URL : "/auth/signup";
 
 /** 외부(포털) 링크면 true → <a href>, 아니면 내부 라우팅(Link) 사용 권장 */
 export const isExternalAuth = isIntegratedAuth;
+
+/**
+ * 통합 access_token 갱신(refresh) 엔드포인트 (자바팀 AuthServer).
+ * 운영에서만 설정. 비어 있으면(개발) 토큰 리프레시는 비활성(no-op).
+ * 예: https://auth.thinkcat.kr/Anyfive_Thinkcat/api/global/auth/refresh
+ */
+export const authRefreshUrl = process.env.NEXT_PUBLIC_AUTH_REFRESH_URL || "";

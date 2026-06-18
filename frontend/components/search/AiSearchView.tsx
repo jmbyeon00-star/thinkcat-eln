@@ -10,6 +10,7 @@ import { useSearchContext } from '@/contexts/SearchContext';
 import { PatentBasket } from './PatentBasket';
 import { TrashBin } from './TrashBin';
 import { saveSearchQuery } from '@/lib/searchHistoryApi';
+import { apiFetch } from '@/lib/apiFetch';
 import { SearchHistoryList } from './SearchHistoryList';
 
 interface AiSearchViewProps {
@@ -137,7 +138,7 @@ export const AiSearchView = (props: AiSearchViewProps) => {
                 requestBody.search_method = searchMethod;
             }
 
-            const res = await fetch(`${API_BASE}/api/search/mcp`, {
+            const res = await apiFetch(`${API_BASE}/api/search/mcp`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -215,7 +216,7 @@ export const AiSearchView = (props: AiSearchViewProps) => {
                 requestBody.search_method = searchMethod;
             }
 
-            const res = await fetch(`${API_BASE}/api/search/standard`, {
+            const res = await apiFetch(`${API_BASE}/api/search/standard`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -281,7 +282,7 @@ export const AiSearchView = (props: AiSearchViewProps) => {
         setSubmittedQuery(`[유사검색] ${patents.length}건의 특허 기반`);
 
         try {
-            const res = await fetch(`${API_BASE}/api/search/similar`, {
+            const res = await apiFetch(`${API_BASE}/api/search/similar`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

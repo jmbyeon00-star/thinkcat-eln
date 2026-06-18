@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { getStats, calculateDday } from '@/lib/api';
+import { apiFetch } from '@/lib/apiFetch';
 import PageShell from '@/components/layouts/PageShell';
 
 // 1. 데이터 인터페이스 정의
@@ -60,7 +61,7 @@ const ResearchProjectsPage = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await fetch(`${API_BASE}/api/announcements?page=1&page_size=1000`);
+                const response = await apiFetch(`${API_BASE}/api/announcements?page=1&page_size=1000`);
                 if (!response.ok) throw new Error(`API 오류: ${response.status}`);
 
                 const data = await response.json();
@@ -103,7 +104,7 @@ const ResearchProjectsPage = () => {
                 if (startDate) params.append('start_date', startDate);
                 if (endDate) params.append('end_date', endDate);
 
-                const response = await fetch(`${API_BASE}/api/announcements?${params.toString()}`);
+                const response = await apiFetch(`${API_BASE}/api/announcements?${params.toString()}`);
                 if (!response.ok) throw new Error(`API 오류: ${response.status}`);
 
                 const data = await response.json();
@@ -175,7 +176,7 @@ const ResearchProjectsPage = () => {
         const validation = validateBudget(budgetValue);
         if (!validation.valid) { setBudgetError(validation.message); return; }
         try {
-            const response = await fetch(`${API_BASE}/api/announcements/${projectId}/budget`, {
+            const response = await apiFetch(`${API_BASE}/api/announcements/${projectId}/budget`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ budget: budgetValue.trim() }),

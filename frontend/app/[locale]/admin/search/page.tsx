@@ -5,6 +5,7 @@ import { useRouter } from '@/routing';
 import { useSession } from "next-auth/react";
 import { SearchOptions, SearchResultItem } from '@/types/search';
 import { ArrowUp, ChevronLeft, ChevronRight, Search, Filter, Database, Sparkles, Settings } from 'lucide-react';
+import { apiFetch } from '@/lib/apiFetch';
 
 const inputClassName = "w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-semibold text-slate-700 placeholder:text-slate-300 text-sm";
 
@@ -42,7 +43,7 @@ export default function AdminSearchPage() {
         setHasSearched(true);
         setError(null);
         try {
-            const response = await fetch(`${API_BASE}/api/search/mcp`, {
+            const response = await apiFetch(`${API_BASE}/api/search/mcp`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
                 body: JSON.stringify({ query, options }),
@@ -69,7 +70,7 @@ export default function AdminSearchPage() {
         setError(null);
         setCurrentPage(page);
         try {
-            const response = await fetch(`${API_BASE}/api/search/standard`, {
+            const response = await apiFetch(`${API_BASE}/api/search/standard`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
                 body: JSON.stringify({ query: currentKeyword, page, size: pageSize, options }),

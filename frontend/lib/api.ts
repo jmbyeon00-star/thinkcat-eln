@@ -1,4 +1,5 @@
 // frontend/lib/api.ts
+import { apiFetch } from "./apiFetch";
 
 // -----------------------------
 // API 유틸리티 및 설정
@@ -8,7 +9,7 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 export const GPU_SERVER_URL = "http://192.168.1.149:8009";
 
 export async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${url}`, {
+  const res = await apiFetch(`${API_BASE}${url}`, {
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     ...options,
@@ -91,7 +92,7 @@ export async function searchPagination({
 export async function getPatentPrice(appNumber: string) {
   const requestBody = { app_number: appNumber };
 
-  const res = await fetch(`${API_BASE}/api/patent/new-price`, {
+  const res = await apiFetch(`${API_BASE}/api/patent/new-price`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(requestBody),

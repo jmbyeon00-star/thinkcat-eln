@@ -2,6 +2,7 @@
  * 특허 무효화 분석 API 클라이언트
  * /api/invalidation/* 엔드포인트 호출
  */
+import { apiFetch } from "./apiFetch";
 
 const BASE = `/api/invalidation`;
 
@@ -121,7 +122,7 @@ export async function invalGeneratePriorArtReport({
 }): Promise<PriorArtReportResult> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${BASE}/analysis/prior-art-report`, {
+  const res = await apiFetch(`${BASE}/analysis/prior-art-report`, {
     method: "POST",
     headers,
     credentials: "include",
@@ -157,7 +158,7 @@ export async function invalGetIdeaHistoryList(
   skip = 0,
   limit = 20,
 ): Promise<IdeaHistoryItem[]> {
-  const res = await fetch(`${BASE}/analysis/idea/history?skip=${skip}&limit=${limit}`, {
+  const res = await apiFetch(`${BASE}/analysis/idea/history?skip=${skip}&limit=${limit}`, {
     headers: { Authorization: `Bearer ${token}` },
     credentials: "include",
   });
@@ -169,7 +170,7 @@ export async function invalGetIdeaHistoryDetail(
   token: string,
   historyId: number,
 ): Promise<IdeaHistoryDetail> {
-  const res = await fetch(`${BASE}/analysis/idea/history/${historyId}`, {
+  const res = await apiFetch(`${BASE}/analysis/idea/history/${historyId}`, {
     headers: { Authorization: `Bearer ${token}` },
     credentials: "include",
   });
@@ -181,7 +182,7 @@ export async function invalDeleteIdeaHistory(
   token: string,
   historyId: number,
 ): Promise<void> {
-  const res = await fetch(`${BASE}/analysis/idea/history/${historyId}`, {
+  const res = await apiFetch(`${BASE}/analysis/idea/history/${historyId}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
     credentials: "include",
@@ -193,7 +194,7 @@ export async function invalRefreshIdeaHistory(
   token: string,
   historyId: number,
 ): Promise<{ changed: boolean; result: PriorArtReportResult | null }> {
-  const res = await fetch(`${BASE}/analysis/idea/history/${historyId}/refresh`, {
+  const res = await apiFetch(`${BASE}/analysis/idea/history/${historyId}/refresh`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     credentials: "include",
@@ -203,7 +204,7 @@ export async function invalRefreshIdeaHistory(
 }
 
 export async function invalPrepareFromText(text: string, section: string = "ALL", n: number = 15): Promise<IdeaPrepareResult> {
-  const res = await fetch(`${BASE}/analysis/prepare-from-text`, {
+  const res = await apiFetch(`${BASE}/analysis/prepare-from-text`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -220,7 +221,7 @@ export async function invalPrepareFromPdf(file: File, section: string = "ALL", n
   const formData = new FormData();
   formData.append("file", file);
   const params = new URLSearchParams({ section, n: String(n) });
-  const res = await fetch(`${BASE}/analysis/prepare-from-pdf?${params}`, {
+  const res = await apiFetch(`${BASE}/analysis/prepare-from-pdf?${params}`, {
     method: "POST",
     credentials: "include",
     body: formData,
@@ -289,7 +290,7 @@ export interface ClaimItem {
 }
 
 export async function invalGetClaims(appNumber: string): Promise<ClaimItem[]> {
-  const res = await fetch(`${BASE}/patents/${encodeURIComponent(appNumber)}/claims`, { credentials: "include" });
+  const res = await apiFetch(`${BASE}/patents/${encodeURIComponent(appNumber)}/claims`, { credentials: "include" });
   if (!res.ok) throw new Error("청구항 조회 실패");
   return res.json();
 }
@@ -305,7 +306,7 @@ export async function invalExtractFromClaims({
   existing_elements: { name: string; function: string | null }[];
   model?: string;
 }): Promise<{ id: string; name: string; function: string; embedding_text: string; modifier: string | null; criticality: number; criticality_reason: string; source_claim: string; raw_text: string }[]> {
-  const res = await fetch(`${BASE}/analysis/extract-from-claims`, {
+  const res = await apiFetch(`${BASE}/analysis/extract-from-claims`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -332,7 +333,7 @@ export async function invalAddElement(payload: {
   source_claim?: string;
   raw_text?: string;
 }): Promise<InvalElementResponse> {
-  const res = await fetch(`${BASE}/analysis/add-element`, {
+  const res = await apiFetch(`${BASE}/analysis/add-element`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -346,7 +347,7 @@ export async function invalAddElement(payload: {
 }
 
 export async function invalGetPatentInfo(appNumber: string): Promise<InvalPatentSearchResult> {
-  const res = await fetch(`${BASE}/patents/info/${encodeURIComponent(appNumber)}`, { credentials: "include" });
+  const res = await apiFetch(`${BASE}/patents/info/${encodeURIComponent(appNumber)}`, { credentials: "include" });
   if (!res.ok) throw new Error("특허 정보 조회 실패");
   return res.json();
 }
@@ -359,7 +360,7 @@ export async function invalGetElements(
 ): Promise<InvalElementResponse[]> {
   const params = new URLSearchParams({ base_app_number: baseAppNumber, model });
   if (sessionId) params.set("session_id", sessionId);
-  const res = await fetch(
+  const res = await apiFetch(
     `${BASE}/patents/${encodeURIComponent(appNumber)}/elements?${params}`,
     { credentials: "include" },
   );
@@ -372,7 +373,7 @@ export async function invalGetElements(
 // ─────────────────────────────────
 
 export async function invalGetAnalysisStatus(appNumber: string, model: string = "claude"): Promise<InvalAnalysisStatusResult> {
-  const res = await fetch(`${BASE}/analysis/status/${encodeURIComponent(appNumber)}?model=${encodeURIComponent(model)}`, { credentials: "include" });
+  const res = await apiFetch(`${BASE}/analysis/status/${encodeURIComponent(appNumber)}?model=${encodeURIComponent(model)}`, { credentials: "include" });
   if (!res.ok) throw new Error("상태 확인 실패");
   return res.json();
 }
@@ -382,7 +383,7 @@ export async function invalParseBase(
   skipCache: boolean = false,
   model: string = "claude",
 ): Promise<InvalParseBaseResponse> {
-  const res = await fetch(`${BASE}/analysis/parse/base`, {
+  const res = await apiFetch(`${BASE}/analysis/parse/base`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -401,7 +402,7 @@ export async function invalParsePriorOne(
   skipCache: boolean = false,
   model: string = "claude",
 ): Promise<InvalParsePriorResponse> {
-  const res = await fetch(`${BASE}/analysis/parse/prior`, {
+  const res = await apiFetch(`${BASE}/analysis/parse/prior`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -421,7 +422,7 @@ export async function invalRunAnalysis(
   skipInterpretation: boolean = true,
   model: string = "claude",
 ): Promise<InvalAnalysisResponse> {
-  const res = await fetch(`${BASE}/analysis/run`, {
+  const res = await apiFetch(`${BASE}/analysis/run`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -441,13 +442,13 @@ export async function invalRunAnalysis(
 }
 
 export async function invalGetAnalysis(baseAppNumber: string): Promise<InvalAnalysisResponse> {
-  const res = await fetch(`${BASE}/analysis/${encodeURIComponent(baseAppNumber)}`, { credentials: "include" });
+  const res = await apiFetch(`${BASE}/analysis/${encodeURIComponent(baseAppNumber)}`, { credentials: "include" });
   if (!res.ok) throw new Error("분석 결과 조회 실패");
   return res.json();
 }
 
 export async function invalGenerateInterpretation(analysisId: string, model: string = "claude"): Promise<string> {
-  const res = await fetch(`${BASE}/analysis/${encodeURIComponent(analysisId)}/interpretation?model=${encodeURIComponent(model)}`, {
+  const res = await apiFetch(`${BASE}/analysis/${encodeURIComponent(analysisId)}/interpretation?model=${encodeURIComponent(model)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -471,7 +472,7 @@ export async function invalSaveOverride(
   overrides: InvalElementUpdateRequest,
   model: string = "claude",
 ): Promise<void> {
-  const res = await fetch(`${BASE}/analysis/override`, {
+  const res = await apiFetch(`${BASE}/analysis/override`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -485,7 +486,7 @@ export async function invalGetSessionOverrides(
   baseAppNumber: string,
   model: string = "claude",
 ): Promise<{ [elementId: string]: Partial<InvalElementResponse> }> {
-  const res = await fetch(
+  const res = await apiFetch(
     `${BASE}/analysis/overrides?session_id=${encodeURIComponent(sessionId)}&base_app_number=${encodeURIComponent(baseAppNumber)}&model=${encodeURIComponent(model)}`,
     { credentials: "include" },
   );
@@ -499,7 +500,7 @@ export async function invalGetSessionOverrides(
 
 export async function invalDownloadAnalysis(baseAppNumber: string, sessionId?: string): Promise<void> {
   const qs = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : "";
-  const res = await fetch(`${BASE}/analysis/${encodeURIComponent(baseAppNumber)}/download${qs}`, { credentials: "include" });
+  const res = await apiFetch(`${BASE}/analysis/${encodeURIComponent(baseAppNumber)}/download${qs}`, { credentials: "include" });
   if (!res.ok) throw new Error("다운로드 실패");
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
