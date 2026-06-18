@@ -4,7 +4,8 @@
 // import { useRouter } from "next/router";
 import { useState } from "react";
 import { User, LogOut, Menu, X, ChevronDown } from "lucide-react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { logout } from "@/lib/authLogout";
 import { Link, useRouter, usePathname } from "@/routing";
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useTranslations } from "next-intl";
@@ -37,7 +38,7 @@ export default function Header({ onHome }: HeaderProps) {
     const user = session?.user;
 
     const handleLogout = async () => {
-        await signOut({ redirect: false });
+        await logout({ redirect: false });
         // router.push(`/${router.locale}`); // 실제 환경용
     };
 

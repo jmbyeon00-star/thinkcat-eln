@@ -30,3 +30,10 @@ export const isExternalAuth = isIntegratedAuth;
  * 예: https://auth.thinkcat.kr/Anyfive_Thinkcat/api/global/auth/refresh
  */
 export const authRefreshUrl = process.env.NEXT_PUBLIC_AUTH_REFRESH_URL || "";
+
+/**
+ * 통합 글로벌 로그아웃 엔드포인트 (자바팀 AuthServer).
+ * 운영에서만 설정. 비어 있으면(개발) NextAuth signOut 만 수행(no-op).
+ * 예: https://auth.thinkcat.kr/Anyfive_Thinkcat/api/global/auth/logout
+ */
+export const authLogoutUrl = process.env.NEXT_PUBLIC_AUTH_LOGOUT_URL || "";

@@ -3,7 +3,8 @@
 import { Link, useRouter, usePathname } from "@/routing";
 import { useState } from "react";
 import { User, LogOut, Menu, X, ChevronDown } from "lucide-react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { logout } from "@/lib/authLogout";
 import { useTranslations } from "next-intl";
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
@@ -22,7 +23,7 @@ export default function Header() {
     const user = session?.user;
 
     const handleLogout = async () => {
-        await signOut({ redirect: false });
+        await logout({ redirect: false });
         appRouter.push('/');
     };
 

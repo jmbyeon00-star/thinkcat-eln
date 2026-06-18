@@ -3,7 +3,8 @@
 import React from "react";
 import { useRouter } from "@/routing";
 import { User, Mail, Shield, Zap, Settings, ArrowLeft, LogOut, Key, ArrowRight } from "lucide-react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { logout } from "@/lib/authLogout";
 
 export default function MyPage() {
     const router = useRouter();
@@ -11,7 +12,7 @@ export default function MyPage() {
     const user = session?.user;
 
     const handleLogout = async () => {
-        await signOut({ redirect: false });
+        await logout({ redirect: false });
         router.push("/");
     };
 
