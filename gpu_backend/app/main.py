@@ -1,7 +1,7 @@
 from fastapi import FastAPI, BackgroundTasks, Depends, WebSocket
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routers import health, ai_router, chat_router, train_router, infer_router, search_router, project_router,query_router, neo4j_router
+from app.api.routers import health, search_router, query_router, neo4j_router, invalidation_router, note_router, patent_router, pdf_router, embed_router
 
 
 # 임베딩 함수
@@ -72,16 +72,12 @@ app.add_middleware(
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-app.include_router(ai_router.router, prefix="/gpu")
-app.include_router(chat_router.router, prefix="/gpu")
-app.include_router(train_router.router, prefix="/gpu")
-app.include_router(infer_router.router, prefix="/gpu")
-
 app.include_router(search_router.router, prefix="/gpu")
-# app.include_router(patent_router.router, prefix="/gpu")
 app.include_router(query_router.router, prefix="/gpu")
-app.include_router(project_router.router, prefix="/gpu")
-
-app.include_router(health.router, prefix="/gpu")
-
 app.include_router(neo4j_router.router, prefix="/gpu")
+app.include_router(invalidation_router.router, prefix="/gpu")
+app.include_router(note_router.router, prefix="/gpu")
+app.include_router(patent_router.router, prefix="/gpu")
+app.include_router(pdf_router.router, prefix="/gpu")
+app.include_router(embed_router.router, prefix="/gpu")
+app.include_router(health.router, prefix="/gpu")
