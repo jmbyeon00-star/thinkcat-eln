@@ -60,6 +60,8 @@ class PatentResult(Base):
 
     # 출원인 정보
     applicant_code: Mapped[str | None] = mapped_column("APPLICANT_CODE", String(3000))
+    # applicant_code의 역순 문자열 (DB generated column, suffix LIKE 검색을 인덱스 prefix 검색으로 바꾸기 위함)
+    applicant_code_rev: Mapped[str | None] = mapped_column("applicant_code_rev", String(3000))
     applicant_name: Mapped[str | None] = mapped_column("APPLICANT_NAME", String(3000))
     application_number: Mapped[str | None] = mapped_column("APPLICATION_NUMBER", String(20))
 

@@ -159,13 +159,12 @@ def get_top_similar_agent(app_number: str, index: str, db_session: Session, maxs
     
     
 # =========================================================================
-# 2) agent라우터 /company/{company_name} 함수 : 사무소의 특허정보 집계정보 반환
+# 사무소명 -> (회사 정보, 중복 제거된 출원번호 목록) 조회 공통 헬퍼
 # =========================================================================
-def get_company_patent_statistics(
+def _get_company_and_app_numbers(
     db_session: Session,
     company_name: str
-) -> Dict[str, Any]:
-
+):
     # 1. AgentList 테이블에서 회사 정보 조회
     company_info = db_session.query(AgentList).filter(
         AgentList.company_ko == company_name
@@ -189,39 +188,53 @@ def get_company_patent_statistics(
     # 콤마로 연결된 agent_code들을 리스트로 분리
     agent_codes = [code.strip() for code in company_info.agent_code.split(',')] if company_info.agent_code else []
 
-    # 2. agent_codes를 사용하여 AgentInfo에서 모든 출원번호 조회
-    agent_rows = db_session.query(
-        AgentInfo.app_number
-    ).filter(
-        AgentInfo.agent_code.in_(agent_codes)
-    ).all()
+    # 2. agent_codes를 사용하여 AgentInfo에서 중복 제거된 출원번호 조회
+    # (.distinct()로 DB에서 미리 중복을 제거해야 이후 PatentResult IN절 크기가 절반 가까이 줄어듦 - 대형 로펌 기준 51만 -> 26만)
+    agent_rows = (
+        db_session.query(AgentInfo.app_number)
+        .filter(AgentInfo.agent_code.in_(agent_codes))
+        .distinct()
+        .all()
+    )
+    app_numbers = [str(r[0]) for r in agent_rows]
+
+    return company_data, app_numbers
+
+
+# =========================================================================
+# 2) agent라우터 /company/{company_name} 함수 : 사무소의 특허정보 집계정보 반환
+# =========================================================================
+def get_company_patent_statistics(
+    db_session: Session,
+    company_name: str
+) -> Dict[str, Any]:
+
+    company_data, app_numbers = _get_company_and_app_numbers(db_session, company_name)
 
     # 대리인 코드에 연결된 출원 번호가 아예 없는 경우
-    if not agent_rows:
+    if not app_numbers:
         return {
             "success": True,
             "company_info": company_data,
             "statistics": "해당 대리인 코드들에 연결된 출원 데이터가 없습니다."
         }
 
-    # DataFrame 생성 및 중복 제거
-    df_agent = pd.DataFrame(agent_rows, columns=["app_number"])
-    df_agent["app_number"] = df_agent["app_number"].astype(str)
-    app_numbers = df_agent["app_number"].unique().tolist()
-
     # 3. 특허 결과 조회
+    # 통계(개수)만 필요하므로 title 등 무거운 컬럼은 조회하지 않음
+    # (이전에는 CPC섹션/연도별로 특허 상세 목록 전체를 응답에 실어 보내서, 대형 로펌의 경우
+    #  43MB 응답 + iterrows() 순회로 100초 이상 걸렸음. 상세 목록은 필요할 때만
+    #  get_company_patents_detail()로 페이지 단위 조회하도록 분리함)
     patent_rows = db_session.query(
         PatentResult.application_number,
         PatentResult.filing_year,
         PatentResult.end_status,
-        PatentResult.cpc_code,
-        PatentResult.title
+        PatentResult.cpc_code
     ).filter(
         PatentResult.application_number.in_(app_numbers)
     ).all()
 
     df_patent = pd.DataFrame(patent_rows, columns=[
-        "app_number", "filing_year", "end_status", "cpc_code", "title"
+        "app_number", "filing_year", "end_status", "cpc_code"
     ])
 
     # 4. 통계 계산 (조회된 특허 상세 내역이 없는 경우 처리)
@@ -243,48 +256,13 @@ def get_company_patent_statistics(
     end_status_dist = df_patent["end_status"].fillna("정보없음").value_counts().to_dict()
     filing_year_dist = df_patent["filing_year"].fillna("정보없음").value_counts().to_dict()
     
-    # CPC 섹션 추출 로직
-    df_patent["cpc_section"] = df_patent["cpc_code"].apply(
-        lambda x: str(x)[0] if pd.notna(x) and len(str(x)) > 0 else "정보없음"
-    )
-    
-    # CPC 섹션별 상세 정보 생성
-    cpc_section_details = {}
-    for section in df_patent["cpc_section"].unique():
-        section_df = df_patent[df_patent["cpc_section"] == section]
-        patents_list = []
-        for _, row in section_df.iterrows():
-            patents_list.append({
-                "application_number": row["app_number"],
-                "title": row["title"] if pd.notna(row["title"]) else "제목 없음",
-                "filing_year": str(row["filing_year"]) if pd.notna(row["filing_year"]) else "정보없음",
-                "cpc_code": row["cpc_code"] if pd.notna(row["cpc_code"]) else "정보없음"
-            })
-        cpc_section_details[str(section)] = {
-            "count": len(section_df),
-            "patents": patents_list
-        }
-
-    # 출원연도별 상세 정보 생성
-    filing_year_details = {}
-    for year in df_patent["filing_year"].unique():
-        year_key = "정보없음" if pd.isna(year) else str(year)
-        year_df = df_patent[df_patent["filing_year"].isna()] if pd.isna(year) else df_patent[df_patent["filing_year"] == year]
-        
-        patents_list = []
-        for _, row in year_df.iterrows():
-            patents_list.append({
-                "application_number": row["app_number"],
-                "title": row["title"] if pd.notna(row["title"]) else "제목 없음",
-                "cpc_code": row["cpc_code"] if pd.notna(row["cpc_code"]) else "정보없음",
-                "end_status": row["end_status"] if pd.notna(row["end_status"]) else "정보없음"
-            })
-        filing_year_details[year_key] = {
-            "count": len(year_df),
-            "patents": patents_list
-        }
+    # CPC 섹션 추출 로직 (벡터화 - 행 단위 순회 없음)
+    df_patent["cpc_section"] = df_patent["cpc_code"].str[0].fillna("정보없음")
 
     # 5. 최종 응답
+    # cpc_section_details/filing_year_details는 개수만 포함 (특허 상세 목록은 무거우므로 제외).
+    # 프론트엔드가 특정 섹션/연도를 펼칠 때 GET /api/agent/company/{name}/patents 로 해당 페이지만 따로 조회함.
+    cpc_section_dist = df_patent["cpc_section"].value_counts()
     return {
         "success": True,
         "company_info": company_data,
@@ -292,10 +270,76 @@ def get_company_patent_statistics(
             "total_patent_count": int(total_patent_count),
             "end_status_distribution": {str(k): int(v) for k, v in end_status_dist.items()},
             "filing_year_distribution": {str(k): int(v) for k, v in filing_year_dist.items()},
-            "cpc_section_distribution": df_patent["cpc_section"].value_counts().to_dict(),
-            "cpc_section_details": cpc_section_details,
-            "filing_year_details": filing_year_details
+            "cpc_section_distribution": {str(k): int(v) for k, v in cpc_section_dist.items()},
+            "cpc_section_details": {str(k): {"count": int(v)} for k, v in cpc_section_dist.items()},
+            "filing_year_details": {str(k): {"count": int(v)} for k, v in filing_year_dist.items()}
         }
+    }
+
+
+# =========================================================================
+# 2-1) agent라우터 /company/{company_name}/patents 함수
+#      : CPC 섹션 또는 출원연도로 필터링한 특허 목록을 페이지 단위로 반환
+# =========================================================================
+def get_company_patents_detail(
+    db_session: Session,
+    company_name: str,
+    section: str | None = None,
+    filing_year: str | None = None,
+    page: int = 1,
+    page_size: int = 5
+) -> Dict[str, Any]:
+
+    _, app_numbers = _get_company_and_app_numbers(db_session, company_name)
+
+    if not app_numbers:
+        return {"success": True, "page": page, "page_size": page_size, "patents": []}
+
+    query = db_session.query(
+        PatentResult.application_number,
+        PatentResult.title,
+        PatentResult.filing_year,
+        PatentResult.cpc_code,
+        PatentResult.end_status
+    ).filter(
+        PatentResult.application_number.in_(app_numbers)
+    )
+
+    if section:
+        query = query.filter(PatentResult.cpc_code.like(f"{section}%"))
+    if filing_year:
+        # filing_year 컬럼은 Integer이므로 캐스팅 (실패 시 잘못된 값으로 간주하고 무시)
+        try:
+            query = query.filter(PatentResult.filing_year == int(filing_year))
+        except ValueError:
+            pass
+
+    # total_count는 별도로 다시 집계하지 않음 - 통계 응답(cpc_section_distribution/
+    # filing_year_distribution)에 이미 있는 값을 프론트에서 재사용하면 됨 (중복 풀스캔 방지)
+    rows = (
+        query
+        .order_by(PatentResult.application_number)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    patents = [
+        {
+            "application_number": r.application_number,
+            "title": r.title or "제목 없음",
+            "filing_year": str(r.filing_year) if r.filing_year else "정보없음",
+            "cpc_code": r.cpc_code or "정보없음",
+            "end_status": r.end_status or "정보없음"
+        }
+        for r in rows
+    ]
+
+    return {
+        "success": True,
+        "page": page,
+        "page_size": page_size,
+        "patents": patents
     }
     
     

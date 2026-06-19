@@ -24,6 +24,7 @@ export default function ApplicationSearchDetail() {
   useEffect(() => {
     if (!appNo) return;
     setLoading(true);
+    window.scrollTo(0, 0); // 이전 페이지(검색결과 등)의 스크롤 위치가 그대로 남아있는 문제 방지
     searchByApplication(appNo)
       .then((result) => setData(result))
       .catch((err) => console.error("Error:", err))

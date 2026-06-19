@@ -1,5 +1,6 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
+import { useRouter as useLocaleRouter } from "@/routing";
 import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import {
@@ -8,7 +9,7 @@ import {
     Plus, Minus, ChevronRight, Phone, Printer,
     Globe, SearchX, BadgeCheck
 } from "lucide-react";
-import { getAgentStatistics } from "@/lib/api";
+import { getAgentStatistics, getAgentCompanyPatents } from "@/lib/api";
 import { getLogoManifest, findLogoInManifest } from "@/lib/logo-utils";
 import AgentDetailModal from "@/components/patent/AgentDetailModal";
 
@@ -23,7 +24,6 @@ interface PatentItem {
 
 interface SectionDetails {
     count: number;
-    patents: PatentItem[];
 }
 
 interface CompanyStatisticsResponse {
@@ -78,6 +78,7 @@ export default function AgentCompanyDetail() {
             try {
                 setLoading(true);
                 setError(null);
+                window.scrollTo(0, 0); // 이전 페이지의 스크롤 위치가 그대로 남아있는 문제 방지
                 const response = await getAgentStatistics(agentcompany) as CompanyStatisticsResponse;
                 setData(response);
 
@@ -144,6 +145,7 @@ export default function AgentCompanyDetail() {
                 {hasDetailedData ? (
                     <>
                         <DetailedAnalysis
+                            companyName={company_info.company_ko}
                             statistics={statistics}
                             expandedCPC={expandedCPC}
                             setExpandedCPC={setExpandedCPC}
@@ -273,6 +275,7 @@ function ProfileCard({ company_info, statistics, logoUrl, agentNames }: any) {
 }
 
 function DetailedAnalysis({
+    companyName,
     statistics,
     expandedCPC,
     setExpandedCPC,
@@ -308,7 +311,9 @@ function DetailedAnalysis({
                                 />
                                 {expandedCPC === key && statistics.cpc_section_details?.[key] && (
                                     <PatentList
-                                        patents={statistics.cpc_section_details[key].patents}
+                                        companyName={companyName}
+                                        section={key}
+                                        totalCount={statistics.cpc_section_details[key].count}
                                         currentPage={cpcPages[key] || 0}
                                         onPageChange={(p: number) => setCpcPages({ ...cpcPages, [key]: p })}
                                     />
@@ -338,7 +343,9 @@ function DetailedAnalysis({
                                 />
                                 {expandedYear === year && statistics.filing_year_details?.[year] && (
                                     <PatentList
-                                        patents={statistics.filing_year_details[year].patents}
+                                        companyName={companyName}
+                                        filingYear={year}
+                                        totalCount={statistics.filing_year_details[year].count}
                                         currentPage={yearPages[year] || 0}
                                         onPageChange={(p: number) => setYearPages({ ...yearPages, [year]: p })}
                                     />
@@ -510,31 +517,77 @@ function ProgressBarWithExpand({ label, subLabel, value, max, color, isExpanded,
     );
 }
 
-function PatentList({ patents, currentPage, onPageChange }: any) {
-    const currentItems = patents.slice(
-        currentPage * ITEMS_PER_PAGE,
-        (currentPage + 1) * ITEMS_PER_PAGE
-    );
+function PatentList({ companyName, section, filingYear, totalCount, currentPage, onPageChange }: any) {
+    const t = useTranslations();
+    const router = useLocaleRouter();
+    const [patents, setPatents] = useState<PatentItem[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        let active = true;
+        setLoading(true);
+        getAgentCompanyPatents(companyName, {
+            section,
+            filingYear,
+            page: currentPage + 1,
+            pageSize: ITEMS_PER_PAGE
+        })
+            .then((res: any) => { if (active) setPatents(res?.patents || []); })
+            .catch(() => { if (active) setPatents([]); })
+            .finally(() => { if (active) setLoading(false); });
+        return () => { active = false; };
+    }, [companyName, section, filingYear, currentPage]);
+
+    const totalPages = Math.max(1, Math.ceil((totalCount || 0) / ITEMS_PER_PAGE));
 
     return (
         <div className="mt-4 bg-slate-50 rounded-xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-top-2">
-            <table className="w-full text-sm">
-                <tbody className="divide-y divide-slate-200">
-                    {currentItems.map((p: PatentItem, i: number) => (
-                        <tr key={i} className="hover:bg-white transition-colors">
-                            <td className="px-4 py-3 font-mono text-[10px] text-blue-600 w-32 shrink-0">
-                                {p.application_number}
-                            </td>
-                            <td className="px-4 py-3 text-slate-700 truncate max-w-[200px]">
-                                {p.title}
-                            </td>
-                            <td className="px-4 py-3 text-right text-slate-400 text-[10px]">
-                                {p.filing_year}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            {loading ? (
+                <div className="p-6 text-center text-xs text-slate-400 font-bold">{t('agent.detail.loading_analysis')}</div>
+            ) : (
+                <table className="w-full text-sm">
+                    <tbody className="divide-y divide-slate-200">
+                        {patents.map((p: PatentItem, i: number) => (
+                            <tr
+                                key={i}
+                                className="hover:bg-white cursor-pointer transition-colors"
+                                onClick={() => router.push(`/applicationNum/${p.application_number}`)}
+                            >
+                                <td className="px-4 py-3 font-mono text-[10px] text-blue-600 w-32 shrink-0">
+                                    {p.application_number}
+                                </td>
+                                <td className="px-4 py-3 text-slate-700 truncate max-w-[200px]">
+                                    {p.title}
+                                </td>
+                                <td className="px-4 py-3 text-right text-slate-400 text-[10px]">
+                                    {p.filing_year}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
+
+            {/* 페이지 이동 */}
+            <div className="flex items-center justify-between px-4 py-2.5 bg-white border-t border-slate-200">
+                <button
+                    onClick={() => onPageChange(Math.max(0, currentPage - 1))}
+                    disabled={currentPage <= 0}
+                    className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                >
+                    <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-[10px] font-bold text-slate-400">
+                    {currentPage + 1} / {totalPages}
+                </span>
+                <button
+                    onClick={() => onPageChange(Math.min(totalPages - 1, currentPage + 1))}
+                    disabled={currentPage >= totalPages - 1}
+                    className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                >
+                    <ChevronRight className="w-4 h-4" />
+                </button>
+            </div>
         </div>
     );
 }

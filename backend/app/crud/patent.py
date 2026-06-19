@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Union
 from sqlalchemy import select, text, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 import os
 import pandas as pd
 import html
@@ -226,25 +226,21 @@ def fetch_by_applicant(session: Session, applicant_code: str) -> Dict[str, Any]:
     """
     try:
         # Step 1: PATENT_INFO_TB에서 최신 권리자 기준 등록번호 조회
-        subq = (
-            select(
-                PatentInfo.reg_number,
-                func.max(PatentInfo.rgt_trnsf_seq).label("max_seq")
-            )
-            .group_by(PatentInfo.reg_number)
-            .subquery()
+        # RGTR_CD로 먼저 필터링(idx_RGTR_CD)한 뒤, 등록번호별 최신 여부를 상관 서브쿼리로 확인
+        # (전체 테이블을 GROUP BY로 집계하는 방식보다 훨씬 빠름)
+        t2 = aliased(PatentInfo)
+        latest_seq_subq = (
+            select(func.max(t2.rgt_trnsf_seq))
+            .where(t2.reg_number == PatentInfo.reg_number)
+            .scalar_subquery()
         )
-        
+
         query = (
             select(PatentInfo.reg_number)
-            .join(
-                subq,
-                (PatentInfo.reg_number == subq.c.reg_number) &
-                (PatentInfo.rgt_trnsf_seq == subq.c.max_seq)
-            )
             .where(
                 PatentInfo.rgtr_cd.is_not(None),
-                PatentInfo.rgtr_cd == applicant_code
+                PatentInfo.rgtr_cd == applicant_code,
+                PatentInfo.rgt_trnsf_seq == latest_seq_subq
             )
         )
         
@@ -255,7 +251,7 @@ def fetch_by_applicant(session: Session, applicant_code: str) -> Dict[str, Any]:
         search_data1 = (
             session.query(PatentResult)
             .filter(
-                PatentResult.applicant_code.like(f"%{applicant_code}"),
+                PatentResult.applicant_code_rev.like(f"{applicant_code[::-1]}%"),
                 PatentResult.end_status.in_(['등록', '공개'])
             )
             .distinct(PatentResult.application_number)

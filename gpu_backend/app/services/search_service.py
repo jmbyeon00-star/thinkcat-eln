@@ -16,7 +16,8 @@ from pymysql.connections import Connection
 from pymysql.cursors import Cursor, DictCursor
 
 from app.utils.db_connecter import db_connect
-from app.utils.es_client import get_es
+# from app.utils.es_client import get_es
+from app.utils.os_client import get_os
 from app.utils.embedding import get_embedding
 from app.core.llm.search_intent import analyze_search_intent
 from dotenv import load_dotenv
@@ -32,7 +33,8 @@ OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://192.168.1.20:11434/api/gene
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://192.168.1.20:11434")
 SESSION_ID = os.getenv("SESSION_ID", "gemma_ollama_session")
 
-ES_HOST = os.getenv("ES_HOST", None)
+# ES_HOST = os.getenv("ES_HOST", None)
+OPENSEARCH_HOST = os.getenv("OPENSEARCH_HOST", None)
 DB_HOST = os.getenv("DB_HOST", None)
 DB_USER = os.getenv("DB_USER", None)
 DB_PASS = os.getenv("DB_PASS", None)
@@ -45,9 +47,12 @@ DB_TYPE = os.getenv("DB_TYPE", None)
 # BGEM3 모델은 앱 시작 시 한 번만 로드 (GPU/CPU 자동 감지)
 # model = BGEM3FlagModel("BAAI/bge-m3", use_fp16=True)
 
-ES_INDEX_PREFIX = os.getenv("ES_INDEX_PREFIX", "titleabstract_")
-ES_KEY_FIELD = os.getenv("ES_KEY_FIELD", "address")
-ES_USE_VECTOR   = os.getenv("ES_USE_VECTOR", "false").lower() == "true"
+# ES_INDEX_PREFIX = os.getenv("ES_INDEX_PREFIX", "titleabstract_")
+# ES_KEY_FIELD = os.getenv("ES_KEY_FIELD", "address")
+# ES_USE_VECTOR   = os.getenv("ES_USE_VECTOR", "false").lower() == "true"
+ES_INDEX_PREFIX = os.getenv("OPENSEARCH_INDEX_PREFIX", "titleabstract_")
+ES_KEY_FIELD = os.getenv("OPENSEARCH_KEY_FIELD", "address")
+ES_USE_VECTOR   = os.getenv("OPENSEARCH_USE_VECTOR", "false").lower() == "true"
 
 _get_embedding: Optional[callable] = None
 if ES_USE_VECTOR:
@@ -112,12 +117,22 @@ def _build_query(
         if isinstance(q_vec, np.ndarray):
             q_vec = q_vec.tolist()
         if isinstance(q_vec, (list, tuple)) and len(q_vec) > 0:
+            # # [ES] script_score 방식
+            # should_clauses.append({
+            #     "script_score": {
+            #         "query": {"match_all": {}},
+            #         "script": {
+            #             "source": "cosineSimilarity(params.q, 'vector') + 1.0",
+            #             "params": {"q": q_vec}
+            #         }
+            #     }
+            # })
+            # [OpenSearch] knn 쿼리 방식
             should_clauses.append({
-                "script_score": {
-                    "query": {"match_all": {}},
-                    "script": {
-                        "source": "cosineSimilarity(params.q, 'vector') + 1.0",
-                        "params": {"q": q_vec}
+                "knn": {
+                    "vector": {
+                        "vector": q_vec,
+                        "k": 100
                     }
                 }
             })
@@ -155,7 +170,8 @@ def search_by_keyword(
     """
     connection, cursor = db_connect()
     try:
-        es = get_es()
+        # es = get_es()
+        es = get_os()
         index = f"{ES_INDEX_PREFIX}{section.lower()}"
 
         if not es.indices.exists(index=index):
@@ -304,8 +320,9 @@ def fetch_vectors_by_appnums(app_nums: List[str]) -> Dict[str, List[float]]:
     """
     if not app_nums:
         return {}
-    
-    es = get_es()
+
+    # es = get_es()
+    es = get_os()
     # 모든 섹션 인덱스(titleabstract_*)를 대상으로 검색
     index_pattern = f"{ES_INDEX_PREFIX}*"
     
@@ -466,12 +483,22 @@ def build_standard_es_query(options: dict, query_vector=None):
 
         # 4. 벡터 검색 (하이브리드)
         if options.get("use_vector", True) and query_vector is not None:
+            # # [ES] script_score 방식
+            # should.append({
+            #     "script_score": {
+            #         "query": {"match_all": {}},
+            #         "script": {
+            #             "source": "cosineSimilarity(params.q, 'vector') + 1.0",
+            #             "params": {"q": query_vector}
+            #         }
+            #     }
+            # })
+            # [OpenSearch] knn 쿼리 방식
             should.append({
-                "script_score": {
-                    "query": {"match_all": {}},
-                    "script": {
-                        "source": "cosineSimilarity(params.q, 'vector') + 1.0",
-                        "params": {"q": query_vector}
+                "knn": {
+                    "vector": {
+                        "vector": query_vector,
+                        "k": 100
                     }
                 }
             })
@@ -676,12 +703,22 @@ def build_es_query_from_intent(intent: dict, options: dict, query_vector=None, r
         if intent.get("use_vector", True) and query_vector is not None:
             # numpy array인 경우 list로 변환
             q_vec = query_vector.tolist() if hasattr(query_vector, 'tolist') else query_vector
+            # # [ES] script_score 방식
+            # should.append({
+            #     "script_score": {
+            #         "query": {"match_all": {}},
+            #         "script": {
+            #             "source": "cosineSimilarity(params.q, 'vector') + 1.0",
+            #             "params": {"q": q_vec}
+            #         }
+            #     }
+            # })
+            # [OpenSearch] knn 쿼리 방식
             should.append({
-                "script_score": {
-                    "query": {"match_all": {}},
-                    "script": {
-                        "source": "cosineSimilarity(params.q, 'vector') + 1.0",
-                        "params": {"q": q_vec}
+                "knn": {
+                    "vector": {
+                        "vector": q_vec,
+                        "k": 100
                     }
                 }
             })
@@ -985,19 +1022,30 @@ def _build_similar_query_centroid(query_vector: list, exclude_app_numbers: list)
     if exclude_app_numbers:
         must_not.append({"terms": {"application_number": exclude_app_numbers}})
 
-    return {
-        "script_score": {
-            "query": {
-                "bool": {
-                    "must_not": must_not
-                }
-            } if must_not else {"match_all": {}},
-            "script": {
-                "source": "cosineSimilarity(params.q, 'vector') + 1.0",
-                "params": {"q": query_vector}
+    # # [ES] script_score 방식
+    # return {
+    #     "script_score": {
+    #         "query": {
+    #             "bool": {"must_not": must_not}
+    #         } if must_not else {"match_all": {}},
+    #         "script": {
+    #             "source": "cosineSimilarity(params.q, 'vector') + 1.0",
+    #             "params": {"q": query_vector}
+    #         }
+    #     }
+    # }
+    # [OpenSearch] knn 쿼리 방식
+    knn_clause = {
+        "knn": {
+            "vector": {
+                "vector": query_vector,
+                "k": 100
             }
         }
     }
+    if must_not:
+        return {"bool": {"must": [knn_clause], "must_not": must_not}}
+    return knn_clause
 
 
 def _build_similar_query_script_score(vectors: list, exclude_app_numbers: list) -> dict:
@@ -1009,28 +1057,33 @@ def _build_similar_query_script_score(vectors: list, exclude_app_numbers: list) 
     if exclude_app_numbers:
         must_not.append({"terms": {"application_number": exclude_app_numbers}})
 
-    # 각 벡터와의 유사도를 합산하는 스크립트 생성
-    script_parts = []
-    params = {}
-    for i, vec in enumerate(vectors):
-        param_name = f"v{i}"
-        params[param_name] = vec
-        script_parts.append(f"cosineSimilarity(params.{param_name}, 'vector')")
+    # # [ES] 여러 벡터 유사도 합산 script_score 방식
+    # script_parts = []
+    # params = {}
+    # for i, vec in enumerate(vectors):
+    #     param_name = f"v{i}"
+    #     params[param_name] = vec
+    #     script_parts.append(f"cosineSimilarity(params.{param_name}, 'vector')")
+    # script_source = " + ".join(script_parts) + f" + {len(vectors)}.0"
+    # return {
+    #     "script_score": {
+    #         "query": {"bool": {"must_not": must_not}} if must_not else {"match_all": {}},
+    #         "script": {"source": script_source, "params": params}
+    #     }
+    # }
 
-    # 모든 유사도를 합산
-    script_source = " + ".join(script_parts) + f" + {len(vectors)}.0"
-
-    return {
-        "script_score": {
-            "query": {
-                "bool": {
-                    "must_not": must_not
-                }
-            } if must_not else {"match_all": {}},
-            "script": {
-                "source": script_source,
-                "params": params
+    # [OpenSearch] 여러 벡터를 평균내어 단일 knn 쿼리로 처리
+    dim = len(vectors[0])
+    avg_vector = [sum(v[i] for v in vectors) / len(vectors) for i in range(dim)]
+    knn_clause = {
+        "knn": {
+            "vector": {
+                "vector": avg_vector,
+                "k": 100
             }
         }
     }
+    if must_not:
+        return {"bool": {"must": [knn_clause], "must_not": must_not}}
+    return knn_clause
 # <<<

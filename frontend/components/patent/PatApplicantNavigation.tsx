@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/routing";
 import {
     ScatterChart,
     Scatter,
@@ -262,7 +262,7 @@ export default function ApplicantNavigationChart({
                                                 href={iconPath}
                                                 className="cursor-pointer" // 🎯 애니메이션 효과 제거 상태 유지
                                                 style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' }}
-                                                onClick={() => !payload.isMyPatent && router.push(`/search/company/${payload.applicant_code}`)}
+                                                onClick={() => !payload.isMyPatent && router.push(`/company/${payload.applicant_code}`)}
                                             />
                                         );
                                     }}

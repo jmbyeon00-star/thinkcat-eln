@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/routing";
 import { AlertCircle, AlertTriangle, CheckCircle, XCircle, ArrowRightLeft, Activity, Info } from "lucide-react";
 import { patentByNpecheck } from "@/lib/api"; 
 
@@ -34,7 +34,7 @@ export default function PatLitigation({ applicationNumber }: PatLitigationProps)
   }, [applicationNumber]);
 
   const handleClick = (code?: string) => {
-    if (code) router.push(`/search/company/${code}`);
+    if (code) router.push(`/company/${code}`);
   };
 
   const groupByRGT_TRNSF_SEQ = (data: NpeItem[]) => {

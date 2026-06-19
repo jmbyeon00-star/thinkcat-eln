@@ -304,7 +304,7 @@ export default function MarketplacePage() {
   };
 
   const handlePatentClick = (appNumber: string) => {
-    window.location.href = `/search/applicationNum/${encodeURIComponent(appNumber)}`;
+    window.location.href = `/applicationNum/${encodeURIComponent(appNumber)}`;
   };
 
   const executeSearch = async (q: string, type: string, cat: string) => {

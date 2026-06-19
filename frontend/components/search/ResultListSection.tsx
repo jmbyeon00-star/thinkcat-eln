@@ -89,14 +89,7 @@ export const ResultListSection = ({
             sessionStorage.setItem('search_scroll_pos', window.scrollY.toString());
         }
 
-        let targetPath = "";
-        if (searchType === "application") {
-            targetPath = `/applicationNum/${appNum}`;
-        } else if (searchType === "registration") {
-            targetPath = `/registrationNum/${appNum}`;
-        } else {
-            targetPath = `/applicationNum/${appNum}`;
-        }
+        const targetPath = `/applicationNum/${appNum}`;
         router.push(targetPath); // ✅ App Router push (문자열 그대로 동작)
     };
 

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/routing";
 import { agentRecommend } from "@/lib/api";
 import { UserCheck, CheckCircle2, MapPin, Building2 } from "lucide-react";
 
@@ -32,7 +32,7 @@ export default function AgentRecommendTable({ applicationNumber, code }: AgentNa
 
   const handleCompanyClick = (companyName: string) => {
     if (companyName) {
-      router.push(`/search/agent/${encodeURIComponent(companyName)}`);
+      router.push(`/agent/${encodeURIComponent(companyName)}`);
     }
   };
 

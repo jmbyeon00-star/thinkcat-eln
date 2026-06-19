@@ -84,8 +84,42 @@ def search_company_analysis(
             status_code=500,
             detail=f"회사별 대리인 통계 조회 중 오류 발생: {str(e)}"
         )
-        
-    
+
+
+@router.get("/company/{company_name}/patents")
+def get_company_patents(
+    company_name: str,
+    section: Optional[str] = Query(None, description="CPC 섹션 (A~H, Y 등)으로 필터링"),
+    filing_year: Optional[str] = Query(None, description="출원연도로 필터링"),
+    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
+    page_size: int = Query(5, ge=1, le=50, description="페이지당 개수"),
+    db: Session = Depends(get_sync_session)
+):
+    """
+    회사 상세 페이지에서 CPC 섹션/출원연도를 펼쳤을 때 해당 페이지의 특허 목록만 조회.
+    /company/{company_name}는 카운트만 반환하므로, 실제 특허 목록은 이 엔드포인트에서 필요한 만큼만 가져온다.
+    """
+    try:
+        result = agent_service.get_company_patents_detail(
+            db_session=db,
+            company_name=company_name,
+            section=section,
+            filing_year=filing_year,
+            page=page,
+            page_size=page_size
+        )
+        return JSONResponse(content=result, status_code=200)
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"회사별 특허 목록 조회 중 오류 발생: {str(e)}"
+        )
+
+
 @router.get("/people/{agent_code}")
 def search_agent_code(
     agent_code: str,
