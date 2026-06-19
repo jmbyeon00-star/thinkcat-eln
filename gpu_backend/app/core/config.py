@@ -11,12 +11,21 @@ class Settings(BaseSettings):
     SQL_ECHO: bool = False
     POOL_PRE_PING: bool = True
     
-    ES_HOST: str = "192.168.1.116:9200"
-    ES_USER: str | None = None
-    ES_PASS: str | None = None
-    ES_TIMEOUT: int = 10
-    ES_INDEX_PREFIX: str = "titleabstract_"
-    ES_KEY_FIELD: str = "application_number"
+    # ES_HOST: str = "192.168.1.116:9200"
+    # ES_USER: str | None = None
+    # ES_PASS: str | None = None
+    # ES_TIMEOUT: int = 10
+    # ES_INDEX_PREFIX: str = "titleabstract_"
+    # ES_KEY_FIELD: str = "application_number"
+    OPENSEARCH_HOST: str = "211.47.9.105"
+    OPENSEARCH_PORT: int = 9281
+    OPENSEARCH_USER: str | None = None
+    OPENSEARCH_PASS: str | None = None
+    OPENSEARCH_TIMEOUT: int = 10
+    OPENSEARCH_INDEX_PREFIX: str = "titleabstract_"
+    OPENSEARCH_KEY_FIELD: str = "application_number"
+    OPENSEARCH_USE_SSL: bool = False
+    OPENSEARCH_VERIFY_CERTS: bool = False
     DB_KEY_FIELD: str = "official_number"
 
     DEFAULT_PATH: str = "/app/data"

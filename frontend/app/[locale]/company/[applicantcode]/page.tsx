@@ -42,6 +42,7 @@ export default function CompanyDetailPage() {
 
         setLoading(true);
         setError(null);
+        window.scrollTo(0, 0); // 이전 페이지의 스크롤 위치가 그대로 남아있는 문제 방지
 
         searchByApplicant(applicantcode)
             .then((response: any) => {

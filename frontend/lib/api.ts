@@ -172,6 +172,19 @@ export async function getAgentStatistics(agentCompany: string) {
   return fetchAPI(`/api/agent/company/${encodeURIComponent(agentCompany)}`);
 }
 
+// ============== 대리인 사무소 특허 목록 (CPC 섹션/연도별, 페이지 단위) ====================
+export async function getAgentCompanyPatents(
+  agentCompany: string,
+  params: { section?: string; filingYear?: string; page?: number; pageSize?: number }
+) {
+  const qs = new URLSearchParams();
+  if (params.section) qs.set("section", params.section);
+  if (params.filingYear) qs.set("filing_year", params.filingYear);
+  qs.set("page", String(params.page ?? 1));
+  qs.set("page_size", String(params.pageSize ?? 5));
+  return fetchAPI(`/api/agent/company/${encodeURIComponent(agentCompany)}/patents?${qs.toString()}`);
+}
+
 // ============== 대리인 조회 =====================================
 export async function getAgentDetail(agentCode: string) {
   return fetchAPI(`/api/agent/people/${agentCode}`);

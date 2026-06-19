@@ -1,5 +1,6 @@
 from fastapi import HTTPException
-from app.utils.es_client import get_es
+# from app.utils.es_client import get_es
+from app.utils.os_client import get_os
 from app.crud.patent import (fetch_by_keys, fetch_patent_by_regnum, fetch_by_applicant)
 from app.utils.embedding import get_embedding
 from app.utils.db_connecter import db_connect
@@ -14,8 +15,10 @@ import traceback
 # ------------------------------------------
 # ⚙️ 전역 설정
 # ------------------------------------------
-ES_INDEX_PREFIX = os.getenv("ES_INDEX_PREFIX", "titleabstract_")
-ES_KEY_FIELD = os.getenv("ES_KEY_FIELD", "application_number")
+# ES_INDEX_PREFIX = os.getenv("ES_INDEX_PREFIX", "titleabstract_")
+# ES_KEY_FIELD = os.getenv("ES_KEY_FIELD", "application_number")
+ES_INDEX_PREFIX = os.getenv("OPENSEARCH_INDEX_PREFIX", "titleabstract_")
+ES_KEY_FIELD = os.getenv("OPENSEARCH_KEY_FIELD", "application_number")
 
 # ------------------------------------------
 # 🗄️ 검색 캐시 (임베딩 & total_hits 저장)
@@ -69,39 +72,39 @@ def get_cache_info():
     }
 
 
-def get_total_hits(es, index: str, inquiry_vector: List[float]) -> int:
+def get_total_hits(es, index: str, inquiry_vector: List[float] = None) -> int:
     """
     전체 매칭 문서 수를 가져옵니다 (결과는 가져오지 않음)
-    
+
     Args:
-        es: Elasticsearch 클라이언트
+        es: OpenSearch 클라이언트
         index: 검색할 인덱스명
-        inquiry_vector: 검색 쿼리의 임베딩 벡터
-    
+        inquiry_vector: (미사용) 구 ES script_score 방식에서 사용하던 벡터 — OpenSearch count API로 대체됨
+
     Returns:
         전체 매칭 문서 수
     """
-    body = {
-        "query": {
-            "script_score": {  # ✅ 수정: script_socre → script_score
-                "query": {
-                    "match_all": {}
-                },
-                "script": {
-                    "source": "cosineSimilarity(params.inQuiry_vector, 'vector') + 1.0",  # ✅ 수정: param → params, vecotr → vector
-                    "params": {
-                        "inQuiry_vector": inquiry_vector
-                    }
-                }
-            }
-        },
-        "size": 0,  # 결과는 가져오지 않고 count만
-        "track_total_hits": True
-    }
-    
-    response = es.search(index=index, body=body, request_timeout=120)
-    total_hits = response['hits']['total']['value']
-    
+    # # [ES] script_score 방식으로 전체 문서 수 조회
+    # body = {
+    #     "query": {
+    #         "script_score": {
+    #             "query": {"match_all": {}},
+    #             "script": {
+    #                 "source": "cosineSimilarity(params.inQuiry_vector, 'vector') + 1.0",
+    #                 "params": {"inQuiry_vector": inquiry_vector}
+    #             }
+    #         }
+    #     },
+    #     "size": 0,
+    #     "track_total_hits": True
+    # }
+    # response = es.search(index=index, body=body, request_timeout=120)
+    # total_hits = response['hits']['total']['value']
+
+    # [OpenSearch] count API로 인덱스 전체 문서 수 조회
+    response = es.count(index=index, body={"query": {"match_all": {}}})
+    total_hits = response['count']
+
     print(f"📊 총 유사 문서 수: {total_hits}")
     return total_hits
 
@@ -142,7 +145,8 @@ def search_patents_with_pagination(
         }
     """
     try:
-        es = get_es()
+        # es = get_es()
+        es = get_os()
         index = f"{ES_INDEX_PREFIX}{section.lower()}"
         
         # 인덱스 존재 확인
@@ -231,16 +235,22 @@ def search_patents_with_pagination(
         # 🔎 ES 쿼리 구성
         # ------------------------------------------
         if search_method == "bgem3":
+            # # [ES] script_score 방식
+            # query = {
+            #     "script_score": {
+            #         "query": {"match_all": {}},
+            #         "script": {
+            #             "source": "cosineSimilarity(params.inQuiry_vector, 'vector') + 1.0",
+            #             "params": {"inQuiry_vector": inquiry_vector}
+            #         }
+            #     }
+            # }
+            # [OpenSearch] knn 쿼리 방식
             query = {
-                "script_score": {
-                    "query": {
-                        "match_all": {}
-                    },
-                    "script": {
-                        "source": "cosineSimilarity(params.inQuiry_vector, 'vector') + 1.0",
-                        "params": {
-                            "inQuiry_vector": inquiry_vector
-                        }
+                "knn": {
+                    "vector": {
+                        "vector": inquiry_vector,
+                        "k": min(max_size, 1000)
                     }
                 }
             }

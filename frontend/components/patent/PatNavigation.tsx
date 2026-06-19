@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/routing";
 import {
   ScatterChart,
   Scatter,
@@ -69,7 +69,7 @@ export default function PatNavigationChart({ applicationNumber, code }: PatNavig
   const [isLoading, setIsLoading] = useState(false);
 
   const handleClick = (applicationNum: string) => {
-    if (applicationNum) router.push(`/search/applicationNum/${applicationNum}`);
+    if (applicationNum) router.push(`/applicationNum/${applicationNum}`);
   };
 
   useEffect(() => {

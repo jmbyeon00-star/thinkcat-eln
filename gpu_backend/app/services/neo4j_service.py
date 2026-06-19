@@ -381,7 +381,7 @@ class PatentService:
     
 # -------------------------------------------
 neo4j_service = Neo4jSearchService(
-    uri         = os.getenv("NEO4J_URI", "bolt://192.168.1.116:7687"),
+    uri         = os.getenv("NEO4J_URI", "bolt://58.229.208.152:7687"),
     user        = os.getenv("NEO4J_USER", "neo4j"),
     password    = os.getenv("NEO4J_PASSWORD", "doslvkdlqm!")
 )

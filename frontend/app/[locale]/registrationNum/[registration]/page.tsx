@@ -1,17 +1,16 @@
 "use client";
 import { useParams } from "next/navigation";
+import { useRouter } from "@/routing";
 import { useEffect, useState } from "react";
 
 import { searchByRegistration } from "@/lib/api";
-import PatentDetailInfo from "@/components/patent/PatentDetailInfo";
-import PatentEvaluationResult from "@/components/patent/PatentEvaluationResult";
-import ZipPredict from "@/components/patent/ZipPredict";
-import PatLitigation from "@/components/patent/PatLitigation";
-import PatNavigation from "@/components/patent/PatNavigation";
-import PatentClaimInfo from "@/components/patent/PatClaim";
 
+// 등록번호로 특허를 찾은 뒤, 실제 상세 화면은 출원번호 기준의 공용 상세페이지(/applicationNum)를 그대로 사용한다.
+// (예전에는 이 페이지가 자체 컴포넌트 세트로 상세 화면 전체를 따로 렌더링했는데,
+//  applicationNum 페이지와 기능이 중복되면서도 업데이트가 누락되곤 했음)
 export default function RegistrationSearchPage() {
   const params = useParams();
+  const router = useRouter();
   const registration = params?.registration;
 
   const regNo =
@@ -19,43 +18,26 @@ export default function RegistrationSearchPage() {
       ? decodeURIComponent(registration)
       : null;
 
-  const [data, setData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!regNo) return;
 
-    setIsLoading(true);
-    setError(null);
-
     searchByRegistration(regNo)
-      .then((result) => {
-        setData(result);
-        console.log(result);
+      .then((result: any) => {
+        const appNo = result?.result?.application_number;
+        if (appNo) {
+          router.replace(`/applicationNum/${appNo}`);
+        } else {
+          setError("해당 등록번호에 대한 출원번호 정보를 찾을 수 없습니다.");
+        }
       })
       .catch((err) => {
         console.error("Error fetching patent:", err);
         setError(err.message || "특허 정보를 불러오는데 실패했습니다.");
-      })
-      .finally(() => setIsLoading(false));
+      });
   }, [regNo]);
 
-  // ✅ 로딩 상태 개선
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-zinc-600 text-lg font-medium">
-            데이터를 불러오는 중...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // ✅ 에러 상태 개선
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -78,57 +60,21 @@ export default function RegistrationSearchPage() {
           <h3 className="text-xl font-semibold text-zinc-900 mb-2">
             오류가 발생했습니다
           </h3>
-          <p className="text-red-600 mb-6">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            다시 시도
-          </button>
+          <p className="text-red-600 mb-2">{error}</p>
+          <p className="text-zinc-400 text-sm">등록번호: {regNo || "없음"}</p>
         </div>
       </div>
     );
   }
-
-  // ✅ 데이터 없음 상태 개선
-  if (!regNo || !data) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <svg
-            className="w-20 h-20 text-zinc-300 mx-auto mb-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          <p className="text-zinc-500 text-lg">데이터를 찾을 수 없습니다</p>
-          <p className="text-zinc-400 text-sm mt-2">
-            등록번호: {regNo || "없음"}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // IPC 코드의 첫 번째 글자만 추출
-  const firstLetter = data?.result?.ipc_code?.split("|")[0]?.trim()?.[0] || "";
-  const appNo = data?.result?.application_number;
 
   return (
-    <div className="mt-5 mb-10">
-      <PatentDetailInfo data={data.result} loading={false} />
-      <PatentClaimInfo data={data.result} />
-      <PatentEvaluationResult appNumber={appNo} />
-      <ZipPredict applicationNumber={appNo} />
-      <PatLitigation applicationNumber={appNo} />
-      <PatNavigation applicationNumber={appNo} code={firstLetter} />
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-zinc-600 text-lg font-medium">
+          출원번호를 조회하는 중...
+        </p>
+      </div>
     </div>
   );
 }
