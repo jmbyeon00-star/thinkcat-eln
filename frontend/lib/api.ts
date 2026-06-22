@@ -6,7 +6,7 @@ import { apiFetch } from "./apiFetch";
 // -----------------------------
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 // ✅ GPU 백엔드 서버 주소 (8001 포트)
-export const GPU_SERVER_URL = "http://192.168.1.149:8009";
+export const GPU_SERVER_URL = "http://192.168.1.149:8019";
 
 export async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await apiFetch(`${API_BASE}${url}`, {

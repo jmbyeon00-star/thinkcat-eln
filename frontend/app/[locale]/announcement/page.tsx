@@ -251,7 +251,7 @@ const ResearchProjectsPage = () => {
 
     return (
         <PageShell
-            title="R&D공고검색"
+            title="R&D공고"
             description="정부·공공기관의 R&D 과제 공고를 통합 검색하고 지원 기회를 확인하세요."
         >
             <>

@@ -5,10 +5,10 @@ import { ArrowRight, FlaskConical, ClipboardList, ShieldCheck, Building2, FileSe
 
 const SERVICES = [
   {
-    title: '변리사검색',
+    title: '변리사',
     desc: '특허·법률 사무소 정보를 빠르게 검색하고 적합한 파트너를 찾을 수 있습니다.',
     cta: '변리사 검색하기',
-    href: '/agent/marketplace',
+    href: '/attorney',
     external: false,
     icon: Building2,
   },
@@ -29,7 +29,7 @@ const SERVICES = [
     icon: SearchCheck,
   },
   {
-    title: 'R&D공고검색',
+    title: 'R&D공고',
     desc: '정부·공공기관의 R&D 과제 공고를 통한 검색으로 지원 기회를 놓치지 않습니다.',
     cta: '공고 검색하기',
     href: '/announcement',

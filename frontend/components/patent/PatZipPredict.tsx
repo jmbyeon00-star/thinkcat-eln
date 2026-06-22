@@ -10,15 +10,16 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
-import { patentByCitpredict } from "@/lib/api"; 
-import { 
-  TrendingUp, 
-  Calendar, 
-  BarChart3, 
-  Zap, 
+import { patentByCitpredict } from "@/lib/api";
+import {
+  TrendingUp,
+  Calendar,
+  BarChart3,
+  Zap,
   CheckCircle2,
   Lightbulb
 } from "lucide-react";
+import EmptyDataNotice from "./EmptyDataNotice";
 
 type CitationPredictionChartProps = {
   applicationNumber: string;
@@ -90,9 +91,11 @@ export default function CitationPredictionChart({ applicationNumber }: CitationP
 
   if (!isLoading && !citationInfo) {
     return (
-      <div className="w-full p-10 text-center bg-slate-50 rounded-[1.5rem] border border-dashed border-slate-200">
-        <p className="text-slate-400 font-bold">피인용수 예측 데이터가 제공되지 않는 특허입니다.</p>
-      </div>
+      <EmptyDataNotice
+        icon={TrendingUp}
+        title="피인용수 예측 데이터가 없습니다"
+        description={"분석 데이터셋에 아직 포함되지 않은 특허일 수 있어요.\n주로 오래되었거나 등록 정보가 충분하지 않은 특허에서 나타납니다."}
+      />
     );
   }
 

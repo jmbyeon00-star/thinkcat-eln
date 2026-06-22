@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { applicantByNavigate, getApplicantNavigate } from "@/lib/api";
 import { Network, AlertCircle, CheckCircle2, Ship } from "lucide-react";
+import EmptyDataNotice from "./EmptyDataNotice";
 
 
 
@@ -199,11 +200,21 @@ export default function ApplicantNavigationChart({
 
     if (isLoading) return <div className="w-full h-96 bg-slate-50 animate-pulse rounded-[1.5rem] border border-slate-100" />;
 
+    if (!plotData.length) {
+        return (
+            <EmptyDataNotice
+                icon={Network}
+                title="기업 네비게이션 데이터가 없습니다"
+                description={"분석 데이터셋에 아직 포함되지 않은 특허일 수 있어요.\n주로 오래되었거나 등록 정보가 충분하지 않은 특허에서 나타납니다."}
+            />
+        );
+    }
+
     return (
         <div className="w-full text-left font-sans space-y-6">
             {/* 🏷️ 상단 제목 영역 */}
             <div className="mb-8 flex items-start gap-4">
-                <Network className="text-indigo-600 shrink-0 mt-1" size={56} /> 
+                <Network className="text-indigo-600 shrink-0 mt-1" size={56} />
                 <div className="flex flex-col">
                     <h1 className="text-3xl font-black text-slate-900 tracking-tighter mb-1">
                         기업 네비게이션 분석

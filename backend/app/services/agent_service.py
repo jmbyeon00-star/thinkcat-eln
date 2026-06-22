@@ -3,12 +3,12 @@
 # --------------------------
 import pandas as pd
 import numpy as np
+from datetime import datetime
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import select, desc, case, bindparam, func
 from app.models.patent_model import PatentResult
-from app.models.agent_data import AgentInfo, AgentList, AgentDetail
+from app.models.agent_data import AgentInfo, AgentList, AgentDetail, AgentPatentStats
 import re
 import os
 import httpx
@@ -202,28 +202,14 @@ def _get_company_and_app_numbers(
 
 
 # =========================================================================
-# 2) agent라우터 /company/{company_name} 함수 : 사무소의 특허정보 집계정보 반환
+# 사무소의 출원번호 목록으로부터 통계(raw)를 계산하는 순수 함수.
+# - get_company_patent_statistics()의 캐시 미스 폴백과
+#   scripts/precompute_agent_stats.py 배치 작업이 공통으로 사용한다.
 # =========================================================================
-def get_company_patent_statistics(
-    db_session: Session,
-    company_name: str
-) -> Dict[str, Any]:
-
-    company_data, app_numbers = _get_company_and_app_numbers(db_session, company_name)
-
-    # 대리인 코드에 연결된 출원 번호가 아예 없는 경우
+def _compute_raw_statistics(db_session: Session, app_numbers: list[str]) -> Dict[str, Any] | None:
     if not app_numbers:
-        return {
-            "success": True,
-            "company_info": company_data,
-            "statistics": "해당 대리인 코드들에 연결된 출원 데이터가 없습니다."
-        }
+        return None
 
-    # 3. 특허 결과 조회
-    # 통계(개수)만 필요하므로 title 등 무거운 컬럼은 조회하지 않음
-    # (이전에는 CPC섹션/연도별로 특허 상세 목록 전체를 응답에 실어 보내서, 대형 로펌의 경우
-    #  43MB 응답 + iterrows() 순회로 100초 이상 걸렸음. 상세 목록은 필요할 때만
-    #  get_company_patents_detail()로 페이지 단위 조회하도록 분리함)
     patent_rows = db_session.query(
         PatentResult.application_number,
         PatentResult.filing_year,
@@ -237,44 +223,151 @@ def get_company_patent_statistics(
         "app_number", "filing_year", "end_status", "cpc_code"
     ])
 
-    # 4. 통계 계산 (조회된 특허 상세 내역이 없는 경우 처리)
     if df_patent.empty:
+        return None
+
+    end_status_dist = df_patent["end_status"].fillna("정보없음").value_counts()
+    filing_year_dist = df_patent["filing_year"].fillna("정보없음").value_counts()
+    cpc_section_dist = df_patent["cpc_code"].str[0].fillna("정보없음").value_counts()
+
+    return {
+        "total_patent_count": int(len(app_numbers)),
+        "end_status_distribution": {str(k): int(v) for k, v in end_status_dist.items()},
+        "filing_year_distribution": {str(k): int(v) for k, v in filing_year_dist.items()},
+        "cpc_section_distribution": {str(k): int(v) for k, v in cpc_section_dist.items()},
+    }
+
+
+def _build_statistics_response(raw_stats: Dict[str, Any] | None, app_numbers_count: int) -> Any:
+    if raw_stats is None:
+        if app_numbers_count == 0:
+            return "해당 대리인 코드들에 연결된 출원 데이터가 없습니다."
+        return {
+            "total_patent_count": app_numbers_count,
+            "msg": "대리인 정보는 있으나 상세 특허 DB(PatentResult)에 매칭되는 데이터가 없습니다."
+        }
+
+    # cpc_section_details/filing_year_details는 개수만 포함 (특허 상세 목록은 무거우므로 제외).
+    # 프론트엔드가 특정 섹션/연도를 펼칠 때 GET /api/agent/company/{name}/patents 로 해당 페이지만 따로 조회함.
+    return {
+        **raw_stats,
+        "cpc_section_details": {k: {"count": v} for k, v in raw_stats["cpc_section_distribution"].items()},
+        "filing_year_details": {k: {"count": v} for k, v in raw_stats["filing_year_distribution"].items()},
+    }
+
+
+# =========================================================================
+# 2) agent라우터 /company/{company_name} 함수 : 사무소의 특허정보 집계정보 반환
+#    AGENT_PATENT_STATS_TB(사전계산 테이블)를 먼저 조회하고,
+#    없을 때만(신규 사무소 등) 실시간 계산 + 캐시 저장(lazy upsert) 폴백.
+# =========================================================================
+def get_company_patent_statistics(
+    db_session: Session,
+    company_name: str
+) -> Dict[str, Any]:
+
+    company_info_row = db_session.query(AgentList).filter(
+        AgentList.company_ko == company_name
+    ).first()
+
+    if not company_info_row:
+        raise ValueError(f"회사명 '{company_name}'에 해당하는 데이터가 없습니다.")
+
+    company_data = {
+        "company_ko": company_info_row.company_ko,
+        "names": company_info_row.name,
+        "agent_codes": company_info_row.agent_code,
+        "address": company_info_row.address,
+        "phone_number": company_info_row.phone_number,
+        "fax": company_info_row.fax,
+        "homepage": company_info_row.homepage,
+        'star_check': company_info_row.star_check
+    }
+
+    cached = db_session.query(AgentPatentStats).filter(
+        AgentPatentStats.agent_list_id == company_info_row.id
+    ).first()
+
+    if cached:
+        raw_stats = {
+            "total_patent_count": cached.total_patent_count,
+            "end_status_distribution": cached.end_status_distribution or {},
+            "filing_year_distribution": cached.filing_year_distribution or {},
+            "cpc_section_distribution": cached.cpc_section_distribution or {},
+        }
         return {
             "success": True,
             "company_info": company_data,
-            "statistics": {
-                "total_patent_count": len(app_numbers),
-                "msg": "대리인 정보는 있으나 상세 특허 DB(PatentResult)에 매칭되는 데이터가 없습니다."
-            }
+            "statistics": _build_statistics_response(raw_stats, cached.total_patent_count)
         }
 
-    # 데이터 전처리
-    df_patent["app_number"] = df_patent["app_number"].astype(str)
-    
-    # 기본 통계 추출
-    total_patent_count = len(app_numbers)
-    end_status_dist = df_patent["end_status"].fillna("정보없음").value_counts().to_dict()
-    filing_year_dist = df_patent["filing_year"].fillna("정보없음").value_counts().to_dict()
-    
-    # CPC 섹션 추출 로직 (벡터화 - 행 단위 순회 없음)
-    df_patent["cpc_section"] = df_patent["cpc_code"].str[0].fillna("정보없음")
+    # 캐시 미스: 실시간 계산 후 다음 조회를 위해 캐시에 저장해둔다 (신규 등록된 사무소 등).
+    agent_codes = [code.strip() for code in company_info_row.agent_code.split(',')] if company_info_row.agent_code else []
+    agent_rows = (
+        db_session.query(AgentInfo.app_number)
+        .filter(AgentInfo.agent_code.in_(agent_codes))
+        .distinct()
+        .all()
+    )
+    app_numbers = [str(r[0]) for r in agent_rows]
 
-    # 5. 최종 응답
-    # cpc_section_details/filing_year_details는 개수만 포함 (특허 상세 목록은 무거우므로 제외).
-    # 프론트엔드가 특정 섹션/연도를 펼칠 때 GET /api/agent/company/{name}/patents 로 해당 페이지만 따로 조회함.
-    cpc_section_dist = df_patent["cpc_section"].value_counts()
+    raw_stats = _compute_raw_statistics(db_session, app_numbers)
+    _upsert_agent_patent_stats(db_session, company_info_row.id, raw_stats)
+
     return {
         "success": True,
         "company_info": company_data,
-        "statistics": {
-            "total_patent_count": int(total_patent_count),
-            "end_status_distribution": {str(k): int(v) for k, v in end_status_dist.items()},
-            "filing_year_distribution": {str(k): int(v) for k, v in filing_year_dist.items()},
-            "cpc_section_distribution": {str(k): int(v) for k, v in cpc_section_dist.items()},
-            "cpc_section_details": {str(k): {"count": int(v)} for k, v in cpc_section_dist.items()},
-            "filing_year_details": {str(k): {"count": int(v)} for k, v in filing_year_dist.items()}
-        }
+        "statistics": _build_statistics_response(raw_stats, len(app_numbers))
     }
+
+
+def _upsert_agent_patent_stats(
+    db_session: Session,
+    agent_list_id: int,
+    raw_stats: Dict[str, Any] | None
+) -> None:
+    row = db_session.query(AgentPatentStats).filter(
+        AgentPatentStats.agent_list_id == agent_list_id
+    ).first()
+
+    if row is None:
+        row = AgentPatentStats(agent_list_id=agent_list_id)
+        db_session.add(row)
+
+    row.total_patent_count = raw_stats["total_patent_count"] if raw_stats else 0
+    row.end_status_distribution = raw_stats["end_status_distribution"] if raw_stats else {}
+    row.filing_year_distribution = raw_stats["filing_year_distribution"] if raw_stats else {}
+    row.cpc_section_distribution = raw_stats["cpc_section_distribution"] if raw_stats else {}
+    row.computed_at = datetime.now()
+    db_session.commit()
+
+
+# =========================================================================
+# 배치 작업(scripts/precompute_agent_stats.py)이 호출하는 함수.
+# AGENT_LIST_TB의 모든 사무소에 대해 통계를 다시 계산해 AGENT_PATENT_STATS_TB에 채워 넣는다.
+# =========================================================================
+def recompute_all_agent_stats(db_session: Session) -> int:
+    agents = db_session.query(AgentList.id, AgentList.agent_code).all()
+    updated = 0
+
+    for agent_list_id, agent_code_csv in agents:
+        agent_codes = [c.strip() for c in agent_code_csv.split(',')] if agent_code_csv else []
+        if not agent_codes:
+            _upsert_agent_patent_stats(db_session, agent_list_id, None)
+            continue
+
+        agent_rows = (
+            db_session.query(AgentInfo.app_number)
+            .filter(AgentInfo.agent_code.in_(agent_codes))
+            .distinct()
+            .all()
+        )
+        app_numbers = [str(r[0]) for r in agent_rows]
+        raw_stats = _compute_raw_statistics(db_session, app_numbers)
+        _upsert_agent_patent_stats(db_session, agent_list_id, raw_stats)
+        updated += 1
+
+    return updated
 
 
 # =========================================================================
@@ -397,85 +490,75 @@ def get_sorting_agents(
 ):
     """
     정렬 옵션을 명확히 구분하여 쿼리를 생성합니다.
+    실적(특허건수) 데이터는 AGENT_PATENT_STATS_TB(사전계산 캐시)에서 가져온다.
+    (예전에는 AGENT_LIST_TB.A_patent~H_patent라는 낡은 컬럼을 썼는데, 실제 데이터와
+     안 맞고 - 김.장 기준 20만 vs 실제 26만 - Y 섹션도 누락돼 있었음)
     """
-    
-    # 1. 기본 필터 (검증된 사무소만)
-    base_filters = [AgentList.star_check == 1]
-    
-    # 2. 실적 점수 계산 (추천순용)
-    # option 파라미터는 "A", "B" ... "ALL" 형태로 들어온다고 가정
-    total_sum = (
-        AgentList.A_patent + AgentList.B_patent + AgentList.C_patent +
-        AgentList.D_patent + AgentList.E_patent + AgentList.F_patent +
-        AgentList.G_patent + AgentList.H_patent
-    )
-    
-    target_col = case(
-        (bindparam("option") == "A", AgentList.A_patent),
-        (bindparam("option") == "B", AgentList.B_patent),
-        (bindparam("option") == "C", AgentList.C_patent),
-        (bindparam("option") == "D", AgentList.D_patent),
-        (bindparam("option") == "E", AgentList.E_patent),
-        (bindparam("option") == "F", AgentList.F_patent),
-        (bindparam("option") == "G", AgentList.G_patent),
-        (bindparam("option") == "H", AgentList.H_patent),
-        else_=0
-    )
-    
-    # 해당 분야 비중 계산
-    ratio_expr = case((total_sum > 0, target_col / total_sum), else_=0)
 
-    # 3. 위치 기반 점수 (가까운순용)
-    # 주소 필드에 시, 구, 동 텍스트가 포함되어 있는지에 따라 가중치 부여
-    # null 처리를 위해 or_ 및 contains 사용
-    cond_dong = AgentList.address.contains(dong) if dong else False
-    cond_gu = AgentList.address.contains(gu) if gu else False
-    cond_city = AgentList.address.contains(city) if city else False
+    option = option.upper()
 
-    location_score = case(
-        (cond_dong, 100),
-        (cond_gu, 50),
-        (cond_city, 10),
-        else_=0
+    # 1. 검증된 사무소 + 사전계산 통계를 left join (통계가 없는 사무소는 0건 처리)
+    rows = (
+        db_session.query(AgentList, AgentPatentStats)
+        .outerjoin(AgentPatentStats, AgentPatentStats.agent_list_id == AgentList.id)
+        .filter(AgentList.star_check == 1)
+        .all()
     )
 
-    # 4. 정렬 조건 리스트 빌드
-    order_by_clauses = []
-    
+    # 2. 사무소별 점수 계산 (전체 1,681개 수준이라 파이썬에서 처리해도 충분히 빠름)
+    def location_score(agent: AgentList) -> int:
+        addr = agent.address or ""
+        if dong and dong in addr:
+            return 100
+        if gu and gu in addr:
+            return 50
+        if city and city in addr:
+            return 10
+        return 0
+
+    enriched = []
+    for agent, stats in rows:
+        cpc_dist = (stats.cpc_section_distribution if stats else None) or {}
+        total = stats.total_patent_count if stats else 0
+        target = total if option == "ALL" else int(cpc_dist.get(option, 0))
+        ratio = (target / total) if total > 0 else 0
+        enriched.append({
+            "agent": agent,
+            "total_patent_count": total,
+            "target_count": target,
+            "ratio": ratio,
+            "location_score": location_score(agent),
+        })
+
+    # 3. 정렬
     if sort == "nearest":
-        # 위치 점수 높은 순 -> 실적 비율 높은 순
-        order_by_clauses.append(location_score.desc())
-        order_by_clauses.append(ratio_expr.desc())
+        enriched.sort(key=lambda x: (-x["location_score"], -x["ratio"], x["agent"].id))
     elif sort == "oldest":
-        # 설립연도 오름차순 (옛날 연도가 먼저) -> 실적 비율 높은 순
-        # NULL 값은 가장 뒤로 보냄 (NULlS LAST)
-        order_by_clauses.append(AgentList.establish_year.asc())
-        order_by_clauses.append(ratio_expr.desc())
-    else: # "recommend" (실적순/추천순)
-        # 실적 비율 높은 순 -> 전체 특허 건수 많은 순
-        order_by_clauses.append(ratio_expr.desc())
-        order_by_clauses.append(total_sum.desc())
-    
-    # 페이징 시 일관된 순서를 위해 마지막에 ID 정렬
-    order_by_clauses.append(AgentList.id.asc())
+        enriched.sort(key=lambda x: (x["agent"].establish_year or "9999", -x["ratio"], x["agent"].id))
+    else:  # "recommend" (실적순/추천순)
+        enriched.sort(key=lambda x: (-x["ratio"], -x["total_patent_count"], x["agent"].id))
 
-    # 5. 실행
+    total_count = len(enriched)
     offset = (page - 1) * page_size
-    stmt = (
-        select(AgentList)
-        .where(*base_filters)
-        .order_by(*order_by_clauses)
-        .limit(page_size)
-        .offset(offset)
-    )
+    page_items = enriched[offset: offset + page_size]
 
-    # option 파라미터는 대문자로 고정하여 바인딩
-    items = db_session.scalars(stmt, {"option": option.upper()}).all()
-    
-    # 전체 카운트
-    total_count = db_session.execute(
-        select(func.count()).select_from(AgentList).where(*base_filters)
-    ).scalar()
+    items = []
+    for entry in page_items:
+        agent = entry["agent"]
+        items.append({
+            "id": agent.id,
+            "company_ko": agent.company_ko,
+            "name": agent.name,
+            "agent_code": agent.agent_code,
+            "address": agent.address,
+            "phone_number": agent.phone_number,
+            "fax": agent.fax,
+            "homepage": agent.homepage,
+            "star_check": agent.star_check,
+            "establish_year": agent.establish_year,
+            "total_patent_count": entry["total_patent_count"],
+            "target_patent_count": entry["target_count"],
+        })
 
     return {
         "items": items,
@@ -507,20 +590,37 @@ def searh_agent_company(db_session: Session,company_searchkey: str) -> Dict[str,
     try:
         # 2. DB 조회 (contains 검색)
         # AgentList.company_ko 필드에 정제된 키워드가 포함되어 있는지 확인
-        stmt = (
-            select(AgentList)
-            .where(AgentList.company_ko.contains(refined_key))
-            .where(AgentList.star_check == 1)
+        # 실적(특허건수)은 AGENT_PATENT_STATS_TB(사전계산 캐시)에서 가져온다.
+        rows = (
+            db_session.query(AgentList, AgentPatentStats)
+            .outerjoin(AgentPatentStats, AgentPatentStats.agent_list_id == AgentList.id)
+            .filter(AgentList.company_ko.contains(refined_key))
+            .filter(AgentList.star_check == 1)
+            .all()
         )
-        
-        results = db_session.scalars(stmt).all()
-        
+
+        items = []
+        for agent, stats in rows:
+            items.append({
+                "id": agent.id,
+                "company_ko": agent.company_ko,
+                "name": agent.name,
+                "agent_code": agent.agent_code,
+                "address": agent.address,
+                "phone_number": agent.phone_number,
+                "fax": agent.fax,
+                "homepage": agent.homepage,
+                "star_check": agent.star_check,
+                "establish_year": agent.establish_year,
+                "total_patent_count": stats.total_patent_count if stats else 0,
+            })
+
         #3. 결과 반환
         return {
             "search_keyword": company_searchkey,
             "refined_keyword": refined_key,
-            "count": len(results),
-            "items": results
+            "count": len(items),
+            "items": items
         }
     except SQLAlchemyError as e:
         db_session.rollback()
