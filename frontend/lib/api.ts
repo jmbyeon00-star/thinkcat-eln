@@ -137,6 +137,16 @@ export async function patentByNpecheck(appNumber: string) {
   return fetchAPI(`/api/patent/npecheck?appNumber=${appNumber}`);
 }
 
+// ✅ 신착특허 (홈 화면 티커용)
+export async function getRecentPatents(limit: number = 20) {
+  return fetchAPI(`/api/patent/recent?limit=${limit}`);
+}
+
+// ✅ R&D공고 신착 (홈 화면 티커용)
+export async function getRecentAnnouncements(limit: number = 10) {
+  return fetchAPI(`/api/announcements/recent?limit=${limit}`);
+}
+
 // =========== collectionanalysis_router =========================
 // 콜렉션 조회
 export async function getCollectionList(): Promise<any> {
