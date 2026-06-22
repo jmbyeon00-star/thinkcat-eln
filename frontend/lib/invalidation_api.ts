@@ -3,8 +3,12 @@
  * /api/invalidation/* 엔드포인트 호출
  */
 import { apiFetch } from "./apiFetch";
+import { API_BASE } from "./api";
 
-const BASE = `/api/invalidation`;
+// 절대 URL(backend 직접). 상대경로면 Next rewrites 프록시를 거치는데,
+// Next14 rewrites는 proxyTimeout 미적용(~30s)이라 선행기술조사(최대 60s+)가 끊김(socket hang up).
+// 개발=backend 직접(8102), 운영=https://patents.thinkcat.kr(Apache가 /api 프록시, 타임아웃 길게).
+const BASE = `${API_BASE}/api/invalidation`;
 
 // ─────────────────────────────────
 // 타입 정의
