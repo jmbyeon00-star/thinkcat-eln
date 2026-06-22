@@ -2,6 +2,8 @@
 
 import { Link } from '@/routing';
 import { ArrowRight, FlaskConical, ClipboardList, ShieldCheck, Building2, FileSearch, Megaphone, SearchCheck } from 'lucide-react';
+import RecentPatentTicker from '@/components/home/RecentPatentTicker';
+import RecentAnnouncementTicker from '@/components/home/RecentAnnouncementTicker';
 
 const SERVICES = [
   {
@@ -83,6 +85,16 @@ export default function Home() {
           <p className="text-base text-zinc-400 font-medium">
             특허 검색부터 사무소 매칭, R&D 공고까지 <br /> 연구 성과의 자산화를 돕는 스마트 IP 서비스입니다.
           </p>
+        </div>
+
+        {/* 신착특허 / R&D공고 신착 티커 (카드 4칸 중 2칸씩) */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
+          <div className="lg:col-span-2">
+            <RecentPatentTicker />
+          </div>
+          <div className="lg:col-span-2">
+            <RecentAnnouncementTicker />
+          </div>
         </div>
 
         {/* 검색 서비스 */}

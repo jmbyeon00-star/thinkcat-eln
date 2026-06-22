@@ -12,6 +12,14 @@ router = APIRouter(prefix="/announcements", tags=["Announcements"])
 async def get_stats(db: AsyncSession = Depends(get_async_session)):
     return await AnnouncementService.get_statistics(db)
 
+@router.get("/recent")
+async def get_recent(
+    limit: int = 10,
+    db: AsyncSession = Depends(get_async_session)
+):
+    items = await AnnouncementService.get_recent_announcements(db, limit=limit)
+    return {"success": True, "items": items}
+
 @router.get("/")
 async def get_list(
     params: AnnouncementSearchParams = Depends(), 

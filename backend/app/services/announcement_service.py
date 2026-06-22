@@ -93,6 +93,18 @@ class AnnouncementService:
         }
 
     @staticmethod
+    async def get_recent_announcements(session: AsyncSession, limit: int = 10) -> List[Dict[str, Any]]:
+        """홈 화면 R&D공고 신착 카드용 - announcement_date 최신순 N건"""
+        stmt = (
+            select(Announcement)
+            .order_by(desc(Announcement.announcement_date), desc(Announcement.id))
+            .limit(limit)
+        )
+        result = await session.execute(stmt)
+        items = result.scalars().all()
+        return [item.to_dict() for item in items]
+
+    @staticmethod
     async def update_budget(session: AsyncSession, ann_id: int, budget: str) -> bool:
         """지원금 업데이트"""
         stmt = update(Announcement).where(Announcement.id == ann_id).values(budget=budget)
