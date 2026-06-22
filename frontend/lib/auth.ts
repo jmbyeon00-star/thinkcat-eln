@@ -60,6 +60,22 @@ export const authOptions: AuthOptions = {
         maxAge: 7 * 24 * 60 * 60, // 7일
     },
 
+    // 쿠키 이름을 thinkcat-eln 전용으로 분리.
+    // dev에서 ipforce와 같은 호스트(192.168.1.20, 포트만 다름)면 쿠키가 공유되는데,
+    // 둘 다 기본 이름(next-auth.session-token)+다른 NEXTAUTH_SECRET이라 서로 복호화 실패
+    // (JWEDecryptionFailed) → 상대 사이트 가면 로그아웃되던 문제. 이름 분리로 해소.
+    cookies: {
+        sessionToken: {
+            name: "thinkcateln.session-token",
+            options: {
+                httpOnly: true,
+                sameSite: "lax",
+                path: "/",
+                secure: process.env.NEXT_PUBLIC_ENV === "prod" || process.env.NODE_ENV === "production",
+            },
+        },
+    },
+
     callbacks: {
         async jwt({ token, user }: { token: JWT; user?: User }) {
             if (user) {
