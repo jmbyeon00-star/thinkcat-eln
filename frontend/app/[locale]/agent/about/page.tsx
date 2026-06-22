@@ -66,9 +66,9 @@ export default function AboutPage() {
                 더 이상 지인 추천이나 홍보 문구에 의존하지 마세요. 실제 데이터 기반의 실적으로 증명된 최고의 전문가를 연결해 드립니다.
               </p>
             </div>
-            {/* [수정] <a> 태그를 사용하여 /agent/marketplace 로 이동하도록 설정 */}
+            {/* [수정] <a> 태그를 사용하여 /attorney 로 이동하도록 설정 */}
             <a
-              href="/agent/marketplace"
+              href="/attorney"
               className="px-12 py-6 bg-blue-600 hover:bg-blue-700 text-white rounded-3xl font-black text-lg transition-all shadow-2xl shadow-blue-600/30 active:scale-95 text-center decoration-0 no-underline"
             >
               검색 서비스 시작하기

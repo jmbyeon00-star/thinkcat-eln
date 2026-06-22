@@ -5,7 +5,7 @@ export const metadata: Metadata = {
     description: '특허·법률 변리사 검색 및 매칭 서비스',
 };
 
-export default function AgentLayout({
+export default function AttorneyLayout({
     children,
 }: {
     children: React.ReactNode;

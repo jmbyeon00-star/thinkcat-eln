@@ -23,6 +23,7 @@ export default withAuth(
       pathWithoutLocale.startsWith("/auth") ||
       pathWithoutLocale.startsWith("/about") ||
       pathWithoutLocale.startsWith("/agent") ||
+      pathWithoutLocale.startsWith("/attorney") ||
       pathWithoutLocale.startsWith("/notice") ||
       pathWithoutLocale.startsWith("/announcement") ||
       pathWithoutLocale.startsWith("/search") ||

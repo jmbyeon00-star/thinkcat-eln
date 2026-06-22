@@ -1,4 +1,5 @@
-from sqlalchemy import String, BigInteger, Text, Integer, SmallInteger
+from datetime import datetime
+from sqlalchemy import String, BigInteger, Text, Integer, SmallInteger, JSON, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 from typing import Optional
 from app.core.db import Base
@@ -175,3 +176,23 @@ class AgentDetail(Base):
 
     def __repr__(self) -> str:
         return f"<AgentDetail id={self.id} name={self.name}>"
+
+
+class AgentPatentStats(Base):
+    """
+    사무소별 특허 통계 사전계산 테이블.
+    AGENT_LIST_TB 기준 매일 배치(backend/scripts/precompute_agent_stats.py)로 갱신되며,
+    /api/agent/company/{name} 응답 시 실시간 집계 대신 이 테이블을 먼저 조회한다.
+    """
+    __tablename__ = "AGENT_PATENT_STATS_TB"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    agent_list_id: Mapped[int] = mapped_column(BigInteger, nullable=False, unique=True)
+    total_patent_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    end_status_distribution: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    filing_year_distribution: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    cpc_section_distribution: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    computed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<AgentPatentStats agent_list_id={self.agent_list_id} total={self.total_patent_count}>"

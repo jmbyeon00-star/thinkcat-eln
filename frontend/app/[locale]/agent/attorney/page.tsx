@@ -34,7 +34,7 @@ export default function AttorneyPage() {
 
         <div className="flex justify-center gap-4">
           <a
-            href="/agent/marketplace"
+            href="/attorney"
             className="inline-flex items-center gap-2 px-8 py-4 bg-zinc-900 text-white font-black rounded-2xl hover:bg-blue-600 transition-all shadow-lg active:scale-95"
           >
             변리사 검색 이용하기 <ChevronRight size={18} />

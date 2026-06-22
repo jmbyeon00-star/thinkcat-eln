@@ -12,8 +12,9 @@ import {
   ReferenceLine,
 } from "recharts";
 // ✅ 새로운 GPU 서버 호출 함수로 변경
-import { getPatentNavigationGpu } from "@/lib/api"; 
+import { getPatentNavigationGpu } from "@/lib/api";
 import { Compass, AlertCircle } from "lucide-react";
+import EmptyDataNotice from "./EmptyDataNotice";
 
 type NavigationData = {
   application_number: string;
@@ -97,10 +98,11 @@ export default function PatNavigationChart({ applicationNumber, code }: PatNavig
 
   if (!plotData.length) {
     return (
-      <div className="w-full p-20 text-center bg-slate-50 rounded-[1.5rem] border border-dashed border-slate-200">
-        <Compass className="text-slate-200 mx-auto mb-4" size={48} />
-        <p className="text-slate-400 font-bold">특허 네비게이션 데이터가 없습니다.</p>
-      </div>
+      <EmptyDataNotice
+        icon={Compass}
+        title="특허 네비게이션 데이터가 없습니다"
+        description={"분석 데이터셋에 아직 포함되지 않은 특허일 수 있어요.\n주로 오래되었거나 등록 정보가 충분하지 않은 특허에서 나타납니다."}
+      />
     );
   }
 

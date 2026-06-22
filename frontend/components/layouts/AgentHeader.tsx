@@ -51,7 +51,7 @@ export default function Header({ onHome }: HeaderProps) {
     const isHome = currentPath === '/';
 
     const navLinks = [
-        { href: "/agent/marketplace", label: "header.marketplace" },
+        { href: "/attorney", label: "header.marketplace" },
         { href: "/search", label: "header.search" },
         { href: "/prior-art", label: "header.priorArt" },
         { href: "/announcement", label: "header.announcement" },

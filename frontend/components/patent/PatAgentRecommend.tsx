@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "@/routing";
 import { agentRecommend } from "@/lib/api";
 import { UserCheck, CheckCircle2, MapPin, Building2 } from "lucide-react";
+import EmptyDataNotice from "./EmptyDataNotice";
 
 interface PatentResult {
   app_number: string;
@@ -32,7 +33,7 @@ export default function AgentRecommendTable({ applicationNumber, code }: AgentNa
 
   const handleCompanyClick = (companyName: string) => {
     if (companyName) {
-      router.push(`/agent/${encodeURIComponent(companyName)}`);
+      router.push(`/attorney/${encodeURIComponent(companyName)}`);
     }
   };
 
@@ -63,10 +64,11 @@ export default function AgentRecommendTable({ applicationNumber, code }: AgentNa
 
   if (error || !results || !results.success || results.data.length === 0) {
     return (
-      <div className="w-full p-20 text-center bg-slate-50 rounded-[1.5rem] border border-dashed border-slate-200">
-        <UserCheck className="text-slate-200 mx-auto mb-4" size={48} />
-        <p className="text-slate-400 font-bold">추천 대리인 데이터가 없습니다.</p>
-      </div>
+      <EmptyDataNotice
+        icon={UserCheck}
+        title="추천 대리인 데이터가 없습니다"
+        description={"분석 데이터셋에 아직 포함되지 않은 특허일 수 있어요.\n주로 오래되었거나 등록 정보가 충분하지 않은 특허에서 나타납니다."}
+      />
     );
   }
 

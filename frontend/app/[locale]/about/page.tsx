@@ -202,7 +202,7 @@ export default function AboutPage() {
                                 </p>
                             </div>
                             <Link
-                                href="/agent/marketplace"
+                                href="/attorney"
                                 className="px-12 py-6 bg-blue-600 hover:bg-blue-700 text-white rounded-[2rem] font-black text-xl transition-all shadow-2xl shadow-blue-600/30 hover:scale-105 active:scale-95"
                             >
                                 전문가 찾기

@@ -59,8 +59,8 @@ interface ApiResponse {
   phone_number: string;
   fax: string;
   star_check: number;
-  A_patent: number; B_patent: number; C_patent: number; D_patent: number;
-  E_patent: number; F_patent: number; G_patent: number; H_patent: number;
+  total_patent_count: number;
+  target_patent_count: number;
 }
 
 interface PatentEntry {
@@ -290,8 +290,7 @@ export default function MarketplacePage() {
       const params: any = { page: p, page_size: 10, sort: sortBy, city: userLocation?.city, gu: userLocation?.gu, dong: userLocation?.dong };
       const response: any = await getAgentSorting(selectedSector.toLowerCase(), params);
       const mapped: Firm[] = (response.items || []).map((item: any) => {
-        const totalCount = ((item.A_patent || 0) + (item.B_patent || 0) + (item.C_patent || 0) + (item.D_patent || 0) + (item.E_patent || 0) + (item.F_patent || 0) + (item.G_patent || 0) + (item.H_patent || 0));
-        const displayCount = selectedSector === "all" ? totalCount : (item[`${selectedSector.toUpperCase()}_patent`] || 0);
+        const displayCount = selectedSector === "all" ? (item.total_patent_count || 0) : (item.target_patent_count || 0);
         return { id: item.id, company_ko: item.company_ko, address: item.address, patentCount: displayCount, agent_code: item.agent_code, establish_year: item.establish_year, representatives: item.name, isVerified: true, rating: 4.8 };
       });
       if (isReset) setFirms(mapped); else setFirms(prev => [...prev, ...mapped]);
@@ -300,7 +299,7 @@ export default function MarketplacePage() {
   };
 
   const handleFirmClick = (name: string) => {
-    window.location.href = `/agent/${encodeURIComponent(name.trim())}`;
+    window.location.href = `/attorney/${encodeURIComponent(name.trim())}`;
   };
 
   const handlePatentClick = (appNumber: string) => {
@@ -334,8 +333,7 @@ export default function MarketplacePage() {
         const response: any = await searchAgentCompany(q);
         setSearchRefinedKey(response.refined_keyword || q);
         const mappedResults: Firm[] = (response.items || []).map((item: any) => {
-          const totalCount = ((item.A_patent || 0) + (item.B_patent || 0) + (item.C_patent || 0) + (item.D_patent || 0) + (item.E_patent || 0) + (item.F_patent || 0) + (item.G_patent || 0) + (item.H_patent || 0));
-          return { id: item.id, company_ko: item.company_ko, address: item.address, patentCount: totalCount, agent_code: item.agent_code, establish_year: item.establish_year, isVerified: true, rating: 4.8 };
+          return { id: item.id, company_ko: item.company_ko, address: item.address, patentCount: item.total_patent_count || 0, agent_code: item.agent_code, establish_year: item.establish_year, isVerified: true, rating: 4.8 };
         });
         setSearchResults(mappedResults);
       }
@@ -354,7 +352,7 @@ export default function MarketplacePage() {
 
   return (
     <PageShell
-      title="변리사검색"
+      title="변리사"
       description={translator("agent.marketplace.sub_title")}
     >
       <div className="max-w-4xl mx-auto">
