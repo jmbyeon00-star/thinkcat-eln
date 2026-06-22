@@ -19,21 +19,22 @@ app = FastAPI(title="thinkcateln_next API", version="0.1.0", lifespan=lifespan)
 
 ENV = os.getenv("ENV", "dev")
 
+# dev는 팀원마다 frontend 포트가 다르므로(예: 3101) 포트 무관하게 사내망/로컬 전체 허용.
+# 운영은 도메인 고정.
 if ENV == "prod":
     origins = [
         "https://patents.thinkcat.kr",
     ]
+    origin_regex = None
 else:
-    origins = [
-        "http://localhost:3003",
-        "http://localhost:3022",
-        "http://192.168.1.20:3003",
-        "http://192.168.1.20:3022",
-    ]
+    origins = []
+    # localhost / 192.168.1.x 의 모든 포트 허용 (팀원별 포트 차이 흡수)
+    origin_regex = r"http://(localhost|127\.0\.0\.1|192\.168\.1\.\d+):\d+"
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
