@@ -4,8 +4,10 @@ from datetime import datetime, date
 from typing import Optional, Dict, Any, List
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, func, or_, desc, asc
-from apscheduler.schedulers.asyncio import AsyncIOScheduler  # 비동기 전용 스케줄러
+from sqlalchemy import select, update, func, or_, desc, asc, exists
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from zoneinfo import ZoneInfo
 
 # 프로젝트의 모델 경로에 맞게 수정하세요
 from app.models.announcement_model import Announcement 
@@ -112,34 +114,90 @@ class AnnouncementService:
         await session.commit()
         return result.rowcount > 0
 
+    @staticmethod
+    async def update_government_support(session: AsyncSession, ann_id: int, government_support: str) -> bool:
+        """정부지원금 업데이트"""
+        stmt = update(Announcement).where(Announcement.id == ann_id).values(government_support=government_support)
+        result = await session.execute(stmt)
+        await session.commit()
+        return result.rowcount > 0
+
     # --- [섹션 2: 스케줄러 설정] ---
     _scheduler = None
 
     @classmethod
-    def start_scheduler(cls, get_session_cm):
-        """
-        비동기 스케줄러 시작
-        get_session_cm: 의존성 주입을 위한 AsyncSession 팩토리 함수
-        """
-        if cls._scheduler is None:
-            cls._scheduler = AsyncIOScheduler()
-            # 매일 21:00에 실행 (함수 인자로 세션을 넘기기 위해 lambda나 wrap 사용)
-            cls._scheduler.add_job(
-                cls.daily_job, 'cron', hour=21, minute=0, 
-                args=[get_session_cm]
-            )
-            cls._scheduler.start()
-            logger.info("✅ Async 스케줄러가 시작되었습니다.")
+    def start(cls):
+        if cls._scheduler is not None:
+            return
+        cls._scheduler = BackgroundScheduler(timezone=ZoneInfo("Asia/Seoul"))
+        cls._scheduler.add_job(cls._daily_job, CronTrigger(hour=9, minute=0), id="announcement_daily", replace_existing=True)
+        cls._scheduler.start()
+        logger.info("✅ 공고 스케줄러 시작 (매일 09:00 KST)")
 
     @classmethod
-    async def daily_job(cls, get_session_cm):
-        """일일 자동 작업 (크롤링 + 마감처리)"""
-        async with get_session_cm() as session:
-            # 1. 마감 상태 업데이트
-            stmt = update(Announcement).where(
-                Announcement.end_date < func.curdate(),
-                Announcement.status != '마감'
-            ).values(status='마감')
-            await session.execute(stmt)
-            await session.commit()
-            logger.info("📅 마감일 지난 공고 자동 처리 완료")
+    def stop(cls):
+        if cls._scheduler and cls._scheduler.running:
+            cls._scheduler.shutdown(wait=False)
+            logger.info("공고 스케줄러 종료")
+
+    @classmethod
+    def _daily_job(cls):
+        """매일 09:00 — 마감 처리 + 크롤링 + DB 저장"""
+        from app.core.db import SyncSessionLocal
+        from app.services.crawlers.iris_crawler import IRISCrawler
+        from app.services.crawlers.sba_crawler import SBACrawler
+
+        # 1. 마감 상태 업데이트
+        db = SyncSessionLocal()
+        try:
+            from sqlalchemy import text
+            db.execute(text("UPDATE announcements SET status='마감' WHERE end_date < CURDATE() AND status != '마감'"))
+            db.commit()
+            logger.info("📅 마감 처리 완료")
+        except Exception as e:
+            logger.error(f"마감 처리 오류: {e}")
+        finally:
+            db.close()
+
+        # 2. 크롤러 실행 + DB 저장
+        crawlers = [
+            # ("IRIS", IRISCrawler().crawl_today),  # 보류
+            ("SBA",  SBACrawler().crawl_recruiting),
+        ]
+        for name, crawl_fn in crawlers:
+            db = SyncSessionLocal()
+            try:
+                df = crawl_fn()
+                if df.empty:
+                    logger.info(f"{name} 수집 결과 없음")
+                    continue
+
+                org = df['organization'].iloc[0] if not df.empty else None
+                existing_urls = set(
+                    r[0] for r in db.query(Announcement.URL)
+                    .filter(Announcement.organization == org)
+                    .all()
+                ) if org else set()
+
+                inserted = 0
+                for _, row in df.iterrows():
+                    if row['URL'] in existing_urls:
+                        continue
+                    db.add(Announcement(
+                        organization=row.get('organization') or '',
+                        title=row.get('title') or '',
+                        URL=row['URL'],
+                        announcement_date=row.get('announcement_date') or None,
+                        start_date=row.get('start_date') or None,
+                        end_date=row.get('end_date') or None,
+                        status=row.get('status') or '정보없음',
+                        budget=row.get('budget') or None,
+                    ))
+                    inserted += 1
+                db.commit()
+                logger.info(f"{name} 신규 저장: {inserted}건")
+            except Exception as e:
+                logger.error(f"{name} 오류: {e}")
+                db.rollback()
+            finally:
+                db.close()

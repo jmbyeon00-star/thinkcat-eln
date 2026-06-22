@@ -1,11 +1,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
 from app.api.routers import announcement_router, patent_router, search_router, search_history, user_router, agent_router, invalidation_router, pdf_router
+from app.services.announcement_service import AnnouncementService
 
 import os
 
-app = FastAPI(title="thinkcateln_next API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    AnnouncementService.start()
+    yield
+    AnnouncementService.stop()
+
+
+app = FastAPI(title="thinkcateln_next API", version="0.1.0", lifespan=lifespan)
 
 ENV = os.getenv("ENV", "dev")
 
@@ -14,7 +24,12 @@ if ENV == "prod":
         "https://patents.thinkcat.kr",
     ]
 else:
-    origins = ["*"]
+    origins = [
+        "http://localhost:3003",
+        "http://localhost:3022",
+        "http://192.168.1.20:3003",
+        "http://192.168.1.20:3022",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
