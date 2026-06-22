@@ -145,6 +145,39 @@ async def get_patents(request: Request, session: Session = Depends(get_sync_sess
     return await search_service.search_standard(session, user_id, body)
 
 # -----------------------------
+# Neo4j 벡터 검색 (일반검색용, GPU 프록시)
+# 브라우저가 GPU를 직접 호출하면 https->http Mixed Content로 막히므로 백엔드 경유
+# -----------------------------
+@router.post("/neo4j-vector")
+async def neo4j_vector(request: Request):
+    body = await request.json()
+    return search_service.search_neo4j_vector(
+        keyword=(body.get("keyword") or "").strip(),
+        section=body.get("section"),
+        page=body.get("page", 1),
+        size=body.get("size", 10),
+    )
+
+# -----------------------------
+# Neo4j 특허/출원인 네비게이션 (GPU 프록시) — 브라우저 직접호출 대신 백엔드 경유
+# -----------------------------
+@router.get("/neo4j-navigate")
+def neo4j_navigate(
+    appNumber: str = Query(..., description="출원번호"),
+    code: str = Query(None, description="섹션 코드"),
+):
+    return search_service.neo4j_navigate(app_number=appNumber.strip(), code=code)
+
+@router.get("/neo4j-applicant-navigate")
+def neo4j_applicant_navigate(
+    appNumber: str = Query(..., description="출원번호"),
+    code: str = Query(..., description="섹션 코드"),
+    maxsize: int = Query(100),
+    top_n: int = Query(10),
+):
+    return search_service.neo4j_applicant_navigate(app_number=appNumber.strip(), code=code, maxsize=maxsize, top_n=top_n)
+
+# -----------------------------
 # 유사 특허 검색 (선택한 특허 기반)
 # -----------------------------
 @router.post("/similar")

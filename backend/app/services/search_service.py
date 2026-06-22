@@ -44,6 +44,54 @@ def search_by_keyword(section: str, keyword: str, page: int, page_size: int, met
 
 
 # ------------------------------------------
+# 🔎 Neo4j 벡터 검색 (GPU 프록시) — 브라우저 직접호출(Mixed Content) 회피용 백엔드 경유
+# ------------------------------------------
+def search_neo4j_vector(keyword: str, section: Optional[str], page: int, size: int) -> Dict:
+    try:
+        response = requests.post(
+            f"{GPU_BACKEND_URL}/gpu/neo4j/vector",
+            json={"keyword": keyword, "section": section, "page": page, "size": size},
+            timeout=120,
+        )
+        if response.status_code != 200:
+            raise Exception(f"GPU 서버 요청 실패: {response.status_code}")
+        return response.json()
+    except Exception as e:
+        raise Exception(f"GPU 서버 통신 오류: {e}")
+
+
+# ------------------------------------------
+# 🔎 Neo4j 특허 네비게이션 (GPU 프록시) — 브라우저 직접호출(Mixed Content) 회피
+# ------------------------------------------
+def neo4j_navigate(app_number: str, code: Optional[str]):
+    try:
+        response = requests.get(
+            f"{GPU_BACKEND_URL}/gpu/neo4j/navigate",
+            params={"appNumber": app_number, "code": code},
+            timeout=120,
+        )
+        if response.status_code != 200:
+            raise Exception(f"GPU 서버 요청 실패: {response.status_code}")
+        return response.json()
+    except Exception as e:
+        raise Exception(f"GPU 서버 통신 오류: {e}")
+
+
+def neo4j_applicant_navigate(app_number: str, code: str, maxsize: int, top_n: int):
+    try:
+        response = requests.get(
+            f"{GPU_BACKEND_URL}/gpu/neo4j/applicant-navigate",
+            params={"appNumber": app_number, "code": code, "maxsize": maxsize, "top_n": top_n},
+            timeout=120,
+        )
+        if response.status_code != 200:
+            raise Exception(f"GPU 서버 요청 실패: {response.status_code}")
+        return response.json()
+    except Exception as e:
+        raise Exception(f"GPU 서버 통신 오류: {e}")
+
+
+# ------------------------------------------
 # 📄 출원번호 검색
 # ------------------------------------------
 def search_by_application(session: Session, app_num: str) -> Dict:

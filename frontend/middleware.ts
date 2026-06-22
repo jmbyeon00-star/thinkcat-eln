@@ -82,9 +82,15 @@ export default withAuth(
   },
   {
     callbacks: {
-      // middleware 함수 내에서 직접 체크하므로 항상 true 반환하여 
+      // middleware 함수 내에서 직접 체크하므로 항상 true 반환하여
       // NextAuth의 기본 비localized 리다이렉트를 방지합니다.
       authorized: () => true,
+    },
+    // auth.ts에서 세션 쿠키 이름을 thinkcateln.session-token 으로 분리했으므로
+    // withAuth(getToken)도 같은 이름을 읽어야 함. 안 그러면 기본 next-auth.session-token
+    // (prod는 __Secure- 접두사)을 찾다 실패 → 로그인돼도 보호경로 무한 리다이렉트.
+    cookies: {
+      sessionToken: { name: "thinkcateln.session-token" },
     },
   }
 );

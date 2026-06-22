@@ -5,8 +5,9 @@ import { apiFetch } from "./apiFetch";
 // API 유틸리티 및 설정
 // -----------------------------
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-// ✅ GPU 백엔드 서버 주소 (8001 포트)
-export const GPU_SERVER_URL = "http://192.168.1.149:8019";
+// ✅ GPU 백엔드 서버 주소 (.env의 NEXT_PUBLIC_GPU_BASE_URL 사용)
+//    개발=192.168.1.20:8103, 운영=L40S
+export const GPU_SERVER_URL = process.env.NEXT_PUBLIC_GPU_BASE_URL || "http://192.168.1.20:8103";
 
 export async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await apiFetch(`${API_BASE}${url}`, {
@@ -318,7 +319,8 @@ export async function searchNeo4jVector({
   page: number;
   page_size: number;
 }) {
-  return fetchGPU(`/gpu/neo4j/vector`, {
+  // 백엔드 경유(/api/search/neo4j-vector). 브라우저->GPU 직접호출은 https에서 Mixed Content로 막힘.
+  return fetchAPI(`/api/search/neo4j-vector`, {
     method: "POST",
     body: JSON.stringify({
       keyword: keyword.trim(),
@@ -334,8 +336,9 @@ export async function getPatentNavigationGpu(appNumber: string, code: string) {
   // 호출 구조: /gpu/neo4j/navigate?appNumber=...&code=...
   const sectionCode = code;
 
-  return fetchGPU(
-    `/gpu/neo4j/navigate?appNumber=${appNumber.trim()}&code=${sectionCode}`,
+  // 백엔드 경유(/api/search/neo4j-navigate). 브라우저->GPU 직접호출은 https에서 Mixed Content로 막힘.
+  return fetchAPI(
+    `/api/search/neo4j-navigate?appNumber=${appNumber.trim()}&code=${sectionCode}`,
     {
       method: "GET",
     }
@@ -352,8 +355,9 @@ export async function getApplicantNavigate(
   // 호출 구조: /gpu/neo4j/applicant-navigate?
   const sectionCode = code;
 
-  return fetchGPU(
-    `/gpu/neo4j/applicant-navigate?appNumber=${appNumber.trim()}&code=${sectionCode}`,
+  // 백엔드 경유(/api/search/neo4j-applicant-navigate). Mixed Content 회피.
+  return fetchAPI(
+    `/api/search/neo4j-applicant-navigate?appNumber=${appNumber.trim()}&code=${sectionCode}&maxsize=${maxsize}&top_n=${top_n}`,
     {
       method: "GET",
     }

@@ -21,7 +21,7 @@ const nextConfig = {
   reactStrictMode: true,
 
   // 선행기술조사(invalidation) 등 장시간 LLM 작업이 rewrite 프록시 기본 타임아웃에 끊기지 않도록
-  proxyTimeout: 600000,
+  // proxyTimeout: 600000,
 
   // ✅ App Router에서는 withNextIntl 플러그인이 i18n 설정을 관리하므로 삭제 가능하거나 최소화
   // i18n: {
