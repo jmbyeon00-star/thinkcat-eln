@@ -17,6 +17,7 @@ interface Project {
     end_date: string;
     status: string;
     budget?: string;
+    government_support?: string;
     dday?: string;
 }
 
@@ -48,10 +49,18 @@ const ResearchProjectsPage = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
 
-    // 지원금 편집 상태
-    const [editingBudgetId, setEditingBudgetId] = useState<number | null>(null);
-    const [budgetValue, setBudgetValue] = useState('');
-    const [budgetError, setBudgetError] = useState('');
+    // 정부지원금 편집 상태
+    const [editingGovId, setEditingGovId] = useState<number | null>(null);
+    const [govValue, setGovValue] = useState('');
+    const [govError, setGovError] = useState('');
+
+    const formatBudget = (budget: string | null | undefined): string => {
+        if (!budget || budget === '0') return '-';
+        const num = parseInt(budget, 10);
+        if (isNaN(num) || num === 0) return '-';
+        const eok = num / 100000000;
+        return eok % 1 === 0 ? `${eok}억` : `${parseFloat(eok.toFixed(2))}억`;
+    };
 
     // ============================================
     // 초기 로딩: 통계용 전체 데이터
@@ -140,64 +149,78 @@ const ResearchProjectsPage = () => {
     };
 
     const toggleAgency = (agencyName: string) => {
-        setSelectedAgency(prev =>
-            prev.includes(agencyName) ? prev.filter((a: string) => a !== agencyName) : [...prev, agencyName]
-        );
+        setSelectedAgency(prev => {
+            const next = prev.includes(agencyName)
+                ? prev.filter((a: string) => a !== agencyName)
+                : [...prev, agencyName];
+            setTempSelectedAgency(next.length === 1 ? next[0] : '');
+            return next;
+        });
         setCurrentPage(1);
     };
 
-    const handleBudgetClick = (project: Project) => {
-        setEditingBudgetId(project.id);
-        setBudgetValue(project.budget || '');
-        setBudgetError('');
+    const handleReset = () => {
+        setTempSearchTerm('');
+        setTempSelectedAgency('');
+        setTempSelectedStatus('전체');
+        setTempStartDate('');
+        setTempEndDate('');
+        setSearchTerm('');
+        setSelectedAgency([]);
+        setSelectedStatus('전체');
+        setStartDate('');
+        setEndDate('');
+        setCurrentPage(1);
     };
 
-    const validateBudget = (value: string) => {
+    const handleGovClick = (project: Project) => {
+        setEditingGovId(project.id);
+        setGovValue(project.government_support || '');
+        setGovError('');
+    };
+
+    const validateGov = (value: string, budget: string | undefined): { valid: boolean; message: string } => {
         if (!value.trim()) return { valid: true, message: '' };
-        const pattern = /^\d+([~-]\d+)?$/;
-        if (!pattern.test(value)) return { valid: false, message: '숫자 또는 "숫자-숫자" 형식만 가능' };
-        if (value.includes('-') || value.includes('~')) {
-            const separator = value.includes('~') ? '~' : '-';
-            const [start, end] = value.split(separator).map(Number);
-            if (start >= end) return { valid: false, message: '시작 값이 종료 값보다 작아야 함' };
+        const num = parseFloat(value);
+        if (isNaN(num) || !/^\d+(\.\d+)?$/.test(value.trim())) return { valid: false, message: '숫자만 입력 가능 (단위: 억)' };
+        if (budget && budget !== '0') {
+            const budgetEok = parseInt(budget, 10) / 100000000;
+            if (num > budgetEok) return { valid: false, message: `공고금액(${budgetEok}억) 초과 불가` };
         }
         return { valid: true, message: '' };
     };
 
-    const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleGovChange = (e: React.ChangeEvent<HTMLInputElement>, budget: string | undefined) => {
         const value = e.target.value;
-        if (value && !/^[\d~-]*$/.test(value)) return;
-        setBudgetValue(value);
-        const validation = validateBudget(value);
-        setBudgetError(validation.valid ? '' : validation.message);
+        if (value && !/^[\d.]*$/.test(value)) return;
+        setGovValue(value);
+        const validation = validateGov(value, budget);
+        setGovError(validation.valid ? '' : validation.message);
     };
 
-    const saveBudget = async (projectId: number) => {
-        const validation = validateBudget(budgetValue);
-        if (!validation.valid) { setBudgetError(validation.message); return; }
+    const saveGov = async (project: Project) => {
+        const validation = validateGov(govValue, project.budget);
+        if (!validation.valid) { setGovError(validation.message); return; }
         try {
-            const response = await apiFetch(`${API_BASE}/api/announcements/${projectId}/budget`, {
+            const response = await apiFetch(`${API_BASE}/api/announcements/${project.id}/government-support`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ budget: budgetValue.trim() }),
+                body: JSON.stringify({ government_support: govValue.trim() }),
             });
             if (!response.ok) throw new Error('저장 실패');
-            setProjects(prev => prev.map(p => p.id === projectId ? { ...p, budget: budgetValue.trim() } : p));
-            setEditingBudgetId(null);
+            setProjects(prev => prev.map(p => p.id === project.id ? { ...p, government_support: govValue.trim() } : p));
+            setEditingGovId(null);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : '저장 실패';
-            setBudgetError(errorMessage);
+            setGovError(errorMessage);
         }
     };
 
-    const cancelBudgetEdit = () => { setEditingBudgetId(null); setBudgetValue(''); setBudgetError(''); };
+    const cancelGovEdit = () => { setEditingGovId(null); setGovValue(''); setGovError(''); };
 
-    const handleBudgetKeyDown = (
-        e: React.KeyboardEvent<HTMLInputElement>,
-        projectId: number
-    ) => {
-        if (e.key === 'Enter') { e.preventDefault(); saveBudget(projectId); }
-        else if (e.key === 'Escape') cancelBudgetEdit();
+    const handleGovKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, project: Project) => {
+        if (e.key === 'Enter') { e.preventDefault(); saveGov(project); }
+        else if (e.key === 'Escape') cancelGovEdit();
     };
 
     // --- 메모이제이션 데이터 ---
@@ -289,6 +312,16 @@ const ResearchProjectsPage = () => {
                                         <option value="">전체</option>
                                         {allAgencies.map((stat) => <option key={stat.name} value={stat.name}>{stat.name} ({stat.count})</option>)}
                                     </select>
+                                    {selectedAgency.length > 1 && (
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                            {selectedAgency.map((name) => (
+                                                <span key={name} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[11px] font-medium rounded-full">
+                                                    {name}
+                                                    <button type="button" onClick={() => toggleAgency(name)} className="hover:text-blue-900 leading-none">×</button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div>
@@ -317,8 +350,9 @@ const ResearchProjectsPage = () => {
                                         <input type="date" value={tempEndDate} onChange={(e) => setTempEndDate(e.target.value)} className="flex-1 px-4 py-3 border-2 border-zinc-200 rounded-xl outline-none text-zinc-400" />
                                     </div>
                                 </div>
-                                <div className="flex items-end">
+                                <div className="flex items-end gap-3">
                                     <button onClick={handleSearch} className="px-16 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold rounded-xl transform hover:scale-105 h-[52px]">검색</button>
+                                    <button type="button" onClick={handleReset} className="px-6 py-3 bg-zinc-100 text-zinc-600 font-semibold rounded-xl hover:bg-zinc-200 transition h-[52px]">초기화</button>
                                 </div>
                             </div>
                         </div>
@@ -331,7 +365,7 @@ const ResearchProjectsPage = () => {
                     <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 gap-3">
                         {agencyStatsTop10.map((stat) => (
                             <div key={stat.name} className="flex flex-col items-center">
-                                <button onClick={() => toggleAgency(stat.name)} className={`w-full p-3 rounded-lg border-2 transition-all ${selectedAgency.includes(stat.name) ? 'bg-gradient-to-br from-[#4A5CFF] to-[#3A47D5] text-white' : 'bg-[#F0F7FF] text-zinc-800 border-none'}`}>
+                                <button onClick={() => toggleAgency(stat.name)} className={`w-full p-3 rounded-lg transition-all ${selectedAgency.includes(stat.name) ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white' : 'bg-[#F0F7FF] text-zinc-800 hover:bg-blue-100'}`}>
                                     <div className="text-[10px] font-medium line-clamp-2 h-8">{stat.name}</div>
                                 </button>
                                 <div className="text-[11px] text-zinc-500 mt-1">({stat.count})</div>
@@ -342,52 +376,73 @@ const ResearchProjectsPage = () => {
 
                 {/* Results Table */}
                 <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-zinc-100">
+                    <div className="flex justify-end items-center px-4 pt-2 gap-1">
+                        <span className="text-xs text-zinc-500 mr-2">검색된 정보: <span className="font-bold text-blue-600">{totalCount}</span>건</span>
+                        <button onClick={() => setCurrentPage(1)} disabled={currentPage===1} className="px-1 text-xs text-zinc-400 hover:text-blue-600 disabled:opacity-30">«</button>
+                        <button onClick={() => setCurrentPage(Math.max(1, currentPage-1))} disabled={currentPage===1} className="px-1 text-xs text-zinc-400 hover:text-blue-600 disabled:opacity-30">‹</button>
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            const pageNum = Math.floor((currentPage-1)/5)*5+i+1;
+                            return pageNum <= totalPages ? (
+                                <button key={pageNum} onClick={() => setCurrentPage(pageNum)} className={`w-6 h-6 text-xs rounded-full ${currentPage===pageNum ? 'bg-blue-600 text-white' : 'text-zinc-500 hover:text-blue-600'}`}>{pageNum}</button>
+                            ) : null;
+                        })}
+                        <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage+1))} disabled={currentPage===totalPages} className="px-1 text-xs text-zinc-400 hover:text-blue-600 disabled:opacity-30">›</button>
+                        <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage===totalPages} className="px-1 text-xs text-zinc-400 hover:text-blue-600 disabled:opacity-30">»</button>
+                    </div>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-gradient-to-r from-zinc-50 to-zinc-100 border-b border-zinc-200">
                                 <tr>
-                                    <th className="px-2 py-3 text-center text-xs font-bold text-zinc-700 uppercase w-3"></th>
-                                    <th className="px-2 py-3 text-center text-xs font-bold text-zinc-700 uppercase w-65">공고명</th>
-                                    <th className="px-2 py-3 text-center text-xs font-bold text-zinc-700 uppercase w-40">공고기관</th>
-                                    <th className="px-2 py-3 text-center text-xs font-bold text-zinc-700 uppercase w-20">현황</th>
-                                    <th className="px-2 py-3 text-center text-xs font-bold text-zinc-700 uppercase w-20">
+                                    <th className="px-1 py-3 text-center text-xs font-bold text-zinc-700 uppercase w-3"></th>
+                                    <th className="px-2 py-3 text-center text-xs font-bold text-zinc-700 uppercase">공고명</th>
+                                    <th className="px-2 py-3 text-center text-xs font-bold text-zinc-700 uppercase w-36">공고기관</th>
+                                    <th className="px-1 py-3 text-center text-xs font-bold text-zinc-700 uppercase w-16">현황</th>
+                                    <th className="px-1 py-3 text-center text-xs font-bold text-zinc-700 uppercase w-20">
                                         <button onClick={() => handleSort('start_date')} className="flex items-center justify-center w-full gap-1">접수일 <span>{sortField === "start_date" ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}</span></button>
                                     </th>
-                                    <th className="px-3 py-3 text-center text-xs font-bold text-zinc-700 uppercase w-20">
+                                    <th className="px-1 py-3 text-center text-xs font-bold text-zinc-700 uppercase w-20">
                                         <button onClick={() => handleSort('end_date')} className="flex items-center justify-center w-full gap-1">마감일 <span>{sortField === "end_date" ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}</span></button>
                                     </th>
-                                    <th className="px-3 py-3 text-center text-xs font-bold text-zinc-700 uppercase w-24">과제별 지원금<br /><span className="text-[10px] lowercase">(단위: 억)</span></th>
+                                    <th className="px-2 py-3 text-center text-xs font-bold text-zinc-700 w-36">
+                                        정부지원금/공고금액<br />
+                                        <span className="text-[9px] font-light text-zinc-400">(단위: 억)</span>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-200">
                                 {projects.map((project, index) => (
                                     <tr key={project.id} className="hover:bg-blue-50/50 transition">
-                                        <td className="px-3 py-3 text-center text-sm font-medium text-zinc-900">{totalCount - (currentPage - 1) * 20 - index}</td>
-                                        <td className="px-3 py-3 text-center">
+                                        <td className="px-1 py-2 text-center text-xs font-medium text-zinc-500">{(currentPage - 1) * 20 + index + 1}</td>
+                                        <td className="px-2 py-2 text-center">
                                             <a href={project.URL} target="_blank" className="text-sm text-zinc-900 hover:text-blue-600 hover:underline">{project.title}</a>
                                         </td>
-                                        <td className="px-3 py-3 text-center">
-                                            <button onClick={() => toggleAgency(project.organization)} className="text-[13px] text-blue-600 hover:underline font-medium">{project.organization}</button>
+                                        <td className="px-2 py-2 text-center">
+                                            <button onClick={() => toggleAgency(project.organization)} className="text-[12px] text-blue-600 hover:underline font-medium">{project.organization}</button>
                                         </td>
-                                        <td className="px-3 py-3 text-center">
-                                            <span className={`inline-block px-2 py-1 text-[11px] font-medium text-black rounded-full w-[65px] ${getStatusColor(project.status)}`}>{project.status}</span>
+                                        <td className="px-1 py-2 text-center">
+                                            <span className={`inline-block px-2 py-1 text-[11px] font-medium text-black rounded-full w-[60px] ${getStatusColor(project.status)}`}>{project.status}</span>
                                         </td>
-                                        <td className="px-3 py-3 text-center text-[12px] text-zinc-600">{project.start_date}</td>
-                                        <td className="px-3 py-3 text-center">
+                                        <td className="px-1 py-2 text-center text-[12px] text-zinc-600">{project.start_date}</td>
+                                        <td className="px-1 py-2 text-center">
                                             <div className="text-[12px] text-zinc-600">{project.end_date}</div>
-                                            <div className="text-[11px] font-bold text-red-600 mt-1">{project.dday}</div>
+                                            <div className="text-[11px] font-bold text-red-600 mt-0.5">{project.dday}</div>
                                         </td>
-                                        <td className="px-3 py-3 text-center" onMouseEnter={() => handleBudgetClick(project)} onMouseLeave={() => { if (editingBudgetId === project.id && !budgetValue) cancelBudgetEdit(); }}>
-                                            {editingBudgetId === project.id ? (
-                                                <div className="flex flex-col items-center gap-1">
-                                                    <input type="text" value={budgetValue} onChange={handleBudgetChange} onKeyDown={(e) => handleBudgetKeyDown(e, project.id)} autoFocus className={`w-20 text-[12px] border-2 rounded ${budgetError ? 'border-red-500' : 'border-blue-500'} outline-none`} />
+                                        <td className="px-2 text-center relative" style={{height: '44px'}} onMouseEnter={() => handleGovClick(project)} onMouseLeave={() => { if (editingGovId === project.id && !govValue) cancelGovEdit(); }}>
+                                            {editingGovId === project.id ? (
+                                                <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-20 bg-white border border-blue-200 rounded-lg shadow-lg px-2 py-1.5 flex flex-col items-center gap-1 w-32">
+                                                    <input type="text" value={govValue} onChange={(e) => handleGovChange(e, project.budget)} onKeyDown={(e) => handleGovKeyDown(e, project)} autoFocus placeholder="억 단위" className={`w-full text-[12px] border-2 rounded ${govError ? 'border-red-500' : 'border-blue-500'} outline-none text-center`} />
+                                                    {govError && <div className="text-[9px] text-red-500 w-full text-center">{govError}</div>}
                                                     <div className="flex gap-1">
-                                                        <button onClick={() => saveBudget(project.id)} className="px-1 bg-blue-500 text-white text-[9px] rounded">저장</button>
-                                                        <button onClick={cancelBudgetEdit} className="px-1 bg-zinc-300 text-[9px] rounded">취소</button>
+                                                        <button onClick={() => saveGov(project)} className="px-2 py-0.5 bg-blue-500 text-white text-[9px] rounded">저장</button>
+                                                        <button onClick={cancelGovEdit} className="px-2 py-0.5 bg-zinc-300 text-[9px] rounded">취소</button>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="text-[12px] text-zinc-700 font-medium hover:bg-blue-50 px-2 py-1 rounded transition">{project.budget || '-'}</div>
+                                                <div className="text-[12px] text-zinc-700 hover:bg-blue-50 px-2 py-1 rounded transition cursor-pointer">
+                                                    <span className="text-zinc-500">{project.government_support ? `${project.government_support}억` : '-'}</span>
+                                                    <span className="text-zinc-300 mx-0.5">/</span>
+                                                    <span className="text-zinc-500">{formatBudget(project.budget)}</span>
+                                                </div>
                                             )}
                                         </td>
                                     </tr>
@@ -399,34 +454,16 @@ const ResearchProjectsPage = () => {
 
                 {/* Pagination */}
                 <div className="mt-8 flex justify-center items-center space-x-1">
-                    <button onClick={() => {
-                        const currentGroup = Math.floor((currentPage - 1) / 10);
-                        const newPage = Math.max(1, currentGroup * 10 - 9);
-                        setCurrentPage(newPage);
-                    }}
-                        disabled={currentPage <= 10}
-                        className="p-2 text-zinc-600 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                        «
-                    </button>
+                    <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="p-2 text-zinc-600 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed">«</button>
                     <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="p-2 disabled:opacity-30">‹</button>
-                    {Array.from({ length: Math.min(10, totalPages) }, (_, i) => {
-                        const pageNum = Math.floor((currentPage - 1) / 10) * 10 + i + 1;
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const pageNum = Math.floor((currentPage - 1) / 5) * 5 + i + 1;
                         return pageNum <= totalPages ? (
                             <button key={pageNum} onClick={() => setCurrentPage(pageNum)} className={`w-10 h-10 flex items-center justify-center text-sm font-medium rounded-full transition ${currentPage === pageNum ? 'bg-blue-600 text-white' : 'text-zinc-600 hover:text-blue-600'}`}>{pageNum}</button>
                         ) : null;
                     })}
                     <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="p-2 disabled:opacity-30">›</button>
-                    <button
-                        onClick={() => {
-                            const nextGroupStart = Math.floor((currentPage - 1) / 10) * 10 + 11;
-                            setCurrentPage(Math.min(totalPages, nextGroupStart));
-                        }}
-                        disabled={Math.floor((currentPage - 1) / 10) * 10 + 11 > totalPages}
-                        className="p-2 text-zinc-600 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                        »
-                    </button>
+                    <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="p-2 text-zinc-600 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed">»</button>
                 </div>
 
                 <div className="mt-6 text-center text-sm text-zinc-600">검색된 정보: <span className="font-bold text-blue-600">{totalCount} 건</span></div>

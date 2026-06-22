@@ -17,7 +17,8 @@ class Announcement(Base):
     end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     status: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     budget: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    
+    government_support: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
@@ -33,6 +34,7 @@ class Announcement(Base):
             "end_date": self.end_date.isoformat() if self.end_date else None,
             "status": self.status,
             "budget": self.budget,
+            "government_support": self.government_support,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

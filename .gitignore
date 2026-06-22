@@ -1,3 +1,5 @@
+jungmin/
+
 ########################################
 # 🌐 Node.js / Next.js
 ########################################
@@ -104,3 +106,5 @@ readme.md
 *.bak
 tsconfig.tsbuildinfo
 samples/
+
+DEV_NOTES.md
