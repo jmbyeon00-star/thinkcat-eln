@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { Sparkles, X, FileText, Calendar, Building2, Hash, Tag } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Sparkles, X, FileText, Calendar, Building2, Hash, Tag, ChevronDown, ChevronRight } from "lucide-react";
 import { getRecentPatents } from "@/lib/api";
 
 interface RecentPatent {
@@ -15,22 +15,63 @@ interface RecentPatent {
   end_status: string | null;
 }
 
+// IPC 코드 첫 글자(섹션) 기준 분야 매핑
+const IPC_SECTION_LABEL: Record<string, string> = {
+  A: "생활필수품",
+  B: "처리조작·운송",
+  C: "화학·야금",
+  D: "섬유·종이",
+  E: "고정구조물",
+  F: "기계공학",
+  G: "물리학",
+  H: "전기",
+};
+
+// 분야별 배지/탭 색상 (텍스트, 배경, 활성 탭 배경)
+const IPC_SECTION_COLOR: Record<string, { text: string; bg: string; active: string }> = {
+  A: { text: "text-rose-600", bg: "bg-rose-50", active: "bg-rose-500" },
+  B: { text: "text-orange-600", bg: "bg-orange-50", active: "bg-orange-500" },
+  C: { text: "text-amber-600", bg: "bg-amber-50", active: "bg-amber-500" },
+  D: { text: "text-emerald-600", bg: "bg-emerald-50", active: "bg-emerald-500" },
+  E: { text: "text-teal-600", bg: "bg-teal-50", active: "bg-teal-500" },
+  F: { text: "text-cyan-600", bg: "bg-cyan-50", active: "bg-cyan-500" },
+  G: { text: "text-indigo-600", bg: "bg-indigo-50", active: "bg-indigo-500" },
+  H: { text: "text-violet-600", bg: "bg-violet-50", active: "bg-violet-500" },
+};
+const IPC_SECTION_COLOR_DEFAULT = { text: "text-zinc-500", bg: "bg-zinc-100", active: "bg-zinc-500" };
+
+function getIpcSection(ipcCode: string | null): string | null {
+  if (!ipcCode) return null;
+  const main = ipcCode.split("|")[0]?.trim();
+  const letter = main?.[0]?.toUpperCase();
+  return letter && IPC_SECTION_LABEL[letter] ? letter : null;
+}
+
+function getIpcFieldLabel(ipcCode: string | null): string {
+  const section = getIpcSection(ipcCode);
+  return section ? IPC_SECTION_LABEL[section] : "분야 미분류";
+}
+
+function getIpcFieldColor(ipcCode: string | null) {
+  const section = getIpcSection(ipcCode);
+  return section ? IPC_SECTION_COLOR[section] : IPC_SECTION_COLOR_DEFAULT;
+}
+
 function formatDate(raw: string | null): string {
   if (!raw || raw.length < 8) return "-";
   return `${raw.slice(0, 4)}.${raw.slice(4, 6)}.${raw.slice(6, 8)}`;
 }
 
 const ITEM_HEIGHT = 48; // px
-const VISIBLE_COUNT = 3;
-const SCROLL_STEP_MS = 30; // 스크롤 갱신 주기
-const SCROLL_STEP_PX = 0.25; // 한 번에 움직이는 픽셀 (작을수록 느리고 부드러움)
+const VISIBLE_COUNT = 4;
+const HEADER_HEIGHT = 48; // px - R&D공고 신착 카드 헤더와 높이를 맞춤
 
 export default function RecentPatentTicker() {
   const [patents, setPatents] = useState<RecentPatent[]>([]);
   const [selected, setSelected] = useState<RecentPatent | null>(null);
-  const [paused, setPaused] = useState(false);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const posRef = useRef(0); // 소수점까지 누적되는 실제 위치 (scrollTop은 브라우저가 정수로 반올림해버려서 0.25처럼 작은 값은 안 움직임)
+  const [activeTab, setActiveTab] = useState<string>("ALL");
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const tabsScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getRecentPatents(20)
@@ -38,63 +79,137 @@ export default function RecentPatentTicker() {
       .catch((err) => console.error("신착특허 로드 실패:", err));
   }, []);
 
-  // 자동 스크롤 (실제 scrollTop을 움직여서, hover 중엔 마우스로도 직접 스크롤 가능)
-  useEffect(() => {
-    if (paused || patents.length === 0) return;
-    const el = trackRef.current;
+  // 실제 존재하는 IPC 분야만 탭으로 노출 (전체 탭은 항상 표시)
+  const availableSections = useMemo(() => {
+    const sections = new Set<string>();
+    patents.forEach((p: RecentPatent) => {
+      const s = getIpcSection(p.ipc_code);
+      if (s) sections.add(s);
+    });
+    return Array.from(sections).sort();
+  }, [patents]);
+
+  const filteredPatents = useMemo(() => {
+    if (activeTab === "ALL") return patents;
+    return patents.filter((p: RecentPatent) => getIpcSection(p.ipc_code) === activeTab);
+  }, [patents, activeTab]);
+
+  // 탭 줄이 실제로 더 스크롤할 수 있는 상태인지 체크 (끝까지 스크롤하면 화살표 힌트를 숨김)
+  const checkTabsScroll = () => {
+    const el = tabsScrollRef.current;
     if (!el) return;
-    posRef.current = el.scrollTop;
-    const timer = setInterval(() => {
-      posRef.current += SCROLL_STEP_PX;
-      // 리스트를 2벌 이어붙여놨으므로, 절반 지나면 자연스럽게 처음으로 되돌림
-      if (posRef.current >= el.scrollHeight / 2) {
-        posRef.current = 0;
-      }
-      el.scrollTop = Math.round(posRef.current);
-    }, SCROLL_STEP_MS);
-    return () => clearInterval(timer);
-  }, [paused, patents.length]);
+    setCanScrollRight(el.scrollWidth - el.clientWidth - el.scrollLeft > 4);
+  };
+
+  useEffect(() => {
+    checkTabsScroll();
+  }, [availableSections]);
 
   if (patents.length === 0) return null;
 
   return (
     <>
       <div className="bg-white border border-zinc-200 rounded-2xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700">
-        <div className="flex items-center gap-2 px-5 py-3 border-b border-zinc-100 bg-blue-50/50">
-          <Sparkles size={14} className="text-blue-600" />
-          <span className="text-[11px] font-black uppercase tracking-wider text-blue-600">신착특허</span>
-          <span className="text-[11px] font-bold text-blue-400">{patents.length}건</span>
+        <div
+          className="flex items-center gap-2 px-5 border-b border-zinc-100 bg-blue-50/50"
+          style={{ height: HEADER_HEIGHT }}
+        >
+          <Sparkles size={14} className="text-blue-600 shrink-0" />
+          <span className="text-[11px] font-black uppercase tracking-wider text-blue-600 shrink-0">신착특허</span>
+          <span className="text-[11px] font-bold text-blue-400 shrink-0">{patents.length}건</span>
+
+          {/* IPC 분야 탭 - 마우스 오버하면 해당 분야 목록으로 전환. 제목/건수는 고정, 탭만 가로 스크롤 */}
+          <div className="relative flex-1 min-w-0 h-full ml-2">
+            <div
+              ref={tabsScrollRef}
+              onScroll={checkTabsScroll}
+              className="flex items-stretch h-full overflow-x-auto scrollbar-none border-l border-blue-100"
+            >
+              <button
+                onMouseEnter={() => setActiveTab("ALL")}
+                onClick={() => setActiveTab("ALL")}
+                className={`px-2.5 text-[11px] font-bold whitespace-nowrap transition-colors shrink-0 border-r border-blue-100 border-b-2 ${
+                  activeTab === "ALL"
+                    ? "border-b-blue-600 text-blue-600 bg-white"
+                    : "border-b-transparent text-zinc-400 hover:bg-white/60"
+                }`}
+              >
+                전체
+              </button>
+              {availableSections.map((section: string) => {
+                const color = IPC_SECTION_COLOR[section] ?? IPC_SECTION_COLOR_DEFAULT;
+                return (
+                  <button
+                    key={section}
+                    onMouseEnter={() => setActiveTab(section)}
+                    onClick={() => setActiveTab(section)}
+                    className={`px-2.5 text-[11px] font-bold whitespace-nowrap transition-colors shrink-0 border-r border-blue-100 border-b-2 ${
+                      activeTab === section
+                        ? `border-b-current bg-white ${color.text}`
+                        : "border-b-transparent text-zinc-400 hover:bg-white/60"
+                    }`}
+                  >
+                    {IPC_SECTION_LABEL[section]}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 탭이 더 있다는 힌트 - 끝까지 스크롤하면 사라짐 */}
+            {canScrollRight && (
+              <div className="absolute top-0 right-0 h-full w-6 bg-gradient-to-l from-white via-white/70 to-transparent pointer-events-none flex items-center justify-end">
+                <ChevronRight size={12} className="text-blue-400" />
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="relative">
-          <div
-            ref={trackRef}
-            className="overflow-y-auto scrollbar-none"
-            style={{ height: ITEM_HEIGHT * VISIBLE_COUNT }}
-            onMouseEnter={() => setPaused(true)}
-            onMouseLeave={() => setPaused(false)}
-          >
-            {[...patents, ...patents].map((p, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 px-5 cursor-pointer hover:bg-blue-50/40 transition-colors"
-                style={{ height: ITEM_HEIGHT }}
-                onClick={() => setSelected(p)}
-              >
-                <span className="text-zinc-400 text-xs font-mono shrink-0">{p.application_number}</span>
-                <span className="text-zinc-400 text-xs font-bold shrink-0 tabular-nums">
-                  {formatDate(p.open_date)}
-                </span>
-                <span className="text-zinc-800 text-sm font-bold truncate flex-1 min-w-0">
-                  {p.title || "제목 없음"}
-                </span>
-              </div>
-            ))}
-          </div>
+          {filteredPatents.length === 0 ? (
+            <div
+              className="flex items-center justify-center text-xs text-zinc-400 font-medium"
+              style={{ height: ITEM_HEIGHT * VISIBLE_COUNT }}
+            >
+              해당 분야의 신착특허가 없습니다
+            </div>
+          ) : (
+            <div
+              className="overflow-y-auto scrollbar-none"
+              style={{ height: ITEM_HEIGHT * VISIBLE_COUNT }}
+            >
+              {filteredPatents.map((p: RecentPatent, i: number) => {
+                const color = getIpcFieldColor(p.ipc_code);
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 px-5 cursor-pointer hover:bg-blue-50/40 transition-colors"
+                    style={{ height: ITEM_HEIGHT }}
+                    onClick={() => setSelected(p)}
+                  >
+                    <span
+                      className={`text-[11px] font-bold shrink-0 whitespace-nowrap rounded-full px-1.5 py-0.5 ${color.text} ${color.bg}`}
+                    >
+                      {getIpcFieldLabel(p.ipc_code)}
+                    </span>
+                    <span className="text-zinc-400 text-xs font-bold shrink-0 tabular-nums">
+                      {formatDate(p.open_date)}
+                    </span>
+                    <span className="text-zinc-800 text-sm font-bold truncate flex-1 min-w-0">
+                      {p.title || "제목 없음"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-          {/* 위/아래 가장자리 페이드 처리 */}
+          {/* 위/아래 가장자리 페이드 처리 + 아래쪽엔 "더 있음" 표시 */}
           <div className="absolute top-0 left-0 right-0 h-3 bg-gradient-to-b from-white to-transparent pointer-events-none" />
-          <div className="absolute bottom-0 left-0 right-0 h-3 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+          <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none flex items-end justify-center pb-0.5">
+            {filteredPatents.length > VISIBLE_COUNT && (
+              <ChevronDown size={14} className="text-blue-300 animate-bounce" />
+            )}
+          </div>
         </div>
 
         <style jsx>{`

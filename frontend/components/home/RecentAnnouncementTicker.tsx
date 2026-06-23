@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { Megaphone } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Megaphone, ChevronDown } from "lucide-react";
 import { getRecentAnnouncements } from "@/lib/api";
 
 interface RecentAnnouncement {
@@ -21,56 +21,37 @@ function formatDate(raw: string | null): string {
 }
 
 const ITEM_HEIGHT = 48; // px
-const VISIBLE_COUNT = 3;
-const SCROLL_STEP_MS = 30;
-const SCROLL_STEP_PX = 0.25;
+const VISIBLE_COUNT = 4;
+const HEADER_HEIGHT = 48; // px - 신착특허 카드 헤더와 높이를 맞춤
 
 export default function RecentAnnouncementTicker() {
   const [items, setItems] = useState<RecentAnnouncement[]>([]);
-  const [paused, setPaused] = useState(false);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const posRef = useRef(0);
 
   useEffect(() => {
     getRecentAnnouncements(10)
       .then((res: any) => setItems(res?.items || []))
-      .catch((err) => console.error("신착 R&D공고 로드 실패:", err));
+      .catch((err) => console.error("신규 R&D공고 로드 실패:", err));
   }, []);
-
-  useEffect(() => {
-    if (paused || items.length === 0) return;
-    const el = trackRef.current;
-    if (!el) return;
-    posRef.current = el.scrollTop;
-    const timer = setInterval(() => {
-      posRef.current += SCROLL_STEP_PX;
-      if (posRef.current >= el.scrollHeight / 2) {
-        posRef.current = 0;
-      }
-      el.scrollTop = Math.round(posRef.current);
-    }, SCROLL_STEP_MS);
-    return () => clearInterval(timer);
-  }, [paused, items.length]);
 
   if (items.length === 0) return null;
 
   return (
     <div className="bg-white border border-zinc-200 rounded-2xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex items-center gap-2 px-5 py-3 border-b border-zinc-100 bg-blue-50/50">
+      <div
+        className="flex items-center gap-2 px-5 border-b border-zinc-100 bg-blue-50/50"
+        style={{ height: HEADER_HEIGHT }}
+      >
         <Megaphone size={14} className="text-blue-600" />
-        <span className="text-[11px] font-black uppercase tracking-wider text-blue-600">R&D공고 신착</span>
+        <span className="text-[11px] font-black uppercase tracking-wider text-blue-600">신규R&D공고</span>
         <span className="text-[11px] font-bold text-blue-400">{items.length}건</span>
       </div>
 
       <div className="relative">
         <div
-          ref={trackRef}
           className="overflow-y-auto scrollbar-none"
           style={{ height: ITEM_HEIGHT * VISIBLE_COUNT }}
-          onMouseEnter={() => setPaused(true)}
-          onMouseLeave={() => setPaused(false)}
         >
-          {[...items, ...items].map((a, i) => (
+          {items.map((a, i) => (
             <a
               key={i}
               href={a.URL}
@@ -93,7 +74,11 @@ export default function RecentAnnouncementTicker() {
         </div>
 
         <div className="absolute top-0 left-0 right-0 h-3 bg-gradient-to-b from-white to-transparent pointer-events-none" />
-        <div className="absolute bottom-0 left-0 right-0 h-3 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none flex items-end justify-center pb-0.5">
+          {items.length > VISIBLE_COUNT && (
+            <ChevronDown size={14} className="text-blue-300 animate-bounce" />
+          )}
+        </div>
       </div>
 
       <style jsx>{`
