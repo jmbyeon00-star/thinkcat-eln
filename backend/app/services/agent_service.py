@@ -159,49 +159,6 @@ def get_top_similar_agent(app_number: str, index: str, db_session: Session, maxs
     
     
 # =========================================================================
-# 사무소명 -> (회사 정보, 중복 제거된 출원번호 목록) 조회 공통 헬퍼
-# =========================================================================
-def _get_company_and_app_numbers(
-    db_session: Session,
-    company_name: str
-):
-    # 1. AgentList 테이블에서 회사 정보 조회
-    company_info = db_session.query(AgentList).filter(
-        AgentList.company_ko == company_name
-    ).first()
-
-    if not company_info:
-        raise ValueError(f"회사명 '{company_name}'에 해당하는 데이터가 없습니다.")
-
-    # 공통으로 사용할 회사 정보 딕셔너리 (전화, 팩스, 홈페이지 포함)
-    company_data = {
-        "company_ko": company_info.company_ko,
-        "names": company_info.name,
-        "agent_codes": company_info.agent_code,
-        "address": company_info.address,
-        "phone_number": company_info.phone_number,
-        "fax": company_info.fax,
-        "homepage": company_info.homepage,
-        'star_check': company_info.star_check
-    }
-
-    # 콤마로 연결된 agent_code들을 리스트로 분리
-    agent_codes = [code.strip() for code in company_info.agent_code.split(',')] if company_info.agent_code else []
-
-    # 2. agent_codes를 사용하여 AgentInfo에서 중복 제거된 출원번호 조회
-    # (.distinct()로 DB에서 미리 중복을 제거해야 이후 PatentResult IN절 크기가 절반 가까이 줄어듦 - 대형 로펌 기준 51만 -> 26만)
-    agent_rows = (
-        db_session.query(AgentInfo.app_number)
-        .filter(AgentInfo.agent_code.in_(agent_codes))
-        .distinct()
-        .all()
-    )
-    app_numbers = [str(r[0]) for r in agent_rows]
-
-    return company_data, app_numbers
-
-
-# =========================================================================
 # 사무소의 출원번호 목록으로부터 통계(raw)를 계산하는 순수 함수.
 # - get_company_patent_statistics()의 캐시 미스 폴백과
 #   scripts/precompute_agent_stats.py 배치 작업이 공통으로 사용한다.
@@ -368,6 +325,49 @@ def recompute_all_agent_stats(db_session: Session) -> int:
         updated += 1
 
     return updated
+
+
+# =========================================================================
+# 사무소명 -> (회사 정보, 중복 제거된 출원번호 목록) 조회 공통 헬퍼
+# =========================================================================
+def _get_company_and_app_numbers(
+    db_session: Session,
+    company_name: str
+):
+    # 1. AgentList 테이블에서 회사 정보 조회
+    company_info = db_session.query(AgentList).filter(
+        AgentList.company_ko == company_name
+    ).first()
+
+    if not company_info:
+        raise ValueError(f"회사명 '{company_name}'에 해당하는 데이터가 없습니다.")
+
+    # 공통으로 사용할 회사 정보 딕셔너리 (전화, 팩스, 홈페이지 포함)
+    company_data = {
+        "company_ko": company_info.company_ko,
+        "names": company_info.name,
+        "agent_codes": company_info.agent_code,
+        "address": company_info.address,
+        "phone_number": company_info.phone_number,
+        "fax": company_info.fax,
+        "homepage": company_info.homepage,
+        'star_check': company_info.star_check
+    }
+
+    # 콤마로 연결된 agent_code들을 리스트로 분리
+    agent_codes = [code.strip() for code in company_info.agent_code.split(',')] if company_info.agent_code else []
+
+    # 2. agent_codes를 사용하여 AgentInfo에서 중복 제거된 출원번호 조회
+    # (.distinct()로 DB에서 미리 중복을 제거해야 이후 PatentResult IN절 크기가 절반 가까이 줄어듦 - 대형 로펌 기준 51만 -> 26만)
+    agent_rows = (
+        db_session.query(AgentInfo.app_number)
+        .filter(AgentInfo.agent_code.in_(agent_codes))
+        .distinct()
+        .all()
+    )
+    app_numbers = [str(r[0]) for r in agent_rows]
+
+    return company_data, app_numbers
 
 
 # =========================================================================

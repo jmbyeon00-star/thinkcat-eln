@@ -212,15 +212,15 @@ export default function MarketplacePage() {
    [CPC 8개 섹션 분류 데이터]
   **/
   const CPC_SECTORS = [
-    { id: "all", name: translator("common.cpc_sections.all"), icon: <Globe className="w-6 h-6" /> },
-    { id: "A", name: translator("common.cpc_sections.A"), icon: <Utensils className="w-6 h-6" /> },
-    { id: "B", name: translator("common.cpc_sections.B"), icon: <Truck className="w-6 h-6" /> },
-    { id: "C", name: translator("common.cpc_sections.C"), icon: <Beaker className="w-6 h-6" /> },
-    { id: "D", name: translator("common.cpc_sections.D"), icon: <Scissors className="w-6 h-6" /> },
-    { id: "E", name: translator("common.cpc_sections.E"), icon: <HomeIcon className="w-6 h-6" /> },
-    { id: "F", name: translator("common.cpc_sections.F"), icon: <Wrench className="w-6 h-6" /> },
-    { id: "G", name: translator("common.cpc_sections.G"), icon: <Lightbulb className="w-6 h-6" /> },
-    { id: "H", name: translator("common.cpc_sections.H"), icon: <Zap className="w-6 h-6" /> },
+    { id: "all", name: translator("common.cpc_sections.all"), icon: <Globe className="w-5 h-5" /> },
+    { id: "A", name: translator("common.cpc_sections.A"), icon: <Utensils className="w-5 h-5" /> },
+    { id: "B", name: translator("common.cpc_sections.B"), icon: <Truck className="w-5 h-5" /> },
+    { id: "C", name: translator("common.cpc_sections.C"), icon: <Beaker className="w-5 h-5" /> },
+    { id: "D", name: translator("common.cpc_sections.D"), icon: <Scissors className="w-5 h-5" /> },
+    { id: "E", name: translator("common.cpc_sections.E"), icon: <HomeIcon className="w-5 h-5" /> },
+    { id: "F", name: translator("common.cpc_sections.F"), icon: <Wrench className="w-5 h-5" /> },
+    { id: "G", name: translator("common.cpc_sections.G"), icon: <Lightbulb className="w-5 h-5" /> },
+    { id: "H", name: translator("common.cpc_sections.H"), icon: <Zap className="w-5 h-5" /> },
   ];
 
 
@@ -354,16 +354,17 @@ export default function MarketplacePage() {
     <PageShell
       title="변리사"
       description={translator("agent.marketplace.sub_title")}
+      dense
     >
       <div className="max-w-4xl mx-auto">
 
         <div className="max-w-3xl mx-auto">
-          <div className="relative flex items-center bg-white border-2 border-slate-100 rounded-[2.5rem] focus-within:ring-8 focus-within:ring-blue-500/5 focus-within:border-blue-600 transition-all shadow-2xl shadow-slate-200/40 h-16 md:h-20">
+          <div className="relative flex items-center bg-white border-2 border-slate-100 rounded-[2rem] focus-within:ring-8 focus-within:ring-blue-500/5 focus-within:border-blue-600 transition-all shadow-2xl shadow-slate-200/40 h-11 md:h-14">
             <div className="relative h-full shrink-0" ref={dropdownRef}>
-              <button onClick={() => setIsTypeOpen(!isTypeOpen)} className={`flex items-center gap-2 px-6 h-full font-black text-slate-700 hover:bg-slate-50 border-r-2 border-slate-100 rounded-l-[2.5rem] ${isTypeOpen ? 'bg-slate-50' : ''}`}>
-                <div className="text-blue-600">{searchType === 'firm' ? <Building2 size={20} /> : <Hash size={20} />}</div>
-                <span className="hidden sm:inline text-sm font-black">{searchType === 'firm' ? '사무소' : '특허기반'}</span>
-                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isTypeOpen ? 'rotate-180' : ''}`} />
+              <button onClick={() => setIsTypeOpen(!isTypeOpen)} className={`flex items-center gap-2 px-4 h-full font-black text-slate-700 hover:bg-slate-50 border-r-2 border-slate-100 rounded-l-[2rem] ${isTypeOpen ? 'bg-slate-50' : ''}`}>
+                <div className="text-blue-600">{searchType === 'firm' ? <Building2 size={16} /> : <Hash size={16} />}</div>
+                <span className="hidden sm:inline text-xs font-black">{searchType === 'firm' ? '사무소' : '특허기반'}</span>
+                <ChevronDown size={12} className={`text-slate-400 transition-transform ${isTypeOpen ? 'rotate-180' : ''}`} />
               </button>
               {isTypeOpen && (
                 <div className="absolute top-[110%] left-0 w-48 bg-white rounded-3xl shadow-2xl border border-slate-100 py-2 px-1.5 z-[110] animate-in fade-in zoom-in-95">
@@ -381,10 +382,10 @@ export default function MarketplacePage() {
             
             {searchType === 'keyword' && (
               <div className="relative h-full shrink-0" ref={categoryRef}>
-                <button onClick={() => setIsCategoryOpen(!isCategoryOpen)} className="flex items-center gap-2 px-5 h-full font-black text-blue-600 hover:bg-blue-50 transition-all border-r-2 border-slate-100">
-                  <div className="bg-blue-100 p-1.5 rounded-lg">{currentCategory.icon}</div>
-                  <span className="hidden lg:inline text-sm font-black uppercase tracking-widest">{currentCategory.id}</span>
-                  <ChevronDown size={14} className="text-blue-400" />
+                <button onClick={() => setIsCategoryOpen(!isCategoryOpen)} className="flex items-center gap-2 px-3 h-full font-black text-blue-600 hover:bg-blue-50 transition-all border-r-2 border-slate-100">
+                  <div className="bg-blue-100 p-1 rounded-lg">{currentCategory.icon}</div>
+                  <span className="hidden lg:inline text-xs font-black uppercase tracking-widest">{currentCategory.id}</span>
+                  <ChevronDown size={12} className="text-blue-400" />
                 </button>
                 {isCategoryOpen && (
                   <div className="absolute top-[110%] left-0 w-[320px] bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 p-5 z-[110] animate-in fade-in zoom-in-95">
@@ -408,20 +409,20 @@ export default function MarketplacePage() {
               </div>
             )}
             <div className="flex-1 relative h-full flex items-center">
-              <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"><Search size={20} strokeWidth={3} /></div>
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"><Search size={16} strokeWidth={3} /></div>
               <input
                 type="text"
                 placeholder={searchType === "firm" ? "사무소명 또는 변리사 입력 후 엔터" : "기술 키워드(예: 항암제) 입력 후 엔터"}
-                className="w-full h-full bg-transparent pl-14 pr-8 outline-none text-base font-medium text-slate-800 placeholder:text-slate-300 placeholder:text-sm"
+                className="w-full h-full bg-transparent pl-10 pr-6 outline-none text-sm font-medium text-slate-800 placeholder:text-slate-300 placeholder:text-xs"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && executeSearch(searchQuery.trim(), searchType, searchCategory)}
               />
               <button
                 onClick={() => searchQuery.trim() && executeSearch(searchQuery.trim(), searchType, searchCategory)}
-                className="mr-3 px-6 h-10 md:h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-black text-sm transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 group shrink-0"
+                className="mr-2 px-4 h-8 md:h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-black text-xs transition-all shadow-lg active:scale-95 flex items-center justify-center gap-1.5 group shrink-0"
               >
-                <Search size={18} strokeWidth={3} className="group-hover:scale-110 transition-transform" />
+                <Search size={14} strokeWidth={3} className="group-hover:scale-110 transition-transform" />
                 <span className="hidden sm:inline">검색</span>
               </button>
             </div>
@@ -431,16 +432,16 @@ export default function MarketplacePage() {
 
       {view === 'main' ? (
         <>
-          <div className="px-4 py-8 overflow-x-auto no-scrollbar flex gap-5 max-w-4xl mx-auto scroll-smooth">
+          <div className="px-4 py-2 md:py-4 overflow-x-auto no-scrollbar flex justify-between max-w-4xl mx-auto scroll-smooth">
             <style>{`.no-scrollbar::-webkit-scrollbar { display: none; }`}</style>
             {CPC_SECTORS.map((sector) => (
-              <button key={sector.id} onClick={() => setSelectedSector(sector.id)} className={`flex flex-col items-center gap-3 shrink-0 transition-all ${selectedSector === sector.id ? "scale-105" : "opacity-40 hover:opacity-100"}`}><div className={`p-6 rounded-[2.2rem] transition-all duration-500 ${selectedSector === sector.id ? "bg-blue-600 text-white shadow-2xl shadow-blue-200 -translate-y-2" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{sector.icon}</div><span className={`text-[13px] font-black tracking-tight ${selectedSector === sector.id ? "text-blue-600" : "text-slate-500"}`}>{sector.name}</span></button>
+              <button key={sector.id} onClick={() => setSelectedSector(sector.id)} className={`flex flex-col items-center gap-1.5 md:gap-2 shrink-0 transition-all ${selectedSector === sector.id ? "scale-105" : "opacity-40 hover:opacity-100"}`}><div className={`p-2 md:p-3.5 rounded-[1.2rem] md:rounded-[1.6rem] transition-all duration-500 ${selectedSector === sector.id ? "bg-blue-600 text-white shadow-2xl shadow-blue-200 -translate-y-1" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{sector.icon}</div><span className={`text-[11px] font-black tracking-tight ${selectedSector === sector.id ? "text-blue-600" : "text-slate-500"}`}>{sector.name}</span></button>
             ))}
           </div>
 
-          <main className="max-w-4xl mx-auto px-4 mt-8">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3"><TrendingUp className="text-blue-600 w-5 h-5" /><h2 className="text-2xl font-black text-slate-900 tracking-tight">{displayTitle}</h2></div>
+          <main className="max-w-4xl mx-auto px-4 mt-4 md:mt-6">
+            <div className="flex items-center justify-between mb-3 md:mb-4">
+              <div className="flex items-center gap-2"><TrendingUp className="text-blue-600 w-4 h-4" /><h2 className="text-lg font-black text-slate-900 tracking-tight">{displayTitle}</h2></div>
               <div className="flex items-center gap-2">
               <div className="relative">
                 <select
@@ -452,24 +453,22 @@ export default function MarketplacePage() {
                       handleGetLocation();
                     }
                   }}
-                  className="appearance-none pl-4 pr-10 py-2.5 rounded-xl font-bold text-sm cursor-pointer bg-slate-50 text-zinc-600 outline-none"
+                  className="appearance-none pl-3 pr-8 py-1.5 rounded-xl font-bold text-xs cursor-pointer bg-slate-50 text-zinc-600 outline-none"
                 >
                   <option value="recommend">추천순</option>
                   <option value="nearest">가까운순</option>
                   <option value="oldest">업력순</option>
                 </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
               </div>
-              <button onClick={handleGetLocation} className={`p-2.5 rounded-xl border transition-all ${userLocation ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-white border-zinc-200 text-zinc-400 hover:bg-slate-50'}`}><LocateFixed size={18} className={locating ? 'animate-spin' : ''} /></button>
+              <button onClick={handleGetLocation} className={`p-1.5 rounded-xl border transition-all ${userLocation ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-white border-zinc-200 text-zinc-400 hover:bg-slate-50'}`}><LocateFixed size={14} className={locating ? 'animate-spin' : ''} /></button>
               </div>
             </div>
 
-
-            {/* 👇 여기에 추가 */}
             {sortBy === 'nearest' && (
-              <div className="mb-10 bg-blue-50 text-blue-700 px-6 py-4 rounded-[2rem] text-sm font-bold border border-blue-100 flex items-center justify-between animate-in slide-in-from-top-2 text-left">
-                <div className="flex items-center gap-3">
-                  <Compass size={18} className={`text-blue-600 ${locating ? 'animate-spin' : ''}`} />
+              <div className="mb-3 md:mb-4 bg-blue-50 text-blue-700 px-4 py-2 rounded-[1.5rem] text-xs font-bold border border-blue-100 flex items-center justify-between animate-in slide-in-from-top-2 text-left">
+                <div className="flex items-center gap-2">
+                  <Compass size={14} className={`text-blue-600 ${locating ? 'animate-spin' : ''}`} />
                   <span>
                     {locating
                       ? '위치 정보를 가져오는 중...'
@@ -480,7 +479,7 @@ export default function MarketplacePage() {
                 </div>
                 <button
                   onClick={() => { setUserLocation(null); setSortBy("recommend"); }}
-                  className="text-xs bg-white text-zinc-500 px-4 py-2 rounded-xl shadow-sm font-black"
+                  className="text-[10px] bg-white text-zinc-500 px-3 py-1.5 rounded-xl shadow-sm font-black"
                 >
                   해제
                 </button>
