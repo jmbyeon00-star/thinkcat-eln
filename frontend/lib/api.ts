@@ -139,8 +139,9 @@ export async function patentByNpecheck(appNumber: string) {
 }
 
 // ✅ 신착특허 (홈 화면 티커용)
-export async function getRecentPatents(limit: number = 20) {
-  return fetchAPI(`/api/patent/recent?limit=${limit}`);
+export async function getRecentPatents(limit: number = 20, section?: string) {
+  const sectionParam = section ? `&section=${section}` : "";
+  return fetchAPI(`/api/patent/recent?limit=${limit}${sectionParam}`);
 }
 
 // ✅ R&D공고 신착 (홈 화면 티커용)

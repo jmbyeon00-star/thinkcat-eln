@@ -17,11 +17,12 @@ router = APIRouter(prefix="/patent", tags=["patent"])
 @router.get("/recent")
 def recent_patents(
     limit: int = Query(20, ge=1, le=100, description="가져올 신착특허 개수"),
+    section: str | None = Query(None, min_length=1, max_length=1, description="IPC 섹션(A~H)으로 필터링"),
     session: Session = Depends(get_sync_session)
 ):
     """홈 화면 신착특허 티커용 - 공개일자 최신순 N건 (ipforce DB의 KIPRIS 수집 데이터를 그대로 사용)"""
     try:
-        return {"success": True, "items": recent_patent_service.get_recent_patents(session, limit=limit)}
+        return {"success": True, "items": recent_patent_service.get_recent_patents(session, limit=limit, section=section)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
