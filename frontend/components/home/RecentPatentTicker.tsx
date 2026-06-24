@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, X, FileText, Calendar, Building2, Hash, Tag, ChevronDown, ChevronRight } from "lucide-react";
+import { Sparkles, X, FileText, Calendar, Building2, Hash, Tag, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { getRecentPatents } from "@/lib/api";
 
 interface RecentPatent {
@@ -65,47 +65,77 @@ function formatDate(raw: string | null): string {
 const ITEM_HEIGHT = 48; // px
 const VISIBLE_COUNT = 4;
 const HEADER_HEIGHT = 48; // px - R&D공고 신착 카드 헤더와 높이를 맞춤
+const ALL_SECTIONS = Object.keys(IPC_SECTION_LABEL); // ["A", ..., "H"] - 분야 탭은 항상 8개 고정
 
 export default function RecentPatentTicker() {
-  const [patents, setPatents] = useState<RecentPatent[]>([]);
+  const [patentsBySection, setPatentsBySection] = useState<Record<string, RecentPatent[]>>({});
+  const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState<RecentPatent | null>(null);
-  const [activeTab, setActiveTab] = useState<string>("ALL");
+  const [activeTab, setActiveTab] = useState<string>(ALL_SECTIONS[0]);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const tabsScrollRef = useRef<HTMLDivElement>(null);
+  const listScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    getRecentPatents(20)
-      .then((res: any) => setPatents(res?.items || []))
-      .catch((err) => console.error("신착특허 로드 실패:", err));
+    Promise.all(
+      ALL_SECTIONS.map((section) =>
+        getRecentPatents(20, section)
+          .then((res: any): [string, RecentPatent[]] => [section, res?.items || []])
+          .catch((err) => {
+            console.error(`신착특허(${section}) 로드 실패:`, err);
+            return [section, []] as [string, RecentPatent[]];
+          })
+      )
+    ).then((results) => {
+      const map: Record<string, RecentPatent[]> = {};
+      results.forEach(([section, items]) => {
+        map[section] = items;
+      });
+      setPatentsBySection(map);
+      setLoaded(true);
+    });
   }, []);
 
-  // 실제 존재하는 IPC 분야만 탭으로 노출 (전체 탭은 항상 표시)
-  const availableSections = useMemo(() => {
-    const sections = new Set<string>();
-    patents.forEach((p: RecentPatent) => {
-      const s = getIpcSection(p.ipc_code);
-      if (s) sections.add(s);
+  const filteredPatents = patentsBySection[activeTab] || [];
+
+  const totalCount = useMemo(() => {
+    let sum = 0;
+    ALL_SECTIONS.forEach((section) => {
+      sum += (patentsBySection[section] || []).length;
     });
-    return Array.from(sections).sort();
-  }, [patents]);
+    return sum;
+  }, [patentsBySection]);
 
-  const filteredPatents = useMemo(() => {
-    if (activeTab === "ALL") return patents;
-    return patents.filter((p: RecentPatent) => getIpcSection(p.ipc_code) === activeTab);
-  }, [patents, activeTab]);
-
-  // 탭 줄이 실제로 더 스크롤할 수 있는 상태인지 체크 (끝까지 스크롤하면 화살표 힌트를 숨김)
+  // 탭 줄이 양쪽으로 더 스크롤할 수 있는 상태인지 체크 (끝까지 가면 해당 화살표 힌트를 숨김)
   const checkTabsScroll = () => {
     const el = tabsScrollRef.current;
     if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
     setCanScrollRight(el.scrollWidth - el.clientWidth - el.scrollLeft > 4);
   };
 
   useEffect(() => {
     checkTabsScroll();
-  }, [availableSections]);
+  }, [loaded]);
 
-  if (patents.length === 0) return null;
+  // 탭 클릭 시 선택 고정 + 목록을 맨 위로 스크롤
+  const handleTabClick = (section: string) => {
+    setActiveTab(section);
+    if (listScrollRef.current) {
+      listScrollRef.current.scrollTop = 0;
+    }
+  };
+
+  // 화살표 버튼으로 탭 줄을 좌우로 스크롤
+  const scrollTabsLeft = () => {
+    tabsScrollRef.current?.scrollBy({ left: -120, behavior: "smooth" });
+  };
+  const scrollTabsRight = () => {
+    tabsScrollRef.current?.scrollBy({ left: 120, behavior: "smooth" });
+  };
+
+  if (!loaded || totalCount === 0) return null;
 
   return (
     <>
@@ -116,33 +146,20 @@ export default function RecentPatentTicker() {
         >
           <Sparkles size={14} className="text-blue-600 shrink-0" />
           <span className="text-[11px] font-black uppercase tracking-wider text-blue-600 shrink-0">신착특허</span>
-          <span className="text-[11px] font-bold text-blue-400 shrink-0">{patents.length}건</span>
 
-          {/* IPC 분야 탭 - 마우스 오버하면 해당 분야 목록으로 전환. 제목/건수는 고정, 탭만 가로 스크롤 */}
+          {/* IPC 분야 탭 (8개 고정) - 클릭하면 해당 분야로 고정 전환. 제목은 고정, 탭만 가로 스크롤 */}
           <div className="relative flex-1 min-w-0 h-full ml-2">
             <div
               ref={tabsScrollRef}
               onScroll={checkTabsScroll}
               className="flex items-stretch h-full overflow-x-auto scrollbar-none border-l border-blue-100"
             >
-              <button
-                onMouseEnter={() => setActiveTab("ALL")}
-                onClick={() => setActiveTab("ALL")}
-                className={`px-2.5 text-[11px] font-bold whitespace-nowrap transition-colors shrink-0 border-r border-blue-100 border-b-2 ${
-                  activeTab === "ALL"
-                    ? "border-b-blue-600 text-blue-600 bg-white"
-                    : "border-b-transparent text-zinc-400 hover:bg-white/60"
-                }`}
-              >
-                전체
-              </button>
-              {availableSections.map((section: string) => {
+              {ALL_SECTIONS.map((section: string) => {
                 const color = IPC_SECTION_COLOR[section] ?? IPC_SECTION_COLOR_DEFAULT;
                 return (
                   <button
                     key={section}
-                    onMouseEnter={() => setActiveTab(section)}
-                    onClick={() => setActiveTab(section)}
+                    onClick={() => handleTabClick(section)}
                     className={`px-2.5 text-[11px] font-bold whitespace-nowrap transition-colors shrink-0 border-r border-blue-100 border-b-2 ${
                       activeTab === section
                         ? `border-b-current bg-white ${color.text}`
@@ -155,11 +172,22 @@ export default function RecentPatentTicker() {
               })}
             </div>
 
-            {/* 탭이 더 있다는 힌트 - 끝까지 스크롤하면 사라짐 */}
+            {/* 탭이 더 있다는 힌트 - 클릭하면 해당 방향으로 스크롤, 끝까지 스크롤하면 사라짐 */}
+            {canScrollLeft && (
+              <button
+                onClick={scrollTabsLeft}
+                className="absolute top-0 left-0 h-full w-6 bg-gradient-to-r from-white via-white/70 to-transparent flex items-center justify-start cursor-pointer"
+              >
+                <ChevronLeft size={12} className="text-blue-400" />
+              </button>
+            )}
             {canScrollRight && (
-              <div className="absolute top-0 right-0 h-full w-6 bg-gradient-to-l from-white via-white/70 to-transparent pointer-events-none flex items-center justify-end">
+              <button
+                onClick={scrollTabsRight}
+                className="absolute top-0 right-0 h-full w-6 bg-gradient-to-l from-white via-white/70 to-transparent flex items-center justify-end cursor-pointer"
+              >
                 <ChevronRight size={12} className="text-blue-400" />
-              </div>
+              </button>
             )}
           </div>
         </div>
@@ -174,6 +202,7 @@ export default function RecentPatentTicker() {
             </div>
           ) : (
             <div
+              ref={listScrollRef}
               className="overflow-y-auto scrollbar-none"
               style={{ height: ITEM_HEIGHT * VISIBLE_COUNT }}
             >
