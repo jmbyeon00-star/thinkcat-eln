@@ -139,6 +139,70 @@ export async function invalGeneratePriorArtReport({
   return res.json();
 }
 
+export async function invalGeneratePriorArtReportStream({
+  idea_uuid,
+  base_id,
+  raw_text,
+  full_text,
+  prior_app_numbers,
+  idea_title = "",
+  model = "claude",
+  token,
+  onText,
+  onEvent,
+}: {
+  idea_uuid: string;
+  base_id: string;
+  raw_text: string;
+  full_text: string;
+  prior_app_numbers: string[];
+  idea_title?: string;
+  model?: string;
+  token?: string;
+  onText: (text: string) => void;
+  onEvent?: (data: { event: string; data: PriorArtAnchorAnalysis }) => void;
+}): Promise<PriorArtReportResult> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await apiFetch(`${BASE}/analysis/prior-art-report/stream`, {
+    method: "POST",
+    headers,
+    credentials: "include",
+    body: JSON.stringify({ idea_uuid, base_id, raw_text, full_text, prior_app_numbers, idea_title, model }),
+  });
+  if (!res.ok || !res.body) {
+    const detail = await res.json().then((d: any) => d.detail).catch(() => "스트리밍 요청 실패");
+    throw new Error(detail);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() ?? "";
+    for (const part of parts) {
+      if (!part.startsWith("data: ")) continue;
+      try {
+        const data = JSON.parse(part.slice(6));
+        if (data.error) {
+          const err = new Error(data.error) as any;
+          err.code = data.code;
+          throw err;
+        }
+        if (data.done) return data.result as PriorArtReportResult;
+        if (data.event) { onEvent?.(data); continue; }
+        if (data.text) onText(data.text as string);
+      } catch (e) {
+        if (e instanceof Error && e.message !== "Unexpected end of JSON input") throw e;
+      }
+    }
+  }
+  throw new Error("스트림이 결과 없이 종료되었습니다");
+}
+
 // ─────────────────────────────────
 // 선행기술조사 히스토리
 // ─────────────────────────────────
@@ -150,6 +214,7 @@ export interface IdeaHistoryItem {
   prior_app_numbers: string[];
   model: string;
   created_at: string | null;
+  requested_by_name: string;
 }
 
 export interface IdeaHistoryDetail extends IdeaHistoryItem {
@@ -161,8 +226,11 @@ export async function invalGetIdeaHistoryList(
   token: string,
   skip = 0,
   limit = 20,
+  myOnly = false,
 ): Promise<IdeaHistoryItem[]> {
-  const res = await apiFetch(`${BASE}/analysis/idea/history?skip=${skip}&limit=${limit}`, {
+  const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+  if (myOnly) params.set("my_only", "true");
+  const res = await apiFetch(`${BASE}/analysis/idea/history?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
     credentials: "include",
   });
@@ -203,7 +271,11 @@ export async function invalRefreshIdeaHistory(
     headers: { Authorization: `Bearer ${token}` },
     credentials: "include",
   });
-  if (!res.ok) throw new Error("재생성 실패");
+  if (!res.ok) {
+    const err = new Error("재생성 실패") as any;
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 

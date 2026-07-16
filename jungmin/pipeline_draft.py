@@ -1,54 +1,50 @@
-"""특허 무효화 분석 라우터 (/api/invalidation/*)"""
+"""
+습작 — 실제 파일에 붙이기 전 검토용
+invalidation_router.py 리팩토링 초안
+
+변경 포인트:
+  1. _run_pipeline(): stream + refresh 공용 파이프라인 (async generator)
+  2. stream: 캐시 체크 추가 (org_history → any_history 순서)
+  3. refresh_idea_history: _run_pipeline() 재사용
+  4. get_any_history(): crud에 추가 필요
+"""
+
 import asyncio
 import hashlib
-import io
 import json
-import logging
-import uuid
-from datetime import date
-from typing import Optional
 
 import httpx
 import numpy as np
-import pdfplumber
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
-from fastapi.responses import JSONResponse, StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-
-from app.core.config import settings
-from app.core.db import get_async_session
-from app.models.user import User
-from app.schemas.invalidation_schema import InvalPatentSearchResult
-from app.utils.security import get_jwt_identity, get_current_user_from_request
-from app.crud.crud_invalidation_history import (
-    create_history, update_history,
-    get_history_list, get_history_detail, delete_history,
-    get_text_cache, save_text_cache, get_org_history, get_any_history,
-)
-from app.crud.crud_credit import (
-    check_subscription,
-    check_credits,
-    decrement_credit,
-    log_usage,
-)
-from app.services.invalidation import patent_parser
-
-logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/invalidation", tags=["invalidation"])
 
 
-# ─────────────────────────────────
-# 공통 유틸
-# ─────────────────────────────────
+# ═══════════════════════════════════════════════════════
+# [crud_invalidation_history.py에 추가]
+# get_any_history — org 무관, base_id로만 최신 히스토리 1건
+# ═══════════════════════════════════════════════════════
 
-def _compute_base_id(raw_text: str) -> str:
-    return "txt_" + hashlib.md5(raw_text.encode("utf-8")).hexdigest()[:16]
+async def get_any_history(db, base_id: str):
+    """
+    org 무관하게 base_id로 최신 성공 히스토리 1건 조회.
+    다른 org가 같은 텍스트를 분석한 결과 재사용 시 사용.
+    """
+    from sqlalchemy import select
+    from app.models.invalidation import InvalHistoryDB
+
+    result = await db.execute(
+        select(InvalHistoryDB)
+        .where(
+            InvalHistoryDB.base_id == base_id,
+            InvalHistoryDB.status  == "success",
+        )
+        .order_by(InvalHistoryDB.created_at.desc())
+    )
+    return result.scalars().first()
 
 
-# ─────────────────────────────────
-# 공통 파이프라인 (stream + refresh 공유)
-# ─────────────────────────────────
+# ═══════════════════════════════════════════════════════
+# [invalidation_router.py 상단에 추가]
+# _run_pipeline — stream + refresh 공용 파이프라인
+# ═══════════════════════════════════════════════════════
 
 async def _run_pipeline(
     db,
@@ -56,18 +52,21 @@ async def _run_pipeline(
     full_text: str,
     prior_app_numbers: list,
     model: str,
+    gpu_url: str,
     anchors: list | None = None,
 ):
     """
     앵커추출 → 선행발명파싱 → 임베딩+유사도 → 쌍별분석 → 종합LLM
 
     async generator:
-      - 중간 진행: {"text": ...} or {"event": "anchor_done", "data": ...}
-      - 에러:      {"error": ...}  yield 후 return
-      - 완료:      {"__result__": result_dict}
+      - 중간 진행 이벤트: {"text": ...} or {"event": "anchor_done", "data": ...}
+      - 에러: {"error": ...}  — yield 후 return
+      - 완료: {"__result__": result_dict}  — 마지막에 yield
 
-    anchors 넘어오면 앵커 추출 GPU 호출 생략 (refresh에서 기존 앵커 재사용).
+    anchors 인자가 있으면 앵커 추출 GPU 호출 생략 (refresh에서 기존 앵커 재사용).
     """
+    from app.services.invalidation import patent_parser
+
     THRESHOLD = 0.65
 
     # ① 앵커 추출
@@ -75,7 +74,7 @@ async def _run_pipeline(
         yield {"text": "청구항 구성요소 분석 중..."}
         async with httpx.AsyncClient(timeout=180) as client:
             anchor_res = await client.post(
-                f"{settings.GPU_BACKEND_URL}/gpu/invalidation/parse/anchors",
+                f"{gpu_url}/gpu/invalidation/parse/anchors",
                 json={"raw_text": raw_text, "full_text": full_text, "model": model},
             )
         if not anchor_res.is_success:
@@ -98,12 +97,16 @@ async def _run_pipeline(
             return app_num, []
         async with httpx.AsyncClient(timeout=180) as _client:
             res = await _client.post(
-                f"{settings.GPU_BACKEND_URL}/gpu/invalidation/parse/prior-search",
+                f"{gpu_url}/gpu/invalidation/parse/prior-search",
                 json={
                     "patent_info":  {k: str(v) if v is not None else None for k, v in prior_info.items()},
                     "claims_text":  claims_text,
                     "base_anchors": [
-                        {"id": a.get("id", f"E{i+1}"), "name": a.get("name", ""), "embedding_text": a.get("embedding_text", "")}
+                        {
+                            "id":             a.get("id", f"E{i+1}"),
+                            "name":           a.get("name", ""),
+                            "embedding_text": a.get("embedding_text", ""),
+                        }
                         for i, a in enumerate(anchors)
                     ],
                     "model": model,
@@ -156,7 +159,7 @@ async def _run_pipeline(
 
     async with httpx.AsyncClient(timeout=120) as client:
         embed_res = await client.post(
-            f"{settings.GPU_BACKEND_URL}/gpu/embed",
+            f"{gpu_url}/gpu/embed",
             json={"texts": anchor_texts + prior_flat_texts},
         )
     embed_res.raise_for_status()
@@ -257,7 +260,7 @@ async def _run_pipeline(
     async def _call_pair(a_data, prior, a_hash, e_hash):
         async with httpx.AsyncClient(timeout=120) as _client:
             res = await _client.post(
-                f"{settings.GPU_BACKEND_URL}/gpu/invalidation/pair-analysis",
+                f"{gpu_url}/gpu/invalidation/pair-analysis",
                 json={
                     "anchor_name":      a_data["anchor_name"],
                     "anchor_text":      a_data["anchor_text"],
@@ -328,7 +331,7 @@ async def _run_pipeline(
     ]
     async with httpx.AsyncClient(timeout=180) as client:
         overall_res = await client.post(
-            f"{settings.GPU_BACKEND_URL}/gpu/invalidation/overall-synthesis",
+            f"{gpu_url}/gpu/invalidation/overall-synthesis",
             json={
                 "idea_full_text":    full_text,
                 "anchors":           [
@@ -361,168 +364,17 @@ async def _run_pipeline(
     }
 
 
-# ─────────────────────────────────
-# 아이디어 텍스트 → 선행발명 prepare
-# ─────────────────────────────────
+# ═══════════════════════════════════════════════════════
+# [invalidation_router.py] stream 엔드포인트 교체
+# ═══════════════════════════════════════════════════════
 
-@router.post("/analysis/prepare-from-text")
-async def prepare_from_text(
-    payload: dict,
-    db: AsyncSession = Depends(get_async_session),
-):
-    """텍스트 기반 선행발명 검색. 결과를 InvalTextCacheDB에 캐시.
-    반환: IdeaPrepareResult {idea_uuid, base_id, full_text, refined_title, raw_text, prior_patents, prior_app_numbers}
-    """
-    raw_text: str = (payload.get("text") or "").strip()
-    section:  str = payload.get("section", "ALL")
-    n:        int = int(payload.get("n", 15))
-
-    if not raw_text:
-        raise HTTPException(status_code=400, detail="text 필요")
-
-    base_id = _compute_base_id(raw_text)
-    text_cache = await get_text_cache(db, base_id)
-
-    if text_cache is not None:
-        full_text     = text_cache.refined_text
-        refined_title = text_cache.refined_title or ""
-        async with httpx.AsyncClient(timeout=30) as client:
-            refresh_res = await client.post(
-                f"{settings.GPU_BACKEND_URL}/gpu/invalidation/refresh",
-                json={"full_text": full_text, "section": section, "n": n},
-            )
-        if not refresh_res.is_success:
-            raise HTTPException(status_code=500, detail="선행발명 재검색 실패")
-        rdata = refresh_res.json()
-        similar_app_numbers = rdata["similar_app_numbers"]
-        similarity_scores   = rdata.get("similarity_scores", {})
-    else:
-        async with httpx.AsyncClient(timeout=120) as client:
-            prep_res = await client.post(
-                f"{settings.GPU_BACKEND_URL}/gpu/invalidation/prepare",
-                json={"raw_text": raw_text, "section": section, "n": n},
-            )
-        if not prep_res.is_success:
-            raise HTTPException(status_code=500, detail=f"아이디어 분석 실패: {prep_res.text[:200]}")
-        prep = prep_res.json()
-        similar_app_numbers = prep["similar_app_numbers"]
-        full_text           = prep["full_text"]
-        refined_title       = prep.get("refined_title", "")
-        similarity_scores   = prep.get("similarity_scores", {})
-        if not similar_app_numbers:
-            raise HTTPException(status_code=404, detail="유사 선행발명을 찾을 수 없습니다")
-        await save_text_cache(db, base_id, raw_text, full_text, refined_title)
-
-    today = date.today().strftime("%Y-%m-%d")
-    prior_patents = await patent_parser.get_prior_patents_info(
-        similar_ids=similar_app_numbers[:n], base_filing_date=today, db=db, limit=n,
-    )
-    for p in prior_patents:
-        p["similarity_score"] = similarity_scores.get(p["application_number"])
-
-    prior_app_numbers = [p["application_number"] for p in prior_patents[:5]]
-
-    return {
-        "idea_uuid":         str(uuid.uuid4()),
-        "base_id":           base_id,
-        "full_text":         full_text,
-        "refined_title":     refined_title,
-        "raw_text":          raw_text,
-        "prior_patents":     prior_patents,
-        "prior_app_numbers": prior_app_numbers,
-    }
-
-
-@router.post("/analysis/prepare-from-pdf")
-async def prepare_from_pdf(
-    file: UploadFile = File(...),
-    section: str = "ALL",
-    n: int = 15,
-    db: AsyncSession = Depends(get_async_session),
-):
-    """PDF → 텍스트 추출 → prepare-from-text 동일 플로우."""
-    if not (file.filename or "").lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="PDF 파일만 허용됩니다")
-    try:
-        contents = await file.read()
-        with pdfplumber.open(io.BytesIO(contents)) as pdf:
-            raw_text = "\n".join(page.extract_text() or "" for page in pdf.pages).strip()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"PDF 읽기 실패: {e}")
-    if not raw_text:
-        raise HTTPException(status_code=422, detail="PDF에서 텍스트를 추출할 수 없습니다")
-
-    base_id = _compute_base_id(raw_text)
-    text_cache = await get_text_cache(db, base_id)
-
-    if text_cache is not None:
-        full_text     = text_cache.refined_text
-        refined_title = text_cache.refined_title or ""
-        async with httpx.AsyncClient(timeout=30) as client:
-            refresh_res = await client.post(
-                f"{settings.GPU_BACKEND_URL}/gpu/invalidation/refresh",
-                json={"full_text": full_text, "section": section, "n": n},
-            )
-        if not refresh_res.is_success:
-            raise HTTPException(status_code=500, detail="선행발명 재검색 실패")
-        rdata = refresh_res.json()
-        similar_app_numbers = rdata["similar_app_numbers"]
-        similarity_scores   = rdata.get("similarity_scores", {})
-    else:
-        async with httpx.AsyncClient(timeout=120) as client:
-            prep_res = await client.post(
-                f"{settings.GPU_BACKEND_URL}/gpu/invalidation/prepare",
-                json={"raw_text": raw_text, "section": section, "n": n},
-            )
-        if not prep_res.is_success:
-            raise HTTPException(status_code=500, detail=f"아이디어 분석 실패: {prep_res.text[:200]}")
-        prep = prep_res.json()
-        similar_app_numbers = prep["similar_app_numbers"]
-        full_text           = prep["full_text"]
-        refined_title       = prep.get("refined_title", "")
-        similarity_scores   = prep.get("similarity_scores", {})
-        if not similar_app_numbers:
-            raise HTTPException(status_code=404, detail="유사 선행발명을 찾을 수 없습니다")
-        await save_text_cache(db, base_id, raw_text, full_text, refined_title)
-
-    today = date.today().strftime("%Y-%m-%d")
-    prior_patents = await patent_parser.get_prior_patents_info(
-        similar_ids=similar_app_numbers[:n], base_filing_date=today, db=db, limit=n,
-    )
-    for p in prior_patents:
-        p["similarity_score"] = similarity_scores.get(p["application_number"])
-
-    prior_app_numbers = [p["application_number"] for p in prior_patents[:5]]
-
-    return {
-        "idea_uuid":         str(uuid.uuid4()),
-        "base_id":           base_id,
-        "full_text":         full_text,
-        "refined_title":     refined_title,
-        "raw_text":          raw_text,
-        "prior_patents":     prior_patents,
-        "prior_app_numbers": prior_app_numbers,
-    }
-
-
-# ─────────────────────────────────
-# 선행기술조사보고서 — 스트리밍 (SSE)
-# ─────────────────────────────────
-
+"""
 @router.post("/analysis/prior-art-report/stream")
 async def generate_prior_art_report_stream(
     payload: dict,
     request: Request,
     db: AsyncSession = Depends(get_async_session),
 ):
-    """선행기술조사 스트리밍.
-    payload: {idea_uuid, base_id, raw_text, full_text, prior_app_numbers, model, idea_title}
-    SSE events:
-      text:        진행 상태 메시지
-      anchor_done: {event, data: PriorArtAnchorAnalysis}
-      done:        {result}
-      error:       {error, code?}
-    """
     base_id:           str  = (payload.get("base_id") or "").strip()
     raw_text:          str  = (payload.get("raw_text") or "").strip()
     full_text:         str  = (payload.get("full_text") or "").strip()
@@ -536,30 +388,30 @@ async def generate_prior_art_report_stream(
         base_id = _compute_base_id(raw_text)
 
     def sse(data: dict) -> str:
-        return f"data: {json.dumps(data, ensure_ascii=False, default=str)}\n\n"
+        return f"data: {json.dumps(data, ensure_ascii=False, default=str)}\\n\\n"
 
     async def event_stream():
         org_id = None
         try:
             # ① 구독 확인
             if user_id:
-                sub_status = await check_subscription(db, user_id)
-                if not sub_status["ok"]:
-                    reason = sub_status["reason"]
-                    code = "expired_trial" if reason == "expired_trial" else "expired_subscription"
+                sub = await check_subscription(db, user_id)
+                if not sub["ok"]:
+                    code = "expired_trial" if sub["reason"] == "expired_trial" else "expired_subscription"
                     msg  = "무료 체험이 종료되었습니다" if code == "expired_trial" else "구독이 만료되었습니다"
                     await log_usage(db, None, user_id, base_id, f"prior_art_search_{code}", reason=code)
                     yield sse({"error": msg, "code": code}); return
-                org_id = sub_status["org_id"]
+                org_id = sub["org_id"]
 
             # ② 캐시 체크
             if user_id and org_id:
                 org_hist = await get_org_history(db, org_id, base_id)
 
                 if org_hist and org_hist.result_json:
+                    # 같은 org 히스토리 있음
                     old_top5 = json.loads(org_hist.prior_app_numbers) if org_hist.prior_app_numbers else []
                     if set(prior_app_numbers) == set(old_top5):
-                        # 같은 org, top5 동일 → 무료 즉시 반환
+                        # top5 동일 → 무료 반환
                         yield sse({"done": True, "result": json.loads(org_hist.result_json)}); return
                     # top5 다름 → credit 체크 후 파이프라인
                     cred = await check_credits(db, org_id)
@@ -574,19 +426,23 @@ async def generate_prior_art_report_stream(
                         await log_usage(db, org_id, user_id, base_id, "prior_art_search_no_credits", reason="monthly_limit_reached")
                         yield sse({"error": "이번 달 조사 횟수를 모두 사용했습니다", "code": "no_credits"}); return
 
-                    # 다른 org 결과 확인
+                    # 다른 org 결과 있나 확인
                     any_hist = await get_any_history(db, base_id)
                     if any_hist and any_hist.result_json:
                         old_top5 = json.loads(any_hist.prior_app_numbers) if any_hist.prior_app_numbers else []
                         if set(prior_app_numbers) == set(old_top5):
-                            # 다른 org 결과 재사용 → credit 차감 후 반환
+                            # top5 동일 → 결과 재사용 + credit 차감
                             history_id = await create_history(db, user_id, org_id, base_id, model, prior_app_numbers, any_hist.result_json)
                             await decrement_credit(db, org_id, user_id, base_id, history_id or 0)
                             yield sse({"done": True, "result": json.loads(any_hist.result_json)}); return
+                    # top5 다르거나 any_hist 없음 → 파이프라인 진행
 
             # ③ 파이프라인 실행
             result = None
-            async for event in _run_pipeline(db, raw_text, full_text, prior_app_numbers, model):
+            async for event in _run_pipeline(
+                db, raw_text, full_text, prior_app_numbers, model,
+                gpu_url=settings.GPU_BACKEND_URL,
+            ):
                 if "__result__" in event:
                     result = event["__result__"]
                 elif "error" in event:
@@ -627,55 +483,54 @@ async def generate_prior_art_report_stream(
             "Access-Control-Allow-Credentials": "true",
         },
     )
+"""
 
 
-# ─────────────────────────────────
-# 히스토리 재생성
-# ─────────────────────────────────
+# ═══════════════════════════════════════════════════════
+# [invalidation_router.py] refresh_idea_history 교체
+# ═══════════════════════════════════════════════════════
 
+"""
 @router.post("/analysis/idea/history/{history_id}/refresh")
 async def refresh_idea_history(
     history_id: int,
     request: Request,
     db: AsyncSession = Depends(get_async_session),
 ):
-    """선행기술조사 재생성: Neo4j 재검색 → top-5 동일이면 기존 반환, 다르면 파이프라인 재실행."""
     user_id = get_current_user_from_request(request)
-
     org_id = None
     if user_id:
-        u_result = await db.execute(select(User).where(User.id == user_id))
-        user_obj = u_result.scalars().first()
+        u = await db.execute(select(User).where(User.id == user_id))
+        user_obj = u.scalars().first()
         org_id = user_obj.organization_id if user_obj else None
-        cred_status = await check_credits(db, org_id)
-        if not cred_status["ok"]:
-            raise HTTPException(status_code=402, detail=cred_status["reason"])
+        cred = await check_credits(db, org_id)
+        if not cred["ok"]:
+            raise HTTPException(status_code=402, detail="no_credits")
 
     from app.models.invalidation import InvalHistoryDB
-    hist_result = await db.execute(
-        select(InvalHistoryDB).where(InvalHistoryDB.id == history_id)
-    )
-    history = hist_result.scalars().first()
+    history = (
+        await db.execute(select(InvalHistoryDB).where(InvalHistoryDB.id == history_id))
+    ).scalars().first()
     if not history:
         raise HTTPException(status_code=404, detail="히스토리를 찾을 수 없습니다")
-
-    old_top5   = json.loads(history.prior_app_numbers) if history.prior_app_numbers else []
-    old_result = json.loads(history.result_json) if history.result_json else None
 
     text_cache = await get_text_cache(db, history.base_id)
     if not text_cache:
         raise HTTPException(status_code=404, detail="아이디어 캐시가 없습니다. 아이디어를 다시 입력해주세요.")
 
+    old_result = json.loads(history.result_json) if history.result_json else None
+    old_top5   = json.loads(history.prior_app_numbers) if history.prior_app_numbers else []
+
     # Neo4j 재검색
     async with httpx.AsyncClient(timeout=30) as client:
-        prep_res = await client.post(
+        refresh_res = await client.post(
             f"{settings.GPU_BACKEND_URL}/gpu/invalidation/refresh",
             json={"full_text": text_cache.refined_text, "section": "ALL", "n": 15},
         )
-    if not prep_res.is_success:
+    if not refresh_res.is_success:
         raise HTTPException(status_code=500, detail="선행발명 재검색 실패")
 
-    new_top5 = prep_res.json()["similar_app_numbers"][:len(old_top5) or 5]
+    new_top5 = refresh_res.json()["similar_app_numbers"][:len(old_top5) or 5]
 
     if set(new_top5) == set(old_top5):
         return JSONResponse(content={"changed": False, "result": old_result})
@@ -690,10 +545,12 @@ async def refresh_idea_history(
         full_text=text_cache.refined_text,
         prior_app_numbers=new_top5,
         model=history.model,
-        anchors=old_anchors,
+        gpu_url=settings.GPU_BACKEND_URL,
+        anchors=old_anchors,   # 기존 앵커 재사용, 없으면 새로 추출
     ):
         if "__result__" in event:
             result = event["__result__"]
+        # 중간 이벤트는 refresh에서 무시 (SSE 아님)
 
     if result is None:
         raise HTTPException(status_code=500, detail="파이프라인 실패")
@@ -705,133 +562,4 @@ async def refresh_idea_history(
         await decrement_credit(db, org_id, user_id, history.base_id, history_id)
 
     return JSONResponse(content={"changed": True, "result": result})
-
-
-# ─────────────────────────────────
-# 히스토리 목록 / 상세 / 삭제
-# ─────────────────────────────────
-
-@router.get("/analysis/idea/history")
-async def list_idea_history(
-    request: Request,
-    skip:    int  = Query(default=0,  ge=0),
-    limit:   int  = Query(default=20, ge=1, le=100),
-    my_only: bool = Query(default=False),
-    db: AsyncSession = Depends(get_async_session),
-):
-    user_id = get_current_user_from_request(request)
-    sub_status = await check_subscription(db, user_id)
-    if not sub_status["ok"]:
-        return []
-    subscription_started_at = sub_status.get("subscription_started_at")
-    if subscription_started_at is None:
-        return []
-    return await get_history_list(
-        db, sub_status["org_id"],
-        user_id=user_id if my_only else None,
-        skip=skip, limit=limit,
-        subscription_started_at=subscription_started_at,
-    )
-
-
-@router.get("/analysis/idea/history/{history_id}")
-async def get_idea_history(
-    history_id: int,
-    request: Request,
-    db: AsyncSession = Depends(get_async_session),
-):
-    user_id = get_current_user_from_request(request)
-    u_result = await db.execute(select(User).where(User.id == user_id))
-    user_obj = u_result.scalars().first()
-    org_id = user_obj.organization_id if user_obj else None
-
-    result = await get_history_detail(db, history_id, user_id, org_id=org_id)
-    if result is None:
-        raise HTTPException(status_code=404, detail="히스토리를 찾을 수 없습니다")
-    if result["report"] is None:
-        raise HTTPException(status_code=404, detail="보고서 데이터가 존재하지 않습니다")
-    return JSONResponse(content=result)
-
-
-@router.delete("/analysis/idea/history/{history_id}")
-async def remove_idea_history(
-    history_id: int,
-    request: Request,
-    db: AsyncSession = Depends(get_async_session),
-):
-    deleted = await delete_history(db, history_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="히스토리를 찾을 수 없습니다")
-    return {"ok": True}
-
-
-# ─────────────────────────────────
-# 분석 상태 조회 (특허번호 기반 플로우용)
-# ─────────────────────────────────
-
-@router.get("/analysis/status/{base_app_number}")
-async def get_analysis_status(
-    base_app_number: str,
-    model: str = Query(default="claude"),
-    db: AsyncSession = Depends(get_async_session),
-):
-    """특허번호 기반 분석 상태 확인.
-    반환: {cached, unavailable, base, priors}
-    """
-    base_info = await patent_parser.get_patent_info(base_app_number, db)
-    if not base_info:
-        raise HTTPException(status_code=404, detail="특허를 찾을 수 없습니다")
-
-    end_status = (base_info.get("end_status") or "").strip()
-    unavailable = end_status not in ("등록", "공개", "공개공보", "")
-
-    if unavailable:
-        return {"cached": False, "unavailable": True, "base": base_info, "priors": []}
-
-    similar_ids = patent_parser.get_similar_patents(base_app_number, n=5)
-    if not similar_ids:
-        return {"cached": False, "unavailable": False, "base": base_info, "priors": []}
-
-    today = date.today().strftime("%Y-%m-%d")
-    priors = await patent_parser.get_prior_patents_info(
-        similar_ids=similar_ids,
-        base_filing_date=base_info.get("filing_date") or today,
-        db=db,
-        limit=5,
-    )
-
-    return {"cached": False, "unavailable": False, "base": base_info, "priors": priors}
-
-
-# ─────────────────────────────────
-# 특허 정보 / 청구항
-# ─────────────────────────────────
-
-@router.get("/patents/info/{app_number}", response_model=InvalPatentSearchResult)
-async def get_patent_detail(app_number: str, db: AsyncSession = Depends(get_async_session)):
-    info = await patent_parser.get_patent_info(app_number, db)
-    if not info:
-        raise HTTPException(status_code=404, detail="특허를 찾을 수 없습니다")
-    return info
-
-
-@router.get("/patents/{app_number}/claims")
-def get_claims(app_number: str):
-    import re
-    claims_dict = patent_parser.get_claims([app_number])
-    raw = claims_dict.get(app_number)
-    if raw is None:
-        return []
-    lines = []
-    for line in raw.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        m = re.match(r"청구항\s+(\d+)\s+\((.+?)\):\s*(.*)", line, re.DOTALL)
-        if m:
-            lines.append({
-                "claim_num":      int(m.group(1)),
-                "is_independent": m.group(2) == "독립항",
-                "text":           m.group(3).strip(),
-            })
-    return lines
+"""

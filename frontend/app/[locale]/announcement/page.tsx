@@ -413,7 +413,7 @@ const ResearchProjectsPage = () => {
                                 {projects.map((project, index) => (
                                     <tr key={project.id} className="hover:bg-blue-50/50 transition">
                                         <td className="px-1 py-2 text-center text-xs font-medium text-zinc-500">{(currentPage - 1) * 20 + index + 1}</td>
-                                        <td className="px-2 py-2 text-center">
+                                        <td className="px-2 py-2 text-left">
                                             <a href={project.URL} target="_blank" className="text-sm text-zinc-900 hover:text-blue-600 hover:underline">{project.title}</a>
                                         </td>
                                         <td className="px-2 py-2 text-center">

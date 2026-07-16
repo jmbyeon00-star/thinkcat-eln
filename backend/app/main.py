@@ -2,8 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from app.api.routers import announcement_router, patent_router, search_router, search_history, user_router, agent_router, invalidation_router, pdf_router
+from app.api.routers import announcement_router, patent_router, search_router, search_history, user_router, invalidation_router, pdf_router
 from app.services.announcement_service import AnnouncementService
+from app.services.credit_scheduler import CreditScheduler
 
 import os
 
@@ -11,8 +12,10 @@ import os
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     AnnouncementService.start()
+    CreditScheduler.start()
     yield
     AnnouncementService.stop()
+    CreditScheduler.stop()
 
 
 app = FastAPI(title="thinkcateln_next API", version="0.1.0", lifespan=lifespan)
@@ -40,7 +43,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(agent_router.router, prefix="/api")
 app.include_router(announcement_router.router, prefix="/api")
 app.include_router(patent_router.router, prefix="/api")
 app.include_router(search_router.router, prefix="/api")

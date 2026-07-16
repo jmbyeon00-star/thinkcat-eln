@@ -1,158 +1,181 @@
-"""사용자별 선행기술조사 히스토리 CRUD"""
+"""선행기술조사 히스토리 CRUD (INVAL_TEXT_CACHE_TB + INVAL_HISTORY_TB)"""
 import json
+import uuid
 from datetime import datetime
 from typing import List, Optional
 from zoneinfo import ZoneInfo
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
-from app.models.invalidation import InvalIdeaHistoryDB, InvalPriorArtReportDB, InvalPrepareCacheDB
+from app.models.invalidation import InvalTextCacheDB, InvalHistoryDB
+from app.models.user import User
 
 
-def create_idea_history(
-    db: Session,
-    user_id: int,
+def _now() -> datetime:
+    return datetime.now(ZoneInfo("Asia/Seoul")).replace(tzinfo=None)
+
+
+# ─────────────────────────────────
+# 텍스트 캐시 (INVAL_TEXT_CACHE_TB)
+# ─────────────────────────────────
+
+async def get_text_cache(db: AsyncSession, base_id: str) -> Optional[InvalTextCacheDB]:
+    result = await db.execute(
+        select(InvalTextCacheDB).where(InvalTextCacheDB.base_id == base_id)
+    )
+    return result.scalars().first()
+
+
+async def save_text_cache(
+    db: AsyncSession,
     base_id: str,
-    report_cache_key: str,
-    model: str,
-    idea_title: str,
-    result: dict,
-    prior_app_numbers: list,
-    result_json: str = None,
-) -> None:
-    """선행기술조사 완료 후 유저 히스토리 저장. 실패해도 메인 흐름 유지."""
-    if not user_id:
-        return
-    try:
-        overall = result.get("report", {}).get("overall", {})
-        summary_raw = overall.get("patentability_review", "")
-        summary = summary_raw[:200] if summary_raw else ""
-        db.add(InvalIdeaHistoryDB(
-            user_id           = user_id,
-            base_id           = base_id,
-            report_cache_key  = report_cache_key,
-            model             = model,
-            idea_title        = idea_title or "",
-            idea_summary      = summary,
-            prior_app_numbers = json.dumps(prior_app_numbers, ensure_ascii=False),
-            result_json       = result_json,
-        ))
-        db.commit()
-        print(f"💾 선행기술조사 히스토리 저장: user={user_id}, key={report_cache_key}")
-    except Exception as e:
-        db.rollback()
-        print(f"⚠️ 히스토리 저장 실패: {e}")
+    raw_text: str,
+    refined_text: str,
+    refined_title: str | None = None,
+) -> InvalTextCacheDB:
+    cache = InvalTextCacheDB(
+        id=str(uuid.uuid4()),
+        base_id=base_id,
+        raw_text=raw_text,
+        refined_text=refined_text,
+        refined_title=refined_title,
+    )
+    db.add(cache)
+    await db.commit()
+    await db.refresh(cache)
+    return cache
 
 
-def update_idea_history_result(
-    db: Session,
-    history_id: int,
+# ─────────────────────────────────
+# 조사 히스토리 (INVAL_HISTORY_TB)
+# ─────────────────────────────────
+
+async def create_history(
+    db: AsyncSession,
     user_id: int,
+    org_id: int | None,
+    base_id: str,
+    model: str,
+    prior_app_numbers: list,
+    result_json: str,
+) -> int | None:
+    if not user_id:
+        return None
+    try:
+        history = InvalHistoryDB(
+            requested_by_user_id=user_id,
+            organization_id=org_id,
+            base_id=base_id,
+            model=model,
+            prior_app_numbers=json.dumps(prior_app_numbers, ensure_ascii=False),
+            result_json=result_json,
+            status="success",
+        )
+        db.add(history)
+        await db.commit()
+        await db.refresh(history)
+        print(f"💾 히스토리 저장: user={user_id}, base_id={base_id}")
+        return history.id
+    except Exception as e:
+        await db.rollback()
+        print(f"⚠️ 히스토리 저장 실패: {e}")
+        return None
+
+
+async def update_history(
+    db: AsyncSession,
+    history_id: int,
     result_json: str,
     prior_app_numbers: list,
 ) -> bool:
-    """재생성 결과로 히스토리 row 덮어쓰기 (created_at 갱신)."""
-    history = (
-        db.query(InvalIdeaHistoryDB)
-        .filter(
-            InvalIdeaHistoryDB.id      == history_id,
-            InvalIdeaHistoryDB.user_id == user_id,
-        )
-        .first()
+    result = await db.execute(
+        select(InvalHistoryDB).where(InvalHistoryDB.id == history_id)
     )
+    history = result.scalars().first()
     if not history:
         return False
     try:
-        result = json.loads(result_json)
-        overall = result.get("report", {}).get("overall", {})
-        summary_raw = overall.get("patentability_review", "")
-        history.result_json       = result_json
+        history.result_json = result_json
         history.prior_app_numbers = json.dumps(prior_app_numbers, ensure_ascii=False)
-        history.idea_summary      = summary_raw[:200] if summary_raw else ""
-        history.created_at        = datetime.now(ZoneInfo("Asia/Seoul"))
-        db.commit()
+        history.created_at = _now()
+        await db.commit()
         return True
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         print(f"⚠️ 히스토리 업데이트 실패: {e}")
         return False
 
 
-def get_idea_history_list(
-    db: Session,
-    user_id: int,
+async def get_history_list(
+    db: AsyncSession,
+    org_id: int,
+    user_id: int | None = None,
     skip: int = 0,
     limit: int = 20,
+    subscription_started_at: datetime | None = None,
 ) -> List[dict]:
-    """유저의 선행기술조사 히스토리 목록 반환 (최신순)"""
-    rows = (
-        db.query(InvalIdeaHistoryDB)
-        .filter(InvalIdeaHistoryDB.user_id == user_id)
-        .order_by(InvalIdeaHistoryDB.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
+    """조직 전체 선행기술조사 히스토리 목록 (최신순). user_id 전달 시 본인 것만."""
+    query = (
+        select(InvalHistoryDB, InvalTextCacheDB.refined_title, User.name)
+        .join(InvalTextCacheDB, InvalTextCacheDB.base_id == InvalHistoryDB.base_id, isouter=True)
+        .join(User, User.id == InvalHistoryDB.requested_by_user_id)
+        .where(InvalHistoryDB.organization_id == org_id)
     )
+    if user_id is not None:
+        query = query.where(InvalHistoryDB.requested_by_user_id == user_id)
+    if subscription_started_at is not None:
+        query = query.where(InvalHistoryDB.created_at >= subscription_started_at)
+    result = await db.execute(
+        query.order_by(InvalHistoryDB.created_at.desc()).offset(skip).limit(limit)
+    )
+    rows = result.all()
     return [
         {
-            "id":                 row.id,
-            "idea_title":         row.idea_title or "",
-            "idea_summary":       row.idea_summary or "",
-            "prior_app_numbers":  json.loads(row.prior_app_numbers) if row.prior_app_numbers else [],
-            "model":              row.model,
-            "created_at":         row.created_at.isoformat() if row.created_at else None,
+            "id":                row.InvalHistoryDB.id,
+            "idea_title":        row.refined_title or "",
+            "idea_summary":      "",
+            "prior_app_numbers": json.loads(row.InvalHistoryDB.prior_app_numbers) if row.InvalHistoryDB.prior_app_numbers else [],
+            "model":             row.InvalHistoryDB.model,
+            "created_at":        row.InvalHistoryDB.created_at.isoformat() if row.InvalHistoryDB.created_at else None,
+            "requested_by_name": row.name or "",
         }
         for row in rows
     ]
 
 
-def get_idea_history_detail(
-    db: Session,
+async def get_history_detail(
+    db: AsyncSession,
     history_id: int,
     user_id: int,
+    org_id: int | None = None,
 ) -> Optional[dict]:
-    """히스토리 단건 조회 + 전체 보고서 결과 반환. 본인 것이 아니면 None."""
-    history = (
-        db.query(InvalIdeaHistoryDB)
-        .filter(
-            InvalIdeaHistoryDB.id      == history_id,
-            InvalIdeaHistoryDB.user_id == user_id,
-        )
-        .first()
+    """히스토리 단건 조회. 본인 또는 같은 조직이면 조회 가능."""
+    result = await db.execute(
+        select(InvalHistoryDB).where(InvalHistoryDB.id == history_id)
     )
+    history = result.scalars().first()
     if not history:
         return None
 
-    # result_json 스냅샷 우선 사용, 없으면 공유 캐시 폴백 (구버전 호환)
-    if history.result_json:
-        report = json.loads(history.result_json)
-    else:
-        cached = (
-            db.query(InvalPriorArtReportDB)
-            .filter(
-                InvalPriorArtReportDB.base_id == history.report_cache_key,
-                InvalPriorArtReportDB.model   == history.model,
-            )
-            .order_by(InvalPriorArtReportDB.created_at.desc())
-            .first()
-        )
-        report = json.loads(cached.result_json) if cached else None
+    is_owner  = history.requested_by_user_id == user_id
+    is_in_org = org_id is not None and history.organization_id == org_id
+    if not is_owner and not is_in_org:
+        return None
 
-    # prepare 캐시에서 15건 전체 로드 (section 01 표시용)
-    prepare_cache = (
-        db.query(InvalPrepareCacheDB)
-        .filter(InvalPrepareCacheDB.base_id == history.base_id)
-        .first()
-    )
+    report = json.loads(history.result_json) if history.result_json else None
+
+    # candidate_patents는 result_json에서 로드 (없으면 prior_infos fallback)
     prior_patents = []
-    if prepare_cache:
-        prepare_data = json.loads(prepare_cache.result_json)
-        prior_patents = prepare_data.get("prior_patents", [])
+    if report:
+        prior_patents = report.get("candidate_patents") or list(report.get("prior_infos", {}).values())
+
+    text_cache = await get_text_cache(db, history.base_id)
 
     return {
         "id":                history.id,
-        "idea_title":        history.idea_title or "",
-        "idea_summary":      history.idea_summary or "",
+        "idea_title":        text_cache.refined_title if text_cache else "",
+        "idea_summary":      "",
         "prior_app_numbers": json.loads(history.prior_app_numbers) if history.prior_app_numbers else [],
         "model":             history.model,
         "created_at":        history.created_at.isoformat() if history.created_at else None,
@@ -161,22 +184,47 @@ def get_idea_history_detail(
     }
 
 
-def delete_idea_history(
-    db: Session,
-    history_id: int,
-    user_id: int,
-) -> bool:
-    """히스토리 삭제. 본인 것이 아니면 False 반환."""
-    history = (
-        db.query(InvalIdeaHistoryDB)
-        .filter(
-            InvalIdeaHistoryDB.id      == history_id,
-            InvalIdeaHistoryDB.user_id == user_id,
-        )
-        .first()
+async def delete_history(db: AsyncSession, history_id: int) -> bool:
+    result = await db.execute(
+        select(InvalHistoryDB).where(InvalHistoryDB.id == history_id)
     )
+    history = result.scalars().first()
     if not history:
         return False
-    db.delete(history)
-    db.commit()
+    await db.delete(history)
+    await db.commit()
     return True
+
+
+async def get_org_history(
+    db: AsyncSession,
+    org_id: int,
+    base_id: str,
+) -> Optional[InvalHistoryDB]:
+    """org + base_id로 최신 히스토리 1건 조회 (stream에서 top-5 비교용)."""
+    result = await db.execute(
+        select(InvalHistoryDB)
+        .where(
+            InvalHistoryDB.organization_id == org_id,
+            InvalHistoryDB.base_id         == base_id,
+            InvalHistoryDB.status          == "success",
+        )
+        .order_by(InvalHistoryDB.created_at.desc())
+    )
+    return result.scalars().first()
+
+
+async def get_any_history(
+    db: AsyncSession,
+    base_id: str,
+) -> Optional[InvalHistoryDB]:
+    """org 무관하게 base_id로 최신 성공 히스토리 1건 조회 (다른 org 결과 재사용 시)."""
+    result = await db.execute(
+        select(InvalHistoryDB)
+        .where(
+            InvalHistoryDB.base_id == base_id,
+            InvalHistoryDB.status  == "success",
+        )
+        .order_by(InvalHistoryDB.created_at.desc())
+    )
+    return result.scalars().first()

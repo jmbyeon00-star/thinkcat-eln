@@ -39,6 +39,7 @@ dependencies = [
     "requests",
     "beautifulsoup4==4.13.3",
     "setuptools>=70.0.0,<71",
+    "python-docx>=1.2.0",
 ]
 
 [dependency-groups]

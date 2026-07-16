@@ -1,9 +1,9 @@
-"""특허 파서 - ipforce DB 조회 + GPU_BACKEND LLM 파싱
+ㅇ"""특허 파서 - ipforce DB 조회 + GPU_BACKEND LLM 파싱
 프롬프트는 GPU 백엔드에서 관리 (gpu_backend/app/core/llm/invalidation.py)
 """
 import httpx
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.core.config import settings
 from app.models.patent_model import PatentResult
@@ -13,11 +13,10 @@ from app.models.patent_model import PatentResult
 # ipforce DB 조회 (기존 세션 재사용)
 # ─────────────────────────────────
 
-async def get_patent_info(app_number: str, db: AsyncSession) -> dict | None:
-    result = await db.execute(
-        select(PatentResult).where(PatentResult.application_number == app_number)
-    )
-    row = result.scalars().first()
+def get_patent_info(app_number: str, db: Session) -> dict | None:
+    row = db.query(PatentResult).filter(
+        PatentResult.application_number == app_number
+    ).first()
     if not row:
         return None
     return {
@@ -33,31 +32,30 @@ async def get_patent_info(app_number: str, db: AsyncSession) -> dict | None:
     }
 
 
-async def get_prior_patents_info(
+def get_prior_patents_info(
     similar_ids: list[str],
     base_filing_date: str,
-    db: AsyncSession,
+    db: Session,
     base_family_application_number: str | None = None,
     limit: int = 4,
 ):
     if not similar_ids:
         return []
 
-    stmt = select(PatentResult).where(
+    query = db.query(PatentResult).filter(
         PatentResult.application_number.in_(similar_ids),
         PatentResult.filing_date < base_filing_date,
     )
 
     if base_family_application_number:
-        stmt = stmt.where(
+        query = query.filter(
             or_(
                 PatentResult.family_application_number.is_(None),
                 PatentResult.family_application_number != base_family_application_number,
             )
         )
 
-    result = await db.execute(stmt)
-    rows = result.scalars().all()
+    rows = query.all()
     rows_by_id = {r.application_number: r for r in rows}
     ordered = [rows_by_id[sid] for sid in similar_ids if sid in rows_by_id][:limit]
     return [

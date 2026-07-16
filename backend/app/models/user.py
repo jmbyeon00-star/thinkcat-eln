@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, Enum
 from datetime import datetime
 from app.core.db import Base
 
@@ -15,3 +15,5 @@ class User(Base):
     role = Column(String(20), default="user", nullable=False)
     created_datetime = Column(DateTime, default=datetime.utcnow)
     updated_datetime = Column(DateTime, onupdate=datetime.utcnow)
+    organization_id  = Column(Integer,  nullable=True)
+    org_role         = Column(Enum('owner', 'member'), nullable=True)

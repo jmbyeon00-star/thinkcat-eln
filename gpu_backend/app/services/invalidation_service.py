@@ -25,7 +25,7 @@ CLAUDE_MAX_TOKENS_INTERP = 16000
 #     schema = SCHEMA_PRIOR if schema_type == "prior" else SCHEMA_BASE
 #     messages = []
 #     if system_prompt:
-#         messages.append({"role": "system", "content": system_prompt})
+#         messages.append({"role": "system", "contfrom docx.oxml.ns import qn
 #     messages.append({"role": "user", "content": prompt})
 #     payload = {
 #         "model":    ollama_model or OLLAMA_MODEL_ADDITIONAL,
@@ -96,10 +96,10 @@ def _extract_json_object(text: str) -> dict:
     cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
     cleaned = re.sub(r"```(?:json)?", "", cleaned).replace("```", "").strip()
     start = cleaned.find("{")
-    end   = cleaned.rfind("}") + 1
-    if start == -1 or end <= 0:
+    if start == -1:
         raise ValueError(f"JSON 객체를 찾을 수 없음: {text[:200]}")
-    return json.loads(cleaned[start:end])
+    obj, _ = json.JSONDecoder().raw_decode(cleaned[start:])
+    return obj
 
 
 

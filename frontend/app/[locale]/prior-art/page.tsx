@@ -11,7 +11,6 @@ import {
     invalPrepareFromText,
     invalGetIdeaHistoryList,
     invalGetIdeaHistoryDetail,
-    invalDeleteIdeaHistory,
     invalRefreshIdeaHistory,
     InvalPatentSearchResult,
     InvalAnalysisStatusResult,
@@ -44,31 +43,38 @@ export default function InvalidationHome() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [history, setHistory] = useState<IdeaHistoryItem[]>([]);
+    const [hiddenIds, setHiddenIds] = useState<Set<number>>(() => {
+        if (typeof window === "undefined") return new Set<number>();
+        try {
+            const stored = localStorage.getItem("hiddenHistoryIds");
+            return stored ? new Set<number>(JSON.parse(stored)) : new Set<number>();
+        } catch { return new Set<number>(); }
+    });
     const [historyLoading, setHistoryLoading] = useState(false);
-    const [deletingId, setDeletingId] = useState<number | null>(null);
     const [refreshingId, setRefreshingId] = useState<number | null>(null);
     const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
     const [historyHasMore, setHistoryHasMore] = useState(false);
     const [historyLoadingMore, setHistoryLoadingMore] = useState(false);
+    const [myOnly, setMyOnly] = useState(false);
     const HISTORY_PAGE = 3;
 
     useEffect(() => {
         if (!token) return;
         setHistoryLoading(true);
-        invalGetIdeaHistoryList(token, 0, HISTORY_PAGE)
+        invalGetIdeaHistoryList(token, 0, HISTORY_PAGE, myOnly)
             .then(items => {
                 setHistory(items);
                 setHistoryHasMore(items.length === HISTORY_PAGE);
             })
             .catch(() => setHistory([]))
             .finally(() => setHistoryLoading(false));
-    }, [token]);
+    }, [token, myOnly]);
 
     const handleLoadMoreHistory = async () => {
         if (!token || historyLoadingMore) return;
         setHistoryLoadingMore(true);
         try {
-            const more = await invalGetIdeaHistoryList(token, history.length, HISTORY_PAGE);
+            const more = await invalGetIdeaHistoryList(token, history.length, HISTORY_PAGE, myOnly);
             setHistory(prev => [...prev, ...more]);
             setHistoryHasMore(more.length === HISTORY_PAGE);
         } catch (e) {
@@ -124,26 +130,29 @@ export default function InvalidationHome() {
                 }));
                 router.push("/prior-art/report");
             }
-        } catch (e) {
-            console.error(e);
+        } catch (e: any) {
+            if (e?.status === 402) {
+                setRefreshMsg("이용 한도 모두 소진");
+                setTimeout(() => setRefreshMsg(null), 3000);
+            } else {
+                console.error(e);
+            }
         } finally {
             setRefreshingId(null);
         }
     };
 
-    const handleDeleteHistory = async (e: React.MouseEvent, id: number) => {
+    const handleDeleteHistory = (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
-        if (!token) return;
-        setDeletingId(id);
-        try {
-            await invalDeleteIdeaHistory(token, id);
-            setHistory(prev => prev.filter(h => h.id !== id));
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setDeletingId(null);
-        }
+        const next = new Set(hiddenIds);
+        next.add(id);
+        setHiddenIds(next);
+        localStorage.setItem("hiddenHistoryIds", JSON.stringify([...next]));
     };
+
+    const displayedHistory = myOnly
+        ? history
+        : history.filter(h => !hiddenIds.has(h.id));
 
     useEffect(() => {
         const base = searchParams.get("base") ?? undefined;
@@ -416,10 +425,21 @@ export default function InvalidationHome() {
                     {/* 최근 조사 내역 (검색 전 상태에서만 표시) */}
                     {!hasContent && token && (historyLoading || history.length > 0) && (
                         <div className="mb-12 animate-in fade-in duration-500">
-                            <div className="flex items-center justify-between px-2 mb-4">
-                                <div className="flex items-center gap-2">
-                                    <Clock size={15} className="text-slate-400" />
-                                    <h2 className="text-sm font-black text-slate-500 uppercase tracking-wider">최근 조사 내역</h2>
+                            <div className="flex items-center gap-1 px-2 mb-4">
+                                <Clock size={15} className="text-slate-400 mr-2" />
+                                <div className="flex items-center gap-0.5 bg-slate-100 rounded-full p-1">
+                                    <button
+                                        onClick={() => setMyOnly(false)}
+                                        className={`text-xs font-bold px-4 py-1.5 rounded-full transition-all ${!myOnly ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+                                    >
+                                        최근 팀 조사 내역
+                                    </button>
+                                    <button
+                                        onClick={() => setMyOnly(true)}
+                                        className={`text-xs font-bold px-4 py-1.5 rounded-full transition-all ${myOnly ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+                                    >
+                                        내 조사 내역
+                                    </button>
                                 </div>
                             </div>
 
@@ -431,7 +451,7 @@ export default function InvalidationHome() {
                                 </div>
                             ) : (
                                 <div className="space-y-2">
-                                    {history.map((item) => (
+                                    {displayedHistory.map((item) => (
                                         <div
                                             key={item.id}
                                             onClick={() => handleHistoryClick(item)}
@@ -444,7 +464,7 @@ export default function InvalidationHome() {
                                                     {item.idea_title || "제목 없음"}
                                                 </p>
                                                 <p className="text-xs text-slate-400 mt-0.5">
-                                                    선행특허 {item.prior_app_numbers.length}건 · {item.created_at ? new Date(item.created_at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) : ""}
+                                                    {item.requested_by_name || "알 수 없음"} · {item.created_at ? new Date(item.created_at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }) : ""}
                                                 </p>
                                             </div>
 
@@ -459,9 +479,8 @@ export default function InvalidationHome() {
                                                 </button>
                                                 <button
                                                     onClick={(e) => handleDeleteHistory(e, item.id)}
-                                                    disabled={deletingId === item.id}
-                                                    title="삭제"
-                                                    className="p-2 rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all disabled:opacity-40"
+                                                    title="숨기기"
+                                                    className="p-2 rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
                                                 >
                                                     <Trash2 size={14} />
                                                 </button>

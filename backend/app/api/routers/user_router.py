@@ -80,3 +80,5 @@ def me(request: Request, db: Session = Depends(get_db)):
         "email": user.email,
         "role": user.role,
     }
+
+

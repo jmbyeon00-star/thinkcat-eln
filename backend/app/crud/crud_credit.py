@@ -7,7 +7,6 @@ from sqlalchemy import select, update as sa_update
 
 from app.models.user import User
 from app.models.subscription import OrganizationDB, CreditDB, UsageLogDB
-from app.models.invalidation import InvalIdeaHistoryDB
 
 
 def _now() -> datetime:
@@ -53,24 +52,6 @@ async def check_credits(db: AsyncSession, org_id: int) -> dict:
         return {"ok": False, "reason": "no_credits"}
 
     return {"ok": True}
-
-
-async def is_cached_for_user(
-    db: AsyncSession,
-    org_id: int,
-    base_id: str,
-    subscription_started_at: datetime | None = None,
-) -> bool:
-    """현재 구독 기간 내에 같은 조직이 동일 base_id를 조사한 이력이 있으면 True (재조회 무료)."""
-    query = select(InvalIdeaHistoryDB).where(
-        InvalIdeaHistoryDB.organization_id == org_id,
-        InvalIdeaHistoryDB.base_id         == base_id,
-        InvalIdeaHistoryDB.status          == "success",
-    )
-    if subscription_started_at:
-        query = query.where(InvalIdeaHistoryDB.created_at >= subscription_started_at)
-    result = await db.execute(query)
-    return result.scalars().first() is not None
 
 
 async def decrement_credit(

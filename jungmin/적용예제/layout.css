@@ -1,0 +1,148 @@
+@charset "euc-kr";
+
+/* 본 css는 ie6, ie7, ie8, fireFox3.5, safari4.0  브라우저에서 이상없이 보입니다.*/
+
+*{margin:0; padding:0;}
+body {font: 12px/19px  돋움, Arial, Helvetica, sans-serif, Verdana, ; color: #444444;	margin: 0;	padding: 0; text-align:left;}
+div{padding:0px; margin:0px; }
+
+
+/*   --- 헤더시작 ---   */
+#header {background: url(/images_n/topline.gif) repeat-x;  width:100%;	height:101px; padding:0; margin:0px auto; clear: both;}
+
+
+/*   글로벌네비게이션   */
+#global {font:11px 돋움; color:#ffffff; height:27px; width:1000px; margin:auto;}
+#global ul {list-style:none; margin:0 auto ; padding:0; width:600px; height:27px;}
+#global ul li {float:left; margin:0; padding:0px;}
+#global ul li.left{ background:url(/images_n/global_li_left.gif) no-repeat; width:54px; height:27px;}
+#global ul li.right{ background:url(/images_n/global_li_right.gif) no-repeat; width:54px; height:27px; }
+#global ul li a.first {background: url(/images_n/global_li.gif) no-repeat -1px top; padding:1px 5px 0 5px; display: block;}
+#global ul li a.first:hover {background:url(/images_n/global_li_o.gif) no-repeat -1px top;}
+#global ul a {color:#fff; text-decoration:none; display: block; line-height:27px;  padding:1px 5px 0 5px;  background:url(/images_n/global_li.gif) no-repeat; }
+#global ul a:hover {color:#ffffff;  background:url(/images_n/global_li_o.gif) no-repeat;}
+
+
+/*   유틸리티   */
+#utility {	font:11px 돋움;	color:#7a7a7a;	height:27px; width:1000px; margin:auto; clear:both;}
+#utility ul {margin:0 ;padding:8px 0 0 0; height:19px; list-style:none;}
+#utility ul li {float:right; margin:0; padding:0;background:url(/images_n/list_bullet.gif) no-repeat left 4px;}
+#utility ul a {color:#7a7a7a; text-decoration:none; display:block;  padding:0 7px;}
+#utility ul a:hover {color: #69F; border-bottom:1px dotted #69F; }
+
+/*   메인메뉴   */
+#Mainmenu {height:46px; width:1000px; margin:0 auto; background:url(/images_n/mainmenu_bg.gif) no-repeat; clear:both; position:relative;}
+#Mainmenu .m {margin: 0 auto; padding:0; width:820px;}/*메뉴 변경으로 가로크기에 변화가 있을 때 메뉴가 중앙에 오도록 width 값을 조절 하십시오.*/
+#Mainmenu .m ul {font:bold 13px "굴림"; color:#FFF; margin:0; list-style:none; padding:0; height:26px}
+#Mainmenu .m ul li {float:left; margin:2px -20px 0 0;background: url(/images_n/main_menu_seg.gif) no-repeat left top; height:20px; display:inline;}
+#Mainmenu .m ul li a{color:#FFF;  text-decoration:none; margin:0; padding:3px 70px 0 70px;   display:block; border:0px solid red; text-align:center; line-height:21px; }
+#Mainmenu .m ul li a:hover {color: #c1f4ff;}
+#Mainmenu .m ul li.mfirst  {background: none; }
+
+/* 메인메뉴 서브 */
+#Mainmenu .m_sub {margin:0; padding:0px 0 0 0; position: absolute; left:0px; top:22px;}
+#Mainmenu .m_sub ul {margin:0; padding:4px 0 0 0; background:url(/images_n/main_menu_point.gif) no-repeat center top; list-style:none;}
+#Mainmenu .m_sub ul li a {color:#444;  font:normal 11px "돋움";   text-decoration:none; margin:0; padding:5px 7px 0 7px;  display:block;  text-align:center; background: none;}
+#Mainmenu .m_sub ul li a:hover {color: #69F; }
+#Mainmenu .m_sub ul li {float:left; border:0px solid #105395;  border-left:0; border-right:0; height:19px;background:#FFF url(/images_n/main_menu_s_seg.gif) no-repeat left center; padding:0; margin:0; display:inline;}
+#Mainmenu .m_sub ul li.first {background-position: -10px;}
+#Mainmenu .m_sub ul li.left { background:url(/images_n/main_menu_s_left.gif) no-repeat 0 0; width:10px; height:21px; padding:0; margin:0;  border:0;}
+#Mainmenu .m_sub ul li.right { background:url(/images_n/main_menu_s_right.gif) no-repeat 0 0; width:10px; height:21px; padding:0; margin:0; border:0;}
+
+
+/*  --- 바디---  */
+#container {width: 1000px;	border:0px solid #000000; margin:0 auto; padding:0; clear:both; position: relative;}
+#container1 {width: 1000px; border:0px solid #000000; margin:0 auto; padding:0; clear:both; }
+
+/*   --- 바디 레이아웃1 [일반유형] ---  */
+#mainContent1 {margin:0 0 0 180px;  padding:25px 30px 0 30px; min-height:300px;} /*서브메뉴 가로폭 200일때 margin:0 0 0 200px;  서브메뉴 가로폭 150 일때 margin:0 0 0 150px;*/
+#mainContent1 .content {margin:0; padding:0 10px;}/*콘텐츠 박스 여백설정*/
+
+/*   --- 바디 레이아웃9 [관리자유형] ---  */
+#mainContent9 {margin:0 0 0 0;  padding:5px 5px 0 5px; min-height:300px;} /*서브메뉴 가로폭 200일때 margin:0 0 0 200px;  서브메뉴 가로폭 150 일때 margin:0 0 0 150px;*/
+#mainContent9 .content {margin:0; padding:0 10px;}/*콘텐츠 박스 여백설정*/
+
+/*   --- 바디 레이아웃2 [서브메뉴없는 형태 ] ---  */
+#mainContent2 {margin:20px 0 0 0px; border:0px dotted green; padding:0; background:url(/images_n/layoutbox_left_bottom.gif) no-repeat left bottom; min-height:300px;} /**/
+#mainContent2 #layout2_right_bottom {border:0px dotted red; margin:0; padding:0 0 30px 0; background:url(/images_n/layoutbox_right_bottom.gif) no-repeat right bottom; }
+#mainContent2 #layout2_left_top {border:0px dotted blue; margin:0; padding:0; background:url(/images_n/layoutbox_left_top.gif) no-repeat left top;}
+#mainContent2 #layout2_right_top {border:0px dotted orange; margin:0; padding:20px 0 0 0; background:url(/images_n/layoutbox_right_top.gif) no-repeat right top; }
+#mainContent2 .content2 {margin:0; padding:0 30px;}/*콘텐츠 박스 여백설정*/
+
+/*   --- 바디 레이아웃3 [서브메뉴없는 형태 ] ---  */
+#mainContent3 {margin:20px 0 0 0px; border:0px dotted green; padding:0; min-height:300px;} /**/
+#mainContent3 #layout2_right_bottom {border:0px dotted red; margin:0; padding:0 0 30px 0; background:url(/images_n/layoutbox_right_bottom.gif) no-repeat right bottom; }
+#mainContent3 #layout2_left_top {border:0px dotted blue; margin:0; padding:0; background:url(/images_n/layoutbox_left_top.gif) no-repeat left top;}
+#mainContent3 #layout2_right_top {border:0px dotted orange; margin:0; padding:20px 0 0 0; background:url(/images_n/layoutbox_right_top.gif) no-repeat right top; }
+#mainContent3 .content3 {margin:0; padding:0 30px;}/*콘텐츠 박스 여백설정*/
+
+/*  --- MainPage ---  */
+*html #left {float:right; margin:0px 0px 0px -1000px; display: inline; width: 275px; w\idth: 0px;} /* ie6에서만 적용됨 */
+#left{position:relative; float:left; width:275px; height:558px; margin:0px; padding:0px; background:#fff; border:0px solid #bdbdbd;}
+#left1{position: absolute; width:275px; height:27px; margin-top:0px; padding:0px; border:0px solid #bdbdbd; background:url(/images_n/main_left_01.gif) no-repeat left top;}
+#left2{position: absolute; width:275px; height:155px; margin-top:27px; padding:0px; border:0px solid #bdbdbd; background:url(/images_n/main_left_popup.gif) no-repeat left top;}
+#left3{position: absolute; width:275px; height:51px; margin-top:182px; padding:0px; border:0px solid #bdbdbd; background:url(/images_n/main_left_04.gif) no-repeat left top;}
+#left3_1{position: absolute; width:135px; height:25px; margin-top:187px; margin-left:20px; padding:0px; border:0px solid #bdbdbd;}
+#left4{position: absolute; width:275px; height:12px; margin-top:233px; padding:0px; border:0px solid #bdbdbd; background:url(/images_n/main_left_05.gif) no-repeat left top;}
+#left5{position: absolute; width:275px; height:51px; margin-top:245px; padding:0px; border:0px solid #bdbdbd; text-align:left; background:url(/images_n/main_left_search_bg.gif) no-repeat left top;}
+#left6{position: absolute; width:275px; height:28px; margin-top:296px; padding:0px; border:0px solid #bdbdbd; background:url(/images_n/main_left_06.gif) no-repeat left top;}
+#left7{position: absolute; width:275px; height:234px; margin-top:324px; padding:0px; border:0px solid #bdbdbd; }
+#guide{position: absolute; width: 722px;  top: 279px; margin-top:0px; padding:0px; border:0px solid #bdbdbd; visibility: hidden; z-index:30;}
+
+*html #center {float:right; margin:0px 0px 0px -725px; display: inline; width: 447px; w\idth: 0px;} /* ie6에서만 적용됨 */
+#center{position:relative; float:left; width:447px; height:558px; margin:0px; padding:0px; border:0px solid #bdbdbd;}
+#movie{position: absolute; width:447px; height:324px; top:0px; left:0x; margin-top:0px; padding:0px; border:0px solid #bdbdbd;}
+#notice1{position: absolute; width:447px; height:234px; margin-top:324px; padding:0px; border:0px solid #bdbdbd; z-index:10;}
+#notice2{position: absolute; width:447px; height:234px; margin-top:324px; padding:0px; border:0px solid #bdbdbd; visibility:hidden; z-index:20;}
+
+*html #right {float:left; margin:0px 0px 0px 722px; display: inline; width: 278px; w\idth: 0px;} /* ie6에서만 적용됨 */
+#right{position:relative; float:right; width:278px; height:558px; margin:0px; padding:0px; border:0px solid #bdbdbd;}
+#right1{position: absolute; width:278px; height:270px; margin-top:0px; padding:0px; border:0px solid #bdbdbd;}
+#right2{position: absolute; width:278px; height:99px; margin-top:270px; padding:0px; border:0px solid #bdbdbd; text-align:center; background:url(/images_n/main_chart_list.gif) no-repeat left top;}
+#right3{position: absolute; width:278px; height:189px; margin-top:369px; padding:0px; border:0px solid #bdbdbd;}
+
+/*  문의전화번호  */
+#tel {margin:0 auto 0 auto; padding:0 0 0 0; width:1000px; height:42px; background:#ffffff; clear:both; position: relative; z-index:50;}
+
+/* ------ sideMenu ------  */
+*html #sideMenu {float:right; margin:0px 0px 0px -1000px;} /* ie6에서만 적용됨 */
+#sideMenu {float:left; width: 180px; padding: 20px 0 0 0; margin:0; background:#fff url(/images_n/sub_menu.gif) no-repeat left 20px ; } /*서브메뉴 가로폭 최대 크기는 width:200px,  최소 크기는 width:150px입니다.*/
+
+/* --- 사이드메뉴 리스트 --- */
+#sideMenu ul li.subMenuName {margin:0; padding:15px 12px  0 0; border:none;  height:35px; font:bold 15px 굴림; color:#ffffff; text-align:right; background:url(/images_n/sub_menu_right.gif) no-repeat right top;}
+#sideMenu ul {margin:0; padding:0;	font:12px 굴림;	color:#444444;	list-style:none; }
+#sideMenu ul li {margin:0; }
+#sideMenu ul a {color:#444444; text-decoration:none; display:block; padding:0px 7px 0px 13px;background:url(/images_n/sub_bullet.gif) no-repeat left center ; border-bottom:1px solid #cecece; line-height:28px; height:24px;}
+#sideMenu ul a:hover {color:#444444; background-color: #feefd9; padding:0px 7px 0px 13px; font-weight:bold;}
+#sideMenu ul li.selected a {color:#444444; font-weight:bold;  text-decoration:none;  padding:0px 7px 0px 13px;  background:#f1f1f1 url(/images_n/sub_bullet_o.gif) no-repeat 5px center; line-height:28px; height:25px; cursor:default; border-bottom:0px solid #cecece;}
+#sideMenu ul li.selected a:hover {color:#444444; font-weight:bold;  text-decoration:none;  padding:0px 7px 0px 13px;  background:#f1f1f1 url(/images_n/sub_bullet_o.gif) no-repeat 5px center; }
+
+/* --- 서브뎁스 --- */
+#sideMenu ul.subDepth {margin:0; padding:5px 0 10px 13px ; border-bottom:1px solid #cecece;  background-color: #ffffff; list-style:none;}
+#sideMenu ul.subDepth li {margin:0; display:inline;}
+#sideMenu ul.subDepth li a {font-weight:normal; display:block; padding:0px 0px 0px 9px; border:none; background: url(/images_n/list_bullet.gif) no-repeat left 8px; line-height:21px; height:20px; cursor: pointer;}
+#sideMenu ul.subDepth li a:hover {font-weight:normal;padding:0px 0px 0px 9px;  border:none;  background:#ffffff url(/images_n/list_bullet.gif) no-repeat left 8px; color:#69F; text-decoration: underline;}
+
+#sideMenu ul.subDepth li.sub {margin:0; display:inline;}
+#sideMenu ul.subDepth li.sub a {font-weight:normal; display:block; padding:0px 0px 0px 22px; border:none; background: url(/images_n/left_line.gif) no-repeat 10px; line-height:21px; height:20px; cursor: pointer;}
+#sideMenu ul.subDepth li.sub a:hover {font-weight:normal;padding:0px 0px 0px 22px;  border:none;  background: url(/images_n/left_line.gif) no-repeat 10px; color:#69F; text-decoration: underline;}
+#sideMenu ul li.subMenuBottom  {margin:0; padding:0px 0  0 0; border:none;  height:18px; }
+/*#sideMenu ul li.subMenuBottom {margin:0; padding:0px 0  0 0; border:none;  height:18px; background:#f7f7f7 url(/images_n/sub_menu_bottom.gif) no-repeat right bottom ;}*/
+
+/* ------- 로케이션 및 페이지 타이틀 ------ */
+#location {	height:16px;  text-align: right;  font:11px 돋움;	color:#444444;	padding:5px 0 0px 0;  margin:0 0 20px 0; border-bottom:1px solid #cecece;}
+#location .pagetitle {height:18px; text-align:left;	 font:bold 13px 굴림 ;	color:#2b60a0 ; margin:-3px 0 0 0	;padding:1px 10px 0px 20px; background: url(/images_n/pagetitle.gif) no-repeat left top; float:left; border-bottom:1px solid #2b60a0;}
+
+/* --- 풋터 --- */
+#footer {font:11px/15px 돋움; color:#999; margin:20px auto 0 auto; padding:0 0 20px 0; width:1000px;  height:70px; border-top:2px solid #9ecc44; background:#ffffff; clear:both; position: relative; z-index:60;}
+#footer .footid {margin:0; float:left; border:0;}
+#footer p {margin:0; padding:0 0 4px 0;}
+*html #footer .copyright{margin:0 0 0 -854px; float:right;} /* ie6에서만 적용됨 */
+#footer .copyright{margin:0; padding:8px 0 0 8px; border-left:1px solid #9ecc44; border-right:1px solid #9ecc44; width:510px; float:left;}
+#footer a {color:#999; background:url(/images_n/main_menu_s_seg.gif) no-repeat ; padding:0 5px; text-decoration:none;} /*개인정보보호방침,이용약관, FAQ 링크*/
+#footer a:hover {color:#69F; text-decoration: underline;}
+#footer a.first {color:#999; background:none; padding:0 5px 0 0; text-decoration:none;}
+#footer a.first:hover {color:#69F; text-decoration: underline;}
+#footer .banner {margin:5px 0 0 0; padding:0; float:right;} /*주관기관 배너*/
+#footer p img {margin:0; padding:0; border:0; vertical-align:middle;} /*이메일 이미지에 사용*/
+#footer p img:hover {border-top:4px solid #FC0;}

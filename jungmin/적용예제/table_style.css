@@ -1,0 +1,989 @@
+@charset "euc-kr";
+/* CSS Document */
+/* 본 css는 ie6, ie7, ie8 버전에 맞추어졌습니다.*/
+
+
+.BtnArea {background-image:url(/images_n/table_titleBline.gif); background-repeat:repeat-x; background-position:top;  border:0px solid #ffffff; padding-top:10px;}/*버튼영역*/
+.BtnArea01 { border:0px solid #ffffff;}/*버튼영역 /라인 없음*/
+.BtnArea02 { border:0px solid #ffffff; width:80px; background-color:#f8f8f8; text-align:center;}/*버튼영역 /라인 없음*/
+.BtnArea03 { border:1px solid #ffffff; text-align:left;}/*버튼영역 /라인 없음*/
+.BtnArea04 { border:1px solid #ffffff; text-align:right;}/*버튼영역 /라인 없음*/
+.PageNum {background-image:url(/images_n/table_titleBline.gif); background-repeat:repeat-x; background-position:top; border:0px solid #ffffff; padding-bottom:5px; margin:0;}/*페이지 번호*/
+.text_O { color:#FF3300;}/*주황색 택스트*/
+
+
+/* ====================  둥근모서리 라인 테이블 밖스  ==================== */
+#box {font:12px 돋움; margin:0 0 10px 0; width:100%;  border:0px solid #ffffff;  padding:0px;}
+/* 검색 box 영역 */
+#box .cornerL    { height:9px; width:9px; padding:0; margin:0;  border:0px solid #ffffff; background-image:url(/images_n/box_01.gif); background-repeat:no-repeat; }
+#box .cornerL2    { height:9px; width:9px; padding:0; margin:0;  border:0px solid #ffffff; background-image:url(/images_n/box_09.gif); background-repeat:no-repeat; }
+#box .cornerR { height:9px; width:9px; padding:0; margin:0; border:0px solid #ffffff;background-image:url(/images_n/box_03.gif); background-repeat:no-repeat; }
+#box .cornerR2 { height:9px; width:9px; padding:0; margin:0; border:0px solid #ffffff;background-image:url(/images_n/box_11.gif); background-repeat:no-repeat; }
+#box .topLine   { height:9px; background-image:url(/images_n/box_02.gif); background-repeat:repeat-x; padding:0px; border:0px solid #ffffff;}
+#box .LeftLine   { width:9px; background-image:url(/images_n/box_04.gif); background-repeat:repeat-y; padding:0px; border:0px solid #ffffff;}
+#box .RightLine { width:9px; background-image:url(/images_n/box_05.gif); background-repeat:repeat-y; padding:0px; border:0px solid #ffffff;}
+#box .BottomLine {height:32px; background-image:url(/images_n/box_07.gif); background-repeat:repeat-x; padding:0px; border:0px solid #ffffff;}
+#box .BottomLine2 {height:9px; background-image:url(/images_n/box_10.gif); background-repeat:repeat-x; padding:0px; border:0px solid #ffffff;}
+#box .content { border:0px solid #ffffff; margin:0; padding-bottom:5px; padding-top:0px; padding-left:0px; padding-right:0px;}
+#box .content01 { border:0px solid #ffffff; margin:0; padding:0;} /* 검색 하단 5px 여백 없음*/
+
+/* ====================  둥근모서리 라인 테이블 밖스(가로조정 자유)  ==================== */
+#boxW {font:12px 돋움; margin:0 0 20px 0; border:0px solid #ffffff;  padding:0px;}
+/* 검색 box 영역 */
+#boxW .cornerL    { height:9px; width:9px; padding:0; margin:0;  border:0px solid #ffffff; background-image:url(/images_n/box_01.gif); background-repeat:no-repeat; }
+#boxW .cornerL2    { height:9px; width:9px; padding:0; margin:0;  border:0px solid #ffffff; background-image:url(/images_n/box_09.gif); background-repeat:no-repeat; }
+#boxW .cornerR { height:9px; width:9px; padding:0; margin:0; border:0px solid #ffffff;background-image:url(/images_n/box_03.gif); background-repeat:no-repeat; }
+#boxW .cornerR2 { height:9px; width:9px; padding:0; margin:0; border:0px solid #ffffff;background-image:url(/images_n/box_11.gif); background-repeat:no-repeat; }
+#boxW .topLine   { height:9px; background-image:url(/images_n/box_02.gif); background-repeat:repeat-x; padding:0px; border:0px solid #ffffff;}
+#boxW .LeftLine   { width:9px; background-image:url(/images_n/box_04.gif); background-repeat:repeat-y; padding:0px; border:0px solid #ffffff;}
+#boxW .RightLine { width:9px; background-image:url(/images_n/box_05.gif); background-repeat:repeat-y; padding:0px; border:0px solid #ffffff;}
+#boxW .BottomLine {height:32px; background-image:url(/images_n/box_07.gif); background-repeat:repeat-x; padding:0px; border:0px solid #ffffff;}
+#boxW .BottomLine2 {height:9px; background-image:url(/images_n/box_10.gif); background-repeat:repeat-x; padding:0px; border:0px solid #ffffff;}
+#boxW .content { border:0px solid #ffffff; margin:0; padding-bottom:5px; padding-top:0px; padding-left:0px; padding-right:0px;}
+#boxW .content01 { border:0px solid #ffffff; margin:0; padding:0;} /* 검색 하단 5px 여백 없음*/
+
+
+/* ====================  검색 조건 테이블   ==================== */
+/*테이블 하단 마진값 5px;*/
+#Tsearch {font:12px 돋움; margin:0; width:100%;   border:0px solid #ffffff;  padding:0px;}
+#Tsearch .title {background-color:#f2f7fd; padding:3px 7px 2px 0; color:#444444; text-align:right; border:1px solid #ffffff; width:20%;}
+#Tsearch .content {background-color:#ffffff; padding:3px 0 2px 5px; color:#444444; text-align:left; border:1px solid #ffffff; width:30%;}
+#Tsearch .content2 {background-color:#ffffff; padding:3px 0 2px 5px; color:#444444; text-align:left; border:1px solid #ffffff; width:80%;}
+#Tsearch .content3 {background-color:#ffffff; padding:3px 0 2px 5px; color:#444444; text-align:left; border:1px solid #ffffff;}/*검색 1줄 짜리*/
+#Tsearch .title3 {background-color:#f2f7fd; padding:0; color:#444444; text-align:right; border:1px solid #ffffff; width:20%;}
+#Tsearch .content4 {background-color:#ffffff; padding:0; color:#444444; text-align:left; border:1px solid #ffffff; width:30%;}
+#Tsearch .dotline { background-image:url(/images_n/line_dot.gif); background-repeat:repeat-x; background-position:center; border:0px solid #ffffff; height:6px; }
+/* 테이블 하단 5px 마진값 없음*/
+#Tsearch2 {font:12px 돋움; margin:0; width:100%;   border:0px solid #ffffff;  padding:0px;}
+#Tsearch2 .title {background-color:#f2f7fd; padding:3px 7px 2px 0; color:#444444; text-align:right; border:1px solid #ffffff; width:20%;}
+#Tsearch2 .content {background-color:#ffffff; padding:3px 0 2px 5px; color:#444444; text-align:left; border:1px solid #ffffff; width:30%;}
+#Tsearch2 .title2 {background-color:#f2f7fd; padding:3px 7px 2px 0; color:#444444; text-align:right; border:1px solid #ffffff;}
+#Tsearch2 .content2 {background-color:#ffffff; padding:3px 0 2px 5px; color:#444444; text-align:left; border:1px solid #ffffff;}
+#Tsearch2 .title3 {background-color:#f2f7fd; padding:0; color:#444444; text-align:right; border:1px solid #ffffff;}
+#Tsearch2 .content3 {background-color:#ffffff; padding:0; color:#444444; text-align:left; border:1px solid #ffffff;}
+
+
+/* ====================  테이블 타이틀 및 검색건수 스타일   ==================== */
+#Ttitle_num { width:100%; padding:0; margin:0; border:0px solid #ffffff;}
+#Ttitle_num .title { border:0px solid #ffffff; font:bold 13px 돋움; color: #444444; margin:0; padding:0 0 0 13px; text-align:left; background:url(/images_n/bullet_title2.gif)  no-repeat 0 2px;}
+#Ttitle_num .num { border:0px solid #ffffff; font:12px 돋움; color: #444444; margin:0; padding:0 10px 0 0; text-align:right; }
+#Ttitle_num .numL { border:0px solid #ffffff; font:12px 돋움; color: #444444; margin:0; padding:0 10px 0 0; text-align:left; }
+
+/* ====================  테이블 타이틀 및 검색건수(자유사이즈) 스타일   ==================== */
+#Ttitle_numW {padding:0; margin:0; border:0px solid #ffffff;}
+#Ttitle_numW .title { border:0px solid #ffffff; font:bold 13px 돋움; color: #444444; margin:0; padding:0 0 0 13px; text-align:left; background:url(/images_n/bullet_title2.gif)  no-repeat 0 2px;}
+#Ttitle_numW .numL { border:0px solid #ffffff; font:12px 돋움; color: #444444; margin:0; padding:0 10px 0 0; text-align:left; }
+#Ttitle_numW .num { border:0px solid #ffffff; font:12px 돋움; color: #444444; margin:0; padding:0 10px 0 0; text-align:right; }
+
+
+/* ====================  테이블 스타일   ==================== */
+#Tstyle {font:12px 돋움; margin:0; width:100%;   border:0px solid #ffffff;  padding:0;}
+#Tstyle .Theader { background-image:url(/images_n/table_titleBline.gif); background-repeat:repeat-x; background-position:bottom; border:0px solid #ffffff; vertical-align:}
+#Tstyle .Tnumber { background-image:url(/images_n/table_titleBline.gif); background-repeat:repeat-x; background-position:bottom; border:0px solid #ffffff;}
+#Tstyle .content  {border:0px solid #ffffff; margin:0; padding:0;}
+
+
+/* ====================  테이블 스타일(가로조정 자유)   ==================== */
+#TstyleW {font:12px 돋움; margin:0; border:0px solid #ffffff;  padding:0;}
+#TstyleW .Theader { background-image:url(/images_n/table_titleBline.gif); background-repeat:repeat-x; background-position:bottom; border:0px solid #ffffff; vertical-align:}
+#TstyleW .Tnumber { background-image:url(/images_n/table_titleBline.gif); background-repeat:repeat-x; background-position:bottom; border:0px solid #ffffff;}
+#TstyleW .content  {border:0px solid #ffffff; margin:0; padding:0;}
+
+/* ====================  테이블 스타일(가로조정 자유) 사업개요를 위한 복사본   ==================== */
+#TstyleW2 {font:12px 돋움; margin:0; border:0px solid #ffffff;  padding:0;}
+#TstyleW2 .Theader { background-image:url(/images_n/table_titleBline.gif); background-repeat:repeat-x; background-position:bottom; border:0px solid #ffffff; vertical-align:}
+#TstyleW2 .Tnumber { background-image:url(/images_n/table_titleBline.gif); background-repeat:repeat-x; background-position:bottom; border:0px solid #ffffff;}
+#TstyleW2 .content  {border:0px solid #ffffff; margin:0; padding:0;}
+
+/* ====================  테이블 01  컨텐츠 스타일   ==================== */
+#Tcontent {font:12px 돋움; margin:0; width:100%; border:0px solid #ffffff;  padding:0px;}
+#Tcontent .title { color:#444444; padding:5px 0 2px 0; border:1px solid #dddddd;background-color:#f2f7fd;}
+#Tcontent .titleL { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff;}
+#Tcontent .titleR { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-right:1px solid #ffffff;}
+#Tcontent .titleS { color:#476e9b; padding:5px 0 2px 0; border:1px solid #dddddd;background-color:#f2f7fd;}
+#Tcontent .titleN { color:#444444; padding:5px 0 2px 0; border:1px solid #dddddd;background-color:#f2f7fd; text-align:left;}
+#Tcontent .listL { color:#444444; padding:5px 0 2px 10px; border:0px solid #ffffff; background-color:#ffffff; text-align:left; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+#Tcontent .listR { color:#444444; padding:5px 0 2px 10px; border:0px solid #ffffff; background-color:#ffffff; text-align:right; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+#Tcontent .listC { color:#444444; padding:4px 0 4px 0; border:0px solid #ffffff; background-color:#ffffff; text-align:center; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+
+
+
+/* ====================  테이블 02  컨텐츠 스타일   ==================== */
+#Tcontent02 {font:12px 돋움; margin:0; width:100%; border:0px solid #ffffff;  padding:0px;}
+#Tcontent02 .title { color:#444444; padding:5px 5px 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; width:20%; text-align:right;}
+#Tcontent02 .titleH { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-right:1px solid #ffffff; text-align:center;}
+#Tcontent02 .titleL2 { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-right:1px solid #ffffff; text-align:right;}
+#Tcontent02 .titleL { color:#444444; padding:5px 5px 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff; width:20%; text-align:left;}
+#Tcontent02 .titleLR { color:#444444; padding:5px 5px 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff; width:20%; text-align:right;}
+#Tcontent02 .titleC { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; width:20%; text-align:center;}
+#Tcontent02 .titleRC { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff; width:20%; text-align:center;}
+#Tcontent02 .content { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-left:1px solid #ffffff; text-align:left;}
+#Tcontent02 .contentL { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-right:1px solid #ffffff; text-align:left;}/*오른쪽라인 없음*/
+#Tcontent02 .contentR { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff; text-align:left; }/*오른쪽라인 없음*/
+#Tcontent02 .contentN { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-right:1px solid #ffffff; border-left:1px solid #ffffff; text-align:left;}/*오른쪽라인 없음*/
+#Tcontent02 .contentC { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-right:1px solid #ffffff; border-left:1px solid #ffffff; text-align:center;}/*양쪽라인 없음*/
+#Tcontent02 .contentA { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-right:1px solid #ffffff; border-left:1px solid #ffffff; border-top:1px solid #ffffff; border-bottom:1px solid #ffffff; text-align:left;}/*모든라인 없음*/
+
+/* ====================  테이블 03  컨텐츠 스타일   ==================== */
+#Tcontent03 {font:12px 돋움; margin:0; width:100%; border:0px solid #ffffff;  padding:0px;}
+#Tcontent03 .title { color:#444444; padding:5px 5px 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; text-align:right;}
+#Tcontent03 .title1 { color:#444444; padding:5px 5px 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; text-align:right;}
+#Tcontent03 .title01 { color:#444444; padding:5px 5px 2px 0; background-color:#e2f7fd; border:1px solid #dddddd; text-align:right;}
+#Tcontent03 .titleL { color:#444444; padding:5px 5px 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff; text-align:left;}
+#Tcontent03 .titleLR { color:#444444; padding:5px 5px 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff; text-align:right;}
+#Tcontent03 .titleC { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; text-align:center;}
+#Tcontent03 .titleRC { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff; width:20%; text-align:center;}
+#Tcontent03 .content { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-left:1px solid #ffffff; text-align:left;}
+#Tcontent03 .content1 { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; text-align:left;}
+#Tcontent03 .contentL { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-right:1px solid #ffffff; text-align:left;}/*오른쪽라인 없음*/
+#Tcontent03 .contentR { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff; text-align:left; }/*오른쪽라인 없음*/
+#Tcontent03 .contentN { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-right:1px solid #ffffff; border-left:1px solid #ffffff; text-align:left;}/*오른쪽라인 없음*/
+#Tcontent03 .contentC { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-right:1px solid #ffffff; border-left:1px solid #ffffff; text-align:center;}/*양쪽라인 없음*/
+#Tcontent03 .contentA { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-right:1px solid #ffffff; border-left:1px solid #ffffff; border-top:1px solid #ffffff; border-bottom:1px solid #ffffff; text-align:left;}/*모든라인 없음*/
+
+/* ====================  파일선택  컨텐츠 스타일   ==================== */
+#fileAttachTable {font:12px 돋움; margin:0; width:100%; border:0px solid #ffffff;  padding:0px;}
+#fileAttachTable .title { color:#444444; padding:5px 5px 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; width:20%; text-align:right;}
+#fileAttachTable .titleH { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-right:1px solid #ffffff; text-align:center;}
+#fileAttachTable .titleL2 { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-right:1px solid #ffffff; text-align:right;}
+#fileAttachTable .titleL { color:#444444; padding:5px 5px 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff; width:20%; text-align:left;}
+#fileAttachTable .titleLR { color:#444444; padding:5px 5px 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff; width:20%; text-align:right;}
+#fileAttachTable .titleC { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; width:20%; text-align:center;}
+#fileAttachTable .titleRC { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff; width:20%; text-align:center;}
+#fileAttachTable .content { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-left:1px solid #ffffff; text-align:left;}
+#fileAttachTable .contentL { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-right:1px solid #ffffff; text-align:left;}/*오른쪽라인 없음*/
+#fileAttachTable .contentR { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff; text-align:left; }/*오른쪽라인 없음*/
+#fileAttachTable .contentN { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-right:1px solid #ffffff; border-left:1px solid #ffffff; text-align:left;}/*오른쪽라인 없음*/
+#fileAttachTable .contentC { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-right:1px solid #ffffff; border-left:1px solid #ffffff; text-align:center;}/*양쪽라인 없음*/
+#fileAttachTable .contentA { color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-right:1px solid #ffffff; border-left:1px solid #ffffff; border-top:1px solid #ffffff; border-bottom:1px solid #ffffff; text-align:left;}/*모든라인 없음*/
+
+
+/* ====================  테이블 03  [리스트] 컨텐츠 스타일   ==================== */
+#Tlist {font:12px 돋움; margin:0; width:100%; border:0px solid #ffffff;  padding:0px;}
+#Tlist .title { color:#444444; padding:5px 0 2px 0; border:1px solid #dddddd;background-color:#f2f7fd;}
+#Tlist .title1 { color:#444444; padding:5px 0 2px 0; border:1px solid #dddddd;background-color:#e2f7fd;}
+#Tlist .titleL { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff;}
+#Tlist .titleR { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-right:1px solid #ffffff;}
+#Tlist .titleS { color:#476e9b; padding:5px 0 2px 0; border:1px solid #dddddd;background-color:#f2f7fd;}
+#Tlist .titleLR { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff;}
+#Tlist .listL { color:#444444; padding:5px 0 2px 10px; border:0px solid #ffffff; background-color:#ffffff; text-align:left; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+#Tlist .listR { color:#444444; padding:5px 10px 2px 0; border:0px solid #ffffff; background-color:#ffffff; text-align:right; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+#Tlist .listC { color:#444444; padding:4px 0 4px 0; border:0px solid #ffffff; background-color:#ffffff; text-align:center; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+
+/* ====================  테이블 04  [리스트 셀병합용] 컨텐츠 스타일   ==================== */
+#TlistM {font:12px 돋움; margin:0; width:100%; border:0px solid #ffffff;  padding:0px;}
+#TlistM .title { color:#444444; padding:5px 0 2px 0; border:1px solid #dddddd;background-color:#f2f7fd;}
+#TlistM .titleL { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff;}
+#TlistM .titleR { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-right:1px solid #ffffff;}
+#TlistM .titleS { color:#476e9b; padding:5px 0 2px 0; border:1px solid #dddddd;background-color:#f2f7fd;}
+#TlistM .titleLR { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff;}
+#TlistM .listL { color:#444444; padding:5px 0 2px 10px; border:0px solid #ffffff; background-color:#ffffff; text-align:left; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+#TlistM .listR { color:#444444; padding:5px 10px 2px 0; border:0px solid #ffffff; background-color:#ffffff; text-align:right; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+#TlistM .listC { color:#444444; padding:4px 0 4px 0; border:0px solid #ffffff; background-color:#ffffff; text-align:center; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+
+/* ====================  테이블 04  [리스트 셀병합용] 컨텐츠 스타일   ==================== */
+#TlistM1 {font:12px 돋움; margin:0; width:100%; border:0px solid #ffffff;  padding:0px;}
+#TlistM1 .title { color:#444444; padding:5px 0 2px 0; border:1px solid #dddddd;background-color:#f2f7fd;}
+#TlistM1 .titleL { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff;}
+#TlistM1 .titleR { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-right:1px solid #ffffff;}
+#TlistM1 .titleS { color:#476e9b; padding:5px 0 2px 0; border:1px solid #dddddd;background-color:#f2f7fd;}
+#TlistM1 .titleLR { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff;}
+#TlistM1 .listL { color:#444444; padding:5px 0 2px 10px; border:0px solid #ffffff; background-color:#ffffff; text-align:left; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+#TlistM1 .listR { color:#444444; padding:5px 10px 2px 0; border:0px solid #ffffff; background-color:#ffffff; text-align:right; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+#TlistM1 .listC { color:#444444; padding:4px 0 4px 0; border:0px solid #ffffff; background-color:#ffffff; text-align:center; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+
+/* ====================  테이블 04  [리스트 셀병합용] 컨텐츠 스타일   ==================== */
+#TlistM2 {font:12px 돋움; margin:0; width:100%; border:0px solid #ffffff;  padding:0px;}
+#TlistM2 .title { color:#444444; padding:5px 0 2px 0; border:1px solid #dddddd;background-color:#f2f7fd;}
+#TlistM2 .titleL { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff;}
+#TlistM2 .titleR { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-right:1px solid #ffffff;}
+#TlistM2 .titleS { color:#476e9b; padding:5px 0 2px 0; border:1px solid #dddddd;background-color:#f2f7fd;}
+#TlistM2 .titleLR { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff;}
+#TlistM2 .listL { color:#444444; padding:5px 0 2px 10px; border:0px solid #ffffff; background-color:#ffffff; text-align:left; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+#TlistM2 .listR { color:#444444; padding:5px 10px 2px 0; border:0px solid #ffffff; background-color:#ffffff; text-align:right; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+#TlistM2 .listC { color:#444444; padding:4px 0 4px 0; border:0px solid #ffffff; background-color:#ffffff; text-align:center; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+
+/* ====================  테이블 04  [리스트 셀병합용] 컨텐츠 스타일   ==================== */
+#TlistM3 {font:12px 돋움; margin:0; width:100%; border:0px solid #ffffff;  padding:0px;}
+#TlistM3 .title { color:#444444; padding:5px 0 2px 0; border:1px solid #dddddd;background-color:#f2f7fd;}
+#TlistM3 .titleL { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff;}
+#TlistM3 .titleR { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-right:1px solid #ffffff;}
+#TlistM3 .titleS { color:#476e9b; padding:5px 0 2px 0; border:1px solid #dddddd;background-color:#f2f7fd;}
+#TlistM3 .titleLR { color:#444444; padding:5px 0 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; border-right:1px solid #ffffff;}
+#TlistM3 .listL { color:#444444; padding:5px 0 2px 10px; border:0px solid #ffffff; background-color:#ffffff; text-align:left; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+#TlistM3 .listR { color:#444444; padding:5px 10px 2px 0; border:0px solid #ffffff; background-color:#ffffff; text-align:right; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+#TlistM3 .listC { color:#444444; padding:4px 0 4px 0; border:0px solid #ffffff; background-color:#ffffff; text-align:center; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom;}
+
+
+/* ====================  테이블 04  [텝 리스트] 컨텐츠 스타일   ==================== */
+#Ttab {font:12px 돋움; margin:10px 0 0 0; width:100%; border:0px solid #ffffff;  padding:0px;}
+#Ttab .tab { border:0px solid #ffffff; padding:0; margin:0; text-align:left; background-image:url(/images_n/tap_bg.gif); background-repeat:repeat-x;}
+#Ttab .table { border:0px solid #ffffff; padding:0; margin:0 0 0 8px;}
+/* 텝 up */
+#Ttab .tab_UpL { border:0px solid #ffffff; padding:0; margin:0; height:28px; width:16px; background-image:url(/images_n/tap_up01.gif); background-repeat:no-repeat;}
+#Ttab .tab_UpM { border:0px solid #ffffff; padding:0; margin:0; height:28px;  background-image:url(/images_n/tap_up02.gif); background-repeat:repeat-x; padding-top:4px;}
+#Ttab .tab_UpR { border:0px solid #ffffff; padding:0; margin:0; height:28px; width:16px; background-image:url(/images_n/tap_up03.gif); background-repeat:no-repeat;}
+/* 텝 down */
+#Ttab .tab_DownL { border:0px solid #ffffff; padding:0; margin:0; height:28px; width:16px; background-image:url(/images_n/tap_down01.gif); background-repeat:no-repeat;}
+#Ttab .tab_DownM { border:0px solid #ffffff; padding:0; margin:0; height:28px;  background-image:url(/images_n/tap_down02.gif); background-repeat:repeat-x; padding-top:4px;}
+#Ttab .tab_DownR { border:0px solid #ffffff; padding:0; margin:0; height:28px; width:16px; background-image:url(/images_n/tap_down03.gif); background-repeat:no-repeat;}
+#Ttab .num { border:0px solid #ffffff; font:12px 돋움; color: #444444; margin:0; padding:0 10px 0 0; text-align:right; background-image:url(/images_n/tap_bg.gif); background-repeat:repeat-x; }
+#Ttab .numL { border:0px solid #ffffff; font:12px 돋움; color: #444444; margin:0; padding:0 10px 0 0; text-align:left; background-image:url(/images_n/tap_bg.gif); background-repeat:repeat-x; }
+
+/* ====================  테이블 04  [텝 리스트] 컨텐츠 스타일 평가보고서용   ==================== */
+#Ttab1 {font:12px 돋움; margin:10px 0 0 0; width:100%; border:0px solid #ffffff;  padding:0px;}
+#Ttab1 .tab { border:0px solid #ffffff; padding:0; margin:0; text-align:left; background-image:url(/images_n/tap_bg.gif); background-repeat:repeat-x;}
+#Ttab1 .table { border:0px solid #ffffff; padding:0; margin:0 0 0 8px;}
+/* 텝 up */
+#Ttab1 .tab_UpL { border:0px solid #ffffff; padding:0; margin:0; height:28px; width:16px; background-image:url(/images_n/tap_up01.gif); background-repeat:no-repeat;}
+#Ttab1 .tab_UpM { border:0px solid #ffffff; padding:0; margin:0; height:28px;  background-image:url(/images_n/tap_up02.gif); background-repeat:repeat-x; }
+#Ttab1 .tab_UpR { border:0px solid #ffffff; padding:0; margin:0; height:28px; width:16px; background-image:url(/images_n/tap_up03.gif); background-repeat:no-repeat;}
+/* 텝 down */
+#Ttab1 .tab_DownL { border:0px solid #ffffff; padding:0; margin:0; height:28px; width:16px; background-image:url(/images_n/tap_down01.gif); background-repeat:no-repeat;}
+#Ttab1 .tab_DownM { border:0px solid #ffffff; padding:0; margin:0; height:28px;  background-image:url(/images_n/tap_down02.gif); background-repeat:repeat-x; }
+#Ttab1 .tab_DownR { border:0px solid #ffffff; padding:0; margin:0; height:28px; width:16px; background-image:url(/images_n/tap_down03.gif); background-repeat:no-repeat;}
+#Ttab1 .num { border:0px solid #ffffff; font:12px 돋움; color: #444444; margin:0; padding:0 10px 0 0; text-align:right; background-image:url(/images_n/tap_bg.gif); background-repeat:repeat-x; }
+
+
+
+/* 2009년 08월 28일  추가 - 마이페이지 */
+/* ====================  마이페이지    ==================== */
+
+/* 접속자*/
+#mypage {width:100%; padding:0; margin-bottom:15px; background-image:url(/images_n/MypageLoginBg.gif); background-repeat:repeat-x; text-align:left;}
+
+/* 리스트 /공지사항, 커뮤니티 */
+#Mylist {width:420px; float:left; text-align:left; padding:0; margin-left:10px;}
+#Mylist .table {width:100%;border:0px solid #ffffff; margin:0; margin-bottom:7px; padding:0;}
+#Mylist .td {border:0px solid #ffffff; margin:0; padding:0;}
+#Mylist .title {border:0px solid #ffffff; border-bottom:2px solid #6890b7; margin:0; padding:2px 0 0 15px; width:90px; text-align:left; font-weight:bold; font-size:13px;  background:url(/images_n/Mypage_title.gif)  no-repeat 5px 5px;}
+#Mylist .more {border:0px solid #ffffff; border-bottom:2px solid #cfd0cf; margin:0; padding:6px 12px 0 0; text-align:right; }
+#Mylist .content {border:0px solid #ffffff; margin:0; padding:0;}
+#Mylist .list {border:0px solid #ffffff; margin:0; padding:2px 0 0 6px; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom; text-align:left;}
+#Mylist .name {border:0px solid #ffffff; margin:0; padding:2px 0 0 0; background-image:url(/images_n/list_dotLine.gif); background-repeat:repeat-x; background-position:bottom; width:50px; text-align:center; }
+#Mylist .tab {border:0px solid #ffffff; border-bottom:2px solid #cfd0cf; margin:0; padding:3px 0 0 0; width:59px;}
+
+/*일정관리*/
+#MyCalendarOut {width:240px; float:right; padding:0; margin:18px 20px 0 0;}
+#MyCalendar {width:240px; float:left; padding:0; margin:0px 0px 0 0;}
+
+/*상단*/
+#MyCalendar .table {width:240px; border:0px solid #ffffff; margin:0; padding:0; }
+#MyCalendar .table01 {width:233px; border:0px solid #ffffff; margin:0 0 5px 2px; padding:0;  }/*월~일 테이블*/
+#MyCalendar .month { height:31px; background-image:url(/images_n/calendar01.gif); background-repeat:no-repeat; text-align:right; padding:3px 33px 0 0; margin:0; border:0px solid #ffffff;}
+#MyCalendar .TdDay { border:0px solid #ffffff; background-image:url(/images_n/calendarBg.gif); background-repeat:repeat-y; padding:0; margin:0;}
+#MyCalendar .bottom { border:0px solid #ffffff; background-image: url(/images_n/calendar02.gif); background-repeat:no-repeat; height:4px; padding:0; margin:0; }
+#MyCalendar .week {border:0px solid #ffffff; text-align:center; background-color:#f2f7fd; padding:3px 0 0 0; margin:0;}
+#MyCalendar .day {border:0px solid #ffffff; text-align:center; padding:2px 0 0 0; margin:0;}
+.text_R { color:#ff0000;}/*빨강색 택스트*/
+.text_B { color:#0033ff;}/*파랑색 택스트*/
+.text_BL { color:#444444;}/*검정색 택스트*/
+
+/* 그래프 영역 */
+#MyGraph {width:100%; padding:0; margin:0; margin:30px 0 0 0;}
+#MyGraph .title01 {border:0px solid #ffffff;  margin:0 0 2px 0; padding:2px 0 0 25px; width:90px; text-align:left; font-weight:bold; font-size:13px;  background:url(/images_n/Mypage_title.gif)  no-repeat 15px 5px;}
+
+
+/* 2009년 08월 31일  추가 - 팝업 */
+/* ====================  팝업    ==================== */
+#pop { width:760px; margin:0;  padding:10px 10px 5px 5px; min-height:300px; } 
+#pop .content { width:100%;border:0px solid #ffffff; padding:0; margin:0;}
+#pop .td{border:0px solid #ffffff; padding:0; margin:0;}
+
+/*팝업 자유 사이즈*/
+#popW { margin:0;  padding:10px 10px 5px 5px;} 
+#popW .contentP { width:100%;border:0px solid #ffffff; padding:0; margin:0;}
+#popW .td{border:0px solid #ffffff; padding:0; margin:0;}
+
+/*왼쪽 영역*/
+#PopTableL {width:290px; float:left; padding:0; margin:0 0 0 10px; }
+#PopTableL .title{border:0px solid #ffffff;  margin:0 0 2px 0; padding:2px 0 0 20px; text-align:left; font-weight:bold; font-size:13px;  background:url(/images_/Mypage_title.gif)  no-repeat 10px 5px;}
+#PopTableL .titleTD{ color:#444444; padding:5px 5px 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; width:60px; text-align:right;}
+
+/* 오른쪽 영역*/
+#PopTableR {width:440px; float:right; padding:0; margin:0 10px 0 0;}
+#PopTableR .title{border:0px solid #ffffff;  margin:0 0 2px 0; padding:2px 0 0 15px; text-align:left; font-weight:bold; font-size:13px;  background:url(/images_/Mypage_title.gif)  no-repeat 5px 5px; width:100px ;border-bottom:2px solid #6890b7;}
+#PopTableR .Tarea{ padding:0; margin:0; background-image:url(/images_n/topline01.gif); background-repeat:repeat-x; background-position:bottom; text-align:left;}
+
+/* 추가 팝업 2 */
+#PopTable {width:100%; padding:0; margin:0;}
+#PopTable .title{border:0px solid #ffffff;  margin:0 0 2px 0; padding:2px 0 0 20px; text-align:left; font-weight:bold; font-size:13px;  background:url(/images_n/Mypage_title.gif)  no-repeat 10px 5px;}
+#PopTable .titleTD{ color:#444444; padding:5px 5px 2px 0; background-color:#f2f7fd; border:1px solid #dddddd; border-left:1px solid #ffffff; width:70px; text-align:right;}
+#PopTable .contentL{ color:#444444; padding:5px 0 2px 5px; background-color:#ffffff; border:1px solid #dddddd; border-right:1px solid #ffffff; text-align:left;}
+#pop .td50{border:0px solid #ffffff; padding:0; margin:0; width:50%;}
+.TextArea { width:97%; border:1px solid #e1e1e1; font-size:12px; color:#444444; padding:5px 5px 5px 5px; line-height:18px;}
+
+
+/* 헬프 영역 */
+#help {width:100%; padding:0; margin:0;}
+#help .box {width:100%; border:0px solid #ffffff; margin:0; padding:0;}
+#help .text {text-align:left; border:0px solid #ffffff; line-height:50px; margin:0; padding:3px 0 0 0; }
+#help .L01  {background-image:url(/images_n/help01.gif); background-repeat:no-repeat; width:79px; height:11px;  border:0px solid #ffffff; margin:0; padding:0;}
+#help .L02  {background-image:url(/images_n/help06.gif); background-repeat:repeat-y; width:79px; border:0px solid #ffffff; margin:0; padding:0; vertical-align:top;}
+#help .L03  {background-image:url(/images_n/help08.gif); background-repeat:no-repeat; width:79px; height:8px; border:0px solid #ffffff; margin:0; padding:0; }
+#help .TM   {background-image:url(/images_n/help03.gif); background-repeat:repeat-x; height:11px; border:0px solid #ffffff; margin:0; padding:0;}
+#help .DM   {background-image:url(/images_n/help09.gif); background-repeat:repeat-x; height:8px; border:0px solid #ffffff; margin:0; padding:0;}
+#help .R01  {background-image:url(/images_n/help04.gif); background-repeat:no-repeat; width:9px; height:11px;  border:0px solid #ffffff; margin:0; padding:0;}
+#help .R02  {background-image:url(/images_n/help07.gif); background-repeat:repeat-y; width:9px; border:0px solid #ffffff; margin:0; padding:0;}
+#help .R03  {background-image:url(/images_n/help10.gif); background-repeat:no-repeat; height:8px; width:9px; border:0px solid #ffffff; margin:0; padding:0;}
+
+
+/* 2009년 09월 01일  추가 - 텝스타일 버튼 */
+/* ====================  텝 스타일 버튼  ==================== */
+#TabBtn { width:100%; border:0px solid #ffffff; vertical-align:top;}
+/* 텝 버튼 업 상태*/
+#TabBtn .Up {width:149px; margin:0; padding:0; background-image:url(/images_n/tebBtn_Upline.gif); background-repeat:no-repeat; background-position:bottom; border:0px solid #ffffff; text-align:center; vertical-align:top;}
+#TabBtn .Utable {width:149px; border:0px solid #ffffff; margin:0 0 13px 0; padding:0;}
+#TabBtn .Utop { border:0px solid #ffffff; background-image:url(/images_n/tebBtn_UpTop.gif); background-repeat:no-repeat; background-position:center top; margin:0; padding:7px 0 2px 0; font-weight:bold; height:20px;}
+#TabBtn .Ucontent {border:0px solid #ffffff; background-image:url(/images_n/tebBtn_Upcontent.gif); background-repeat:repeat-y; background-position:center;}
+#TabBtn .Ucontent  ul { margin:0; padding:3px 0 0 0;}
+#TabBtn .Ucontent  ul li { text-align:left; background:url(/images_n/tebBtn_UpIcon.gif) no-repeat 12px 4px; margin:0; padding:0 0 0 20px;}
+
+/* 텝 버튼 다운 상태*/
+#TabBtn .Down {width:149px; margin:0; padding:0; background-image:url(/images_n/tebBtn_Downline.gif); background-repeat:no-repeat; background-position:bottom center; border:0px solid #ffffff; text-align:center; vertical-align:top;}
+#TabBtn .Dtable {width:149px; border:0px solid #ffffff; margin:0 0 13px 0; padding:0;}
+#TabBtn .Dtop { border:0px solid #ffffff; background-image:url(/images_n/tebBtn_DownTop.gif); background-repeat:no-repeat; background-position:center top; margin:0; padding:7px 0 2px 0; font-weight:bold; height:20px;}
+#TabBtn .Dcontent {border:0px solid #ffffff; background-image:url(/images_n/tebBtn_Downcontent.gif); background-repeat:repeat-y; background-position:center;}
+#TabBtn .Dcontent  ul { margin:0; padding:3px 0 0 0;}
+#TabBtn .Dcontent  ul li { text-align:left; background:url(/images_n/tebBtn_DownIcon.gif) no-repeat 12px 4px; margin:0; padding:0 0 0 20px;}
+
+#TabBtn .out { margin:0; padding:0; background-image:url(/images_n/tebBtn_Downline01.gif); background-repeat:repeat-x; background-position:bottom; border:0px solid #ffffff;}/* 텝 버튼 가로사이즈 여분 영역*/
+
+
+/*2009년 09월 03일 추가 -  화면 정의 */
+/* ====================  기본분석 (조사분석서비스)  ==================== */
+#field { width:760px; margin:0;  padding:5px 5px 5px 5px;} 
+#Sfield { width:100%; margin:0;  padding:0;} 
+#Sfield .table{ width:100%; margin:0;  padding:0; border:0px solid #ffffff;} 
+#Sfield .tdL{ width:60%; margin:0;  padding:0; border:0px solid #ffffff; text-align:left; vertical-align:top;} 
+#Sfield .tdR{ width:40%; margin:0;  padding:0; border:0px solid #ffffff; text-align:left; vertical-align:top;} 
+#Sfield .tdL01 { width:28%; margin:0;  padding:0; border:0px solid #ffffff; text-align:left; vertical-align:top;} 
+#Sfield .tdR01 { width:72%; margin:0;  padding:0; border:0px solid #ffffff; text-align:left; vertical-align:top;} 
+
+
+#BtnIcon {width:100%; text-align:left; padding:0; margin:3px 0 0 3px;border:0px solid #ffffff;}
+#BtnIcon .title {background: url(/images_n/list_bullet.gif) no-repeat 7px 9px; padding:1px 3px 2px 0; margin:0; text-align:right ; border:0px solid #ffffff; width:65px; background-color:#f2f7fd;}
+#BtnIcon .title01 {background: url(/images_n/list_bullet.gif) no-repeat 3px 9px; padding:2px 2px 2px 0; margin:0; text-align:right ; border:0px solid #ffffff; width:60px; background-color:#f2f7fd;}
+#BtnIcon .icon { padding:1px 0 2px 5px; margin:0; text-align:left; border:0px solid #ffffff; background-color:#f2f7fd;}
+#BtnIcon .line { background-image:url(/images_n/icon_dotLine.gif); background-repeat:repeat-x; background-position:center; border:0px solid #ffffff; height:6px; }
+#BtnIcon .help { padding:5px 5px 5px 0; margin:0; text-align:left; border:0px solid #ffffff; background-color:#f2f7fd;}
+#BtnIcon .left { border:0px solid #ffffff; text-align:left; margin:0; padding:0 0 0 10px; }
+#BtnIcon .right { border:0px solid #ffffff; text-align:right; padding-right:10px; margin:0;}
+
+/*기본분석 상단*/
+#BtnPro { width:100%; padding:0; margin:0 0 0 0; border:0px solid #ffffff;}
+#BtnPro .title { width:53px; padding:0 3px 0 0; margin:0; text-align:right; background-color:#f2f7fd; border:0px solid #ffffff; }
+#BtnPro .content { border:0px solid #ffffff;  text-align:left; padding:0 0 0 3px;}
+
+/* 상세분석 레프트 영역 */
+#LeftTitle { width:100%; margin:0 0 5px 0; padding:5px 0 0 0; text-align:center; font-weight:bold;background-color:#f2f7fd; border-bottom:1px solid #cccccc; }
+#LeftMenu {width:100%; margin:0 0 10px 0; padding:0; text-align:right;}
+#LeftMenu ul{width:100%; margin:0; padding:0;}
+#LeftMenu li{width:100%; margin:0; padding:0;}
+
+#Tcontent02 .content02{ border:0px solid #ffffff; margin:0; padding:10px 10px 10px 10px ; vertical-align:top;} /* 검색 하단 5px 여백 없음*/
+
+
+/*2009년 09월 15일 추가 -  화면 정의 */
+/* ====================  사업관리 상단 검색 폼  ==================== */
+#Tsearch3 {font:12px 돋움; margin:0; width:100%;  border:0px solid #ffffff;  padding:0;}
+#Tsearch3 .title { margin:0; padding:0; text-align:left; border:0px solid #ffffff; background-image:url(/images_n/search_line.gif); background-repeat:repeat-x; background-position:center;}
+#Tsearch3 .content { padding:0; border:0px solid #ffffff; margin:0;}
+#Tsearch3 .Stable {font:12px 돋움; margin:0; width:100%;   border:0px solid #ffffff;  padding:0;}
+#Tsearch3 .Scontent {background-color:#f6f6f6; padding:10px 10px 5px 30px; color:#444444; text-align:left; border:0px solid #ffffff; width:25%; vertical-align:top;}
+#Tsearch3 .Wcontent {padding:1px 10px 1px 30px; color:#444444; text-align:left; border:0px solid #ffffff; width:25%; vertical-align:top;}
+#Tsearch3 .input {font:12px 돋움; border:1px solid #cecece;  margin:0 2px; padding:3px 3px 0px 3px ; height:16px;}
+
+
+/* 로그인 정보 */
+*html #MemberInfor {float:right; margin:0px 0px 0px -1000px;} /* ie6에서만 적용됨 */
+#MemberInfor {float:left; width:180px;  padding: 20px 0 0 0; margin:0;} /*서브메뉴 가로폭 최대 크기는 width:200px,  최소 크기는 width:150px입니다.*/
+#MemberInfor .btn { width:100%; margin:5px 0 0 0; padding:0; text-align:center;}
+#MemberInfor .title { width:100%; margin:0 0 3px 0; padding:3px 0 0 0; text-align:center; background-color:#f2f7fd; }
+#MemberInfor .infor { width:100%; margin:0; padding:0; text-align:left;}
+#MemberInfor .infor ul { width:100%; margin:0; padding:0; text-align:left;}
+#MemberInfor .infor ul li { background:url(/images_n/tebBtn_UpIcon.gif) no-repeat 5px 8px;  margin:0; padding:2px 0 0 13px; text-align:left;}
+
+
+/* 조회조건선택 텝 오픈   */
+#Topen {font:12px 돋움; margin:0; width:100%; height:35px; border:0px solid #ffffff;  padding:0;}
+#Topen .tab { border:0px solid #ffffff; padding:0 0 0 10px; margin:0; text-align:left; background-image:url(/images_n/tap_bg.gif); background-repeat:repeat-x;}
+#Topen .title { border:0px solid #ffffff; padding:0; margin:0; background-image:url(/images_n/tap_lineup.gif); background-repeat:no-repeat; width:107px; }
+#Topen .num { border:0px solid #ffffff; font:12px 돋움; color: #444444; margin:0; padding:0 10px 0 0; text-align:right; background-image:url(/images_n/tap_bg.gif); background-repeat:repeat-x;}
+
+/* 밖스 텝  */
+#BoxTab {font:12px 돋움; margin:0 0 10px 0; width:100%;  border:0px solid #ffffff;  padding:0px;}
+/* 검색 box 영역 */
+#BoxTab .cornerL    { width:9px; padding:0; margin:0;  border:0px solid #ffffff; background-image:url(/images_n/box_01.gif); background-repeat:no-repeat; background-position:bottom; }
+#BoxTab .cornerL2   { height:9px; width:9px; padding:0; margin:0;  border:0px solid #ffffff; background-image:url(/images_n/box_09.gif); background-repeat:no-repeat; }
+#BoxTab .cornerR { width:9px; padding:0; margin:0; border:0px solid #ffffff;background-image:url(/images_n/box_03.gif); background-repeat:no-repeat;  background-position:bottom; }
+#BoxTab .cornerR2 { height:9px; width:9px; padding:0; margin:0; border:0px solid #ffffff;background-image:url(/images_n/box_11.gif); background-repeat:no-repeat; }
+#BoxTab .cornerL01    {height:32px;width:9px; padding:0; margin:0;  border:0px solid #ffffff; background-image:url(/images_n/box_06.gif); background-repeat:no-repeat; background-position:bottom; }
+#BoxTab .cornerR01 {height:32px; width:9px; padding:0; margin:0; border:0px solid #ffffff;background-image:url(/images_n/box_08.gif); background-repeat:no-repeat;  background-position:bottom; }
+#BoxTab .topLine   { height:9px; margin:0; padding:0; border:0px solid #ffffff;}
+#BoxTab .LeftLine   { width:9px; background-image:url(/images_n/box_04.gif); background-repeat:repeat-y; padding:0px; border:0px solid #ffffff;}
+#BoxTab .RightLine { width:9px; background-image:url(/images_n/box_05.gif); background-repeat:repeat-y; padding:0px; border:0px solid #ffffff;}
+#BoxTab .BottomLine {height:32px; background-image:url(/images_n/box_07.gif); background-repeat:repeat-x; padding:0px; border:0px solid #ffffff;}
+#BoxTab .BottomLine2 {height:9px; background-image:url(/images_n/box_10.gif); background-repeat:repeat-x; padding:0px; border:0px solid #ffffff;}
+#BoxTab .content { border:0px solid #ffffff; margin:0; padding-bottom:5px; padding-top:0px; padding-left:0px; padding-right:0px;}
+
+
+/* 테이블 04  [텝] 컨텐츠 스타일   ==================== */
+#BTab {font:11px 돋움; margin:10px 0 6px 0; width:100%; border:0px solid #ffffff;  padding:0px;}
+#BTab .tab { border:0px solid #ffffff; padding:0; margin:0; text-align:left; background-image:url(/images_n/tap_bg.gif); background-repeat:repeat-x;}
+#BTab .table { border:0px solid #ffffff; padding:0; margin:0 0 0 8px;}
+/* 텝 up */
+#BTab .tab_UpL { border:0px solid #ffffff; padding:0; margin:0; height:28px; width:16px; background-image:url(/images_n/tap_up01.gif); background-repeat:no-repeat;}
+#BTab .tab_UpM { border:0px solid #ffffff; padding:0; margin:0; height:28px;  background-image:url(/images_n/tap_up02.gif); background-repeat:repeat-x; padding-top:4px;}
+#BTab .tab_UpR { border:0px solid #ffffff; padding:0; margin:0; height:28px; width:16px; background-image:url(/images_n/tap_up03.gif); background-repeat:no-repeat;}
+/* 텝 down */
+#BTab .tab_DownL { border:0px solid #ffffff; padding:0; margin:0; height:28px; width:16px; background-image:url(/images_n/tap_down01.gif); background-repeat:no-repeat;}
+#BTab .tab_DownM { border:0px solid #ffffff; padding:0; margin:0; height:28px;  background-image:url(/images_n/tap_down02.gif); background-repeat:repeat-x; padding-top:4px;}
+#BTab .tab_DownR { border:0px solid #ffffff; padding:0; margin:0; height:28px; width:16px; background-image:url(/images_n/tap_down03.gif); background-repeat:no-repeat;}
+#BTab .num { border:0px solid #ffffff; font:12px 돋움; color: #444444; margin:0; padding:0 10px 0 0; text-align:right; background-image:url(/images_n/tap_bg.gif); background-repeat:repeat-x; }
+
+
+/* ------ sideMenu 로그인 정보 ------  */
+*html #sideMenu_infor {float:right; margin:0px 0px 0px -1000px;} /* ie6에서만 적용됨 */
+#sideMenu_infor {float:left; width: 180px; padding: 0; margin:0; background:#fff; } /*서브메뉴 가로폭 최대 크기는 width:200px,  최소 크기는 width:150px입니다.*/
+
+/* ------ sideMenu ------  */
+*html #sideMenu01 {float:right; margin:0px 0px 0px -1000px;} /* ie6에서만 적용됨 */
+#sideMenu01 {float:left; width: 180px; padding:0; margin:0; background:url(/images_n/sub_menu01.gif) no-repeat left 0px ; } /*서브메뉴 가로폭 최대 크기는 width:200px,  최소 크기는 width:150px입니다.*/
+
+/* --- 사이드메뉴 리스트 --- */
+#sideMenu01 ul li.subMenuName {margin:0; padding:15px 12px  0 0; border:none;  height:35px; font:bold 15px 굴림; color:#ffffff; text-align:right; background:url(/images_n/sub_menu_right.gif) no-repeat right top;}
+#sideMenu01 ul {margin:0; padding:0;	font:12px 굴림;	color:#444444;	list-style:none; }
+#sideMenu01 ul li {margin:0; }
+#sideMenu01 ul a {color:#444444; text-decoration:none; display:block; padding:0px 7px 0px 13px;background:url(/images_n/sub_bullet.gif) no-repeat left center ; border-bottom:1px solid #cecece; line-height:28px; height:24px;}
+#sideMenu01 ul a:hover {color:#444444; background-color: #feefd9; padding:0px 7px 0px 13px; font-weight:bold;}
+#sideMenu01 ul li.selected a {color:#444444; font-weight:bold;  text-decoration:none;  padding:0px 7px 0px 13px;  background:#f1f1f1 url(/images_n/sub_bullet_o.gif) no-repeat 5px center; line-height:28px; height:25px; cursor:default; border-bottom:0px solid #cecece;}
+#sideMenu01 ul li.selected a:hover {color:#444444; font-weight:bold;  text-decoration:none;  padding:0px 7px 0px 13px;  background:#f1f1f1 url(/images_n/sub_bullet_o.gif) no-repeat 5px center; }
+
+/* --- 서브뎁스 --- */
+#sideMenu01 ul.subDepth {margin:0; padding:5px 0 10px 13px ; border-bottom:1px solid #cecece;  background-color: #ffffff; list-style:none;}
+#sideMenu01 ul.subDepth li {margin:0; display:inline;}
+#sideMenu01 ul.subDepth li a {font-weight:normal; display:block; padding:0px 0px 0px 9px; border:none; background: url(/images_n/list_bullet.gif) no-repeat left 8px; line-height:21px; height:20px; cursor: pointer;}
+#sideMenu01 ul.subDepth li a:hover {font-weight:normal;padding:0px 0px 0px 9px;  border:none;  background:#ffffff url(/images_n/list_bullet.gif) no-repeat left 8px; color:#69F; text-decoration: underline;}
+#sideMenu01 ul li.subMenuBottom {margin:0; padding:0px 0  0 0; border:none;  height:18px; background:#f7f7f7 url(/images_n/sub_menu_bottom.gif) no-repeat right bottom ;}
+
+
+/*2009년 09월 16일 추가 -  서비스 안내 */
+/* ====================  서비스안내  ==================== */
+.content h4, .content2 h4 {font: 14px 돋움; color: #357ebd; line-height:19px; margin:0; padding:0 0 10px 33px; text-align:left; background:url(/images_n/Mypage_title.gif)  no-repeat 23px 2px; font-weight:bold; }/*제목텍스트*/
+
+
+/*2009년 09월 21일 추가 -  일정표/통합공고 안내 */
+/* ==================== 일정표/통합공고  ==================== */
+#schedule {width:100%; padding:0; margin:0;}
+#schedule .table {width:100%; padding:0; margin:0; border:0px solid #ffffff;}
+#schedule .year { border:0px solid #ffffff; width:176px; height:33px; background: url(/images_n/year_search_bg.gif) no-repeat 0px 5px; text-align:right; padding-right:20px; }
+#schedule .month { border:0px solid #ffffff;  background: url(/images_n/year_search_line.gif) no-repeat right;}
+
+/* 통합공고 */
+#Allnotice {width:100%; padding:0; margin:0;}
+#Allnotice .table {width:100%; padding:0; margin:0; border:0px solid #ffffff;}
+#Allnotice .td {width:50%; padding:10px 0 20px 0; margin:0; border:0px solid #ffffff; vertical-align:top;}
+/*타이틀*/
+#notice_top {width:305px; height:25px; background: url(/images_n/notice_bg.gif) no-repeat ; text-align:left; padding:6px 0 0 15px; font-weight:bold; }
+/* 리스트 형태 1 */
+#notice_list01 {width:320px; padding:0; margin:0;}
+#notice_list01 .table { border:0px solid #ffffff; width:100%; }
+#notice_list01 .post {  border:0px solid #ffffff; background: url(/images_n/main_list_bullet.gif) no-repeat 5px 6px; color:#858484; text-align:left; padding:0 0 0 12px;}
+#notice_list01 .list {  border:0px solid #ffffff; text-align:left; padding:0 0 0 7px;}
+#notice_list01 .year {  border:0px solid #ffffff;  width:70px;padding:0; color:#858484; }
+/* 리스트 형태 2 */
+#notice_list02 {width:320px; padding:0; margin:0;}
+#notice_list02 .table { border:0px solid #ffffff; width:100%; }
+#notice_list02 .post {  border:0px solid #ffffff; background: url(/images_n/main_list_bullet.gif) no-repeat 5px 6px; text-align:left; padding:0 0 0 12px;}
+#notice_list02 .year {  border:0px solid #ffffff;  width:70px;padding:0; color:#858484; }
+
+
+/* ====================   2009년 09월 24일 추가 -  관리자 팝업   ==================== */
+/*===============================================================================*/
+#admin_pop {width:100%; padding:0; margin:0;}
+#Pop_Topimg {width:100%; background:url(/images_n/Admin_Popbg.gif) repeat-x;}
+#Pop_Topimg .img {width:100%; background:url(/images_n/Admin_PopImg01.gif) no-repeat; height:65px;}
+
+/* left 영역 */
+#admin_content {width:100%; margin:0; padding:0;}
+#admin_content .table {border:0px solid #ffffff; width:100%; margin:0; padding:0;}
+#admin_content .left {border:0px solid #ffffff; width:183px; margin:0; padding:0; vertical-align:top;}
+#admin_content .contentAdm  {border:0px solid #ffffff; margin:0; padding:10px 10px 10px 10px; text-align:left; vertical-align:top;}
+
+#admin_infor {width:180px;  margin:0 0 0 4px; padding:0 ;}
+#admin_infor .top{ background:url(/images_n/Admin_infor01.gif) no-repeat; height:43px;}
+#admin_infor .infor{ background:url(/images_n/Admin_infor02.gif) repeat-y; padding:7px 0 3px 0;}
+#admin_infor .bottom{ background:url(/images_n/Admin_infor03.gif) no-repeat; height:13px;}
+
+
+/* ------ sideMenu ------  */
+
+#sideMenuAdmin { text-align:left; float:left; width: 180px; padding: 5px 0 0 0; margin:0 0 0 4px; background:#fff url(/images_n/sub_menu.gif) no-repeat left 5px ; } /*서브메뉴 가로폭 최대 크기는 width:200px,  최소 크기는 width:150px입니다.*/
+
+/* --- 사이드메뉴 리스트 --- */
+#sideMenuAdmin ul li.subMenuName {margin:0; padding:15px 12px  0 0; border:none;  height:35px; font:bold 15px 굴림; color:#ffffff; text-align:right; background:url(/images_n/sub_menu_right.gif) no-repeat right top;}
+#sideMenuAdmin ul {margin:0; padding:0;	font:12px 굴림;	color:#444444;	list-style:none; }
+#sideMenuAdmin ul li {margin:0; }
+#sideMenuAdmin ul a {color:#444444; text-decoration:none; display:block; padding:0px 7px 0px 13px;background:url(/images_n/sub_bullet.gif) no-repeat left center ; border-bottom:1px solid #cecece; line-height:28px; height:24px;}
+#sideMenuAdmin ul a:hover {color:#444444; background-color: #feefd9; padding:0px 7px 0px 13px; font-weight:bold;}
+#sideMenuAdmin ul li.selected a {color:#444444; font-weight:bold;  text-decoration:none;  padding:0px 7px 0px 13px;  background:#f1f1f1 url(/images_n/sub_bullet_o.gif) no-repeat 5px center; line-height:28px; height:25px; cursor:default; border-bottom:0px solid #cecece;}
+#sideMenuAdmin ul li.selected a:hover {color:#444444; font-weight:bold;  text-decoration:none;  padding:0px 7px 0px 13px;  background:#f1f1f1 url(/images_n/sub_bullet_o.gif) no-repeat 5px center; }
+
+/* --- 서브뎁스 --- */
+#sideMenuAdmin ul.subDepth {margin:0; padding:5px 0 10px 13px ; border-bottom:1px solid #cecece;  background-color: #ffffff; list-style:none;}
+#sideMenuAdmin ul.subDepth li {margin:0; display:inline;}
+#sideMenuAdmin ul.subDepth li a {font-weight:normal; display:block; padding:0px 0px 0px 9px; border:none; background: url(/images_n/list_bullet.gif) no-repeat left 8px; line-height:21px; height:20px; cursor: pointer;}
+#sideMenuAdmin ul.subDepth li a:hover {font-weight:normal;padding:0px 0px 0px 9px;  border:none;  background:#ffffff url(/images_n/list_bullet.gif) no-repeat left 8px; color:#69F; text-decoration: underline;}
+
+#sideMenuAdmin ul.subDepth li.sub {margin:0; display:inline;}
+#sideMenuAdmin ul.subDepth li.sub a {font-weight:normal; display:block; padding:0px 0px 0px 22px; border:none; background: url(/images_n/left_line.gif) no-repeat 10px; line-height:21px; height:20px; cursor: pointer;}
+#sideMenuAdmin ul.subDepth li.sub a:hover {font-weight:normal;padding:0px 0px 0px 22px;  border:none;  background: url(/images_n/left_line.gif) no-repeat 10px; color:#69F; text-decoration: underline;}
+
+#sideMenuAdmin ul li.subMenuBottom {margin:0; padding:0px 0  0 0; border:none;  height:18px; background:#f7f7f7 url(/images_n/sub_menu_bottom.gif) no-repeat right bottom ;}
+
+
+/* ====================   2009년 10월 07일 추가 -  new style css   ==================== */
+/*==================================================================================*/
+
+/*  개인화 자료 => 텝 버튼 및 기타  */
+#TabBtn02 {width:100%; margin:15px 0 0 0; padding:0;}
+#TabBtn02 .table { border:0px solid #ffffff; width:100%; margin:0; padding:0; }
+
+#TabBtn02 .tdL1 { border:0px solid #ffffff; width:8px; background-image:url(/images_n/TabBg_L1.gif); background-repeat:no-repeat; background-position:bottom; margin:0; padding:0; }
+#TabBtn02 .tdL2 { border:0px solid #ffffff;  background:url(/images_n/TabBg_L2.gif) repeat-y; margin:0; padding:0; }
+#TabBtn02 .tdL3 { border:0px solid #ffffff;  height:9px;  background:url(/images_n/TabBg_L3.gif) no-repeat; margin:0; padding:0; }
+
+#TabBtn02 .tdR1 { border:0px solid #ffffff; width:8px; background-image:url(/images_n/TabBg_R1.gif); background-repeat:no-repeat; background-position:bottom; margin:0; padding:0; }
+#TabBtn02 .tdR2 { border:0px solid #ffffff; background:url(/images_n/TabBg_R2.gif) repeat-y; margin:0; padding:0;  }
+#TabBtn02 .tdR3 { border:0px solid #ffffff; height:9px;  background:url(/images_n/TabBg_R3.gif) no-repeat; margin:0; padding:0;   }
+
+#TabBtn02 .tdM { border:0px solid #ffffff; background:url(/images_n/TabBg_M.gif) repeat-x bottom; height:8px; margin:0; padding:0;  }
+#TabBtn02 .tdM2 { border:0px solid #ffffff; background:url(/images_n/TabBg_M2.gif) repeat-x; height:8px; margin:0; padding:0;  }
+#TabBtn02 .content { border:0px solid #ffffff; background-color:#eef4fa; margin:0; padding:0; }
+
+#TabBtn02 .up { border:0px solid #ffffff; background:url(/images_n/TabBg_up.gif) no-repeat center; height:152px; margin:0; padding:0; width:184px; vertical-align:top;}
+#TabBtn02 .down { border:0px solid #ffffff; background:url(/images_n/TabBg_down.gif) no-repeat center; margin:0; padding:0; width:184px; vertical-align:top;}
+
+#TabBtn02 .UpTitle{margin:10px 0 6px 0; padding:0; color:#ffffff; font-weight:bold; }
+#TabBtn02 .UpContent{margin:0; padding:0; color:#ffffff; text-align:left;}
+#TabBtn02 .UpContent ul { margin:0;  padding:0 0 0 20px;}
+#TabBtn02 .UpContent ul li  { text-align:left; background: url(/images_n/icon_tabY.gif) no-repeat 5px 5px; margin:0; padding:0 0 0 13px; color:#FFFFFF;}
+
+#TabBtn02 .DoTitle{margin:15px 0 6px 0; padding:0;}
+#TabBtn02 .DoTitle a{color:#3387c9;}
+#TabBtn02 .DoTitle a:hover{color:#ff3300;}
+#TabBtn02 .DoContnet{ margin:0;  padding:0; text-align:left;}
+#TabBtn02 .DoContnet ul { margin:0;  padding:0 0 0 20px;}
+#TabBtn02 .DoContent ul li  { text-align:left; background: url(/images_n/tebBtn_DownIcon.gif) no-repeat 5px 5px; margin:0; padding:0 0 0 13px; color:#444444;}
+
+#TabBtn02 .btn {margin:0; padding:0; text-align:right;}
+#TabBtn02 .title{margin:0; padding:0; text-align:left;}
+#TabBtn02 .help {margin:0; padding:20px 0 0 110px; color:#006187; background:url(/images_n/help11.gif) no-repeat left 18px;}
+#TabBtn02 .left {margin:0; padding:0; float:left; width:102px;}
+
+/* 개인화 검색 */
+#TabSearch {margin:10px 0 0 0; padding:0; width:100%; text-align:center;}
+#TabSearch .table {margin:0 0 10px 0; padding:0;  border:0px solid #ffffff; width:100%;}
+
+#TabSearch .tdL1 {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s01.gif) no-repeat; width:7px; height:7px;  }
+#TabSearch .tdL2 {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s04.gif) repeat-y; width:7px;}
+#TabSearch .tdL3 {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s06.gif) no-repeat; height:31px;}
+
+#TabSearch .tdM1{margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s02.gif) repeat-x; height:7px;  }
+#TabSearch .tdM2{margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s07.gif) repeat-x;  height:31px;   }
+
+#TabSearch .tdR1 {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s03.gif) no-repeat; width:7px; height:7px;  }
+#TabSearch .tdR2 {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s05.gif) repeat-y; width:7px;  }
+#TabSearch .tdR3 {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s08.gif) no-repeat; height:31px;  }
+
+#TabSearch .content {margin:0; padding:0;  border:0px solid #ffffff; background-color:#FFFFFF;}
+
+
+/* 테이블 기본 사양 */
+#box_table {margin:0 0 3px 0; padding:0;  border:0px solid #ffffff; width:100%;}
+#box_table .title {margin:0;  padding:3px 7px 2px 0; border:0px solid #ffffff;background-color:#f2f7fd; color:#444444; text-align:right; border:1px solid #ffffff; width:20%;}
+#box_table .content {background-color:#ffffff; padding:3px 0 2px 5px; color:#444444; text-align:left; border:1px solid #ffffff; width:30%;}
+
+.input_day {font:12px 돋움; border:1px solid #cecece;  margin:0 2px; padding:3px 3px 0px 3px ; height:16px;}
+.input_text {font:12px 돋움; border:1px solid #cecece;  margin:0 2px; padding:3px 3px 0px 3px ; height:16px;}
+
+
+/* 리스트 01 */
+#list01 { margin:0; padding:0; width:100%;}
+#list01 .table {margin:0; padding:0;  border:0px solid #ffffff; width:100%;}
+#list01 .titleL {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/list_titleBG01.gif) no-repeat left; color:#ffffff; height:28px;  }
+#list01 .titleM {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/list_titleBG01.gif) no-repeat center; color:#ffffff;   }
+#list01 .titleR {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/list_titleBG01.gif) no-repeat right; color:#ffffff;   }
+#list01 .list {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/list_dotLine.gif)  repeat-x bottom; height:28px; }
+#list01 .listL {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/list_dotLine.gif)  repeat-x bottom; height:28px; text-align:left;}
+
+
+/* 리스트 02 */
+#list02 { margin:0; padding:0; width:100%;}
+#list02 .table {margin:0; padding:0;  border:0px solid #ffffff; width:100%;}
+#list02 .titleL {margin:0; padding:0 0 0 3px;  border:0px solid #ffffff; background:url(/images_n/list_titleBG02.gif) no-repeat left; color:#336699; height:34px;  }
+#list02 .titleM {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/list_titleBG02.gif) no-repeat center; color:#336699;   }
+#list02 .titleR {margin:0; padding:0 4px 0 0;  border:0px solid #ffffff; background:url(/images_n/list_titleBG02.gif) no-repeat right; color:#336699;   }
+#list02 .list {margin:0; padding:3px 0 0 0;  border:0px solid #ffffff; background:url(/images_n/list_dotLine.gif)  repeat-x bottom; height:28px; }
+#list02 .listL {margin:0; padding:3px 0 0 5px;  border:0px solid #ffffff; background:url(/images_n/list_dotLine.gif)  repeat-x bottom; height:28px; text-align:left; }
+#list02 .listR {margin:0; padding:3px 5px 0 0;  border:0px solid #ffffff; background:url(/images_n/list_dotLine.gif)  repeat-x bottom; height:28px; text-align:right; }
+#list02 .number { margin-top:10px; padding-right:20px; text-align:right;}
+
+/* 리스트 03 => 두줄짜리 리스트  */
+#list03 { margin:0; padding:0; width:100%;}
+#list03 .table {margin:0; padding:0;  border:0px solid #ffffff; width:100%;}
+#list03 .titleL {margin:0; padding:0 0 0 3px;  border:0px solid #ffffff; background:url(/images_n/list_titleBG03.gif) no-repeat left; color:#336699; height:54px; line-height:16px; vertical-align:middle; }
+#list03 .titleM {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/list_titleBG03.gif) no-repeat center; color:#336699;  line-height:16px;vertical-align:middle; }
+#list03 .titleR {margin:0; padding:0 4px 0 0;  border:0px solid #ffffff; background:url(/images_n/list_titleBG03.gif) no-repeat right; color:#336699;  line-height:16px;vertical-align:middle; }
+#list03 .list {margin:0; padding:3px 0 0 0;  border:0px solid #ffffff; background:url(/images_n/list_dotLine.gif)  repeat-x bottom; height:28px; }
+#list03 .listL {margin:0; padding:3px 0 0 5px;  border:0px solid #ffffff; background:url(/images_n/list_dotLine.gif)  repeat-x bottom; height:28px; text-align:left; }
+#list03 .number { margin-top:10px; padding-right:20px; text-align:right;}
+#list03 .line1 { margin:0; padding:16px 0 0 0; height:34px; width:100%; background:url(/images_n/list_titlePT03.gif) no-repeat right; text-align:center; }
+#list03 .line2 { margin:0; padding:0; height:34px; width:100%; background:url(/images_n/list_titlePT03.gif) no-repeat right; text-align:center; }
+
+/* 도움말  5줄 내용 */
+#help_line5 {margin:0; padding:0; width:100%;}
+#help_line5 .table {margin:0; padding:0; border:0px solid #ffffff; width:100%;}
+#help_line5 .img {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/help16.gif) no-repeat left; width:120px; height:116px; }
+#help_line5 .content {margin:0; padding:12px 0 0 0; border:0px solid #ffffff; background-color:#f5f5f5; text-align:left; vertical-align:top;}
+#help_line5 .end {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/help16_1.gif) no-repeat left; width:47px;}
+
+/* 도움말  4줄 내용 */
+#help_line4 {margin:0; padding:0; width:100%;}
+#help_line4 .table {margin:0; padding:0; border:0px solid #ffffff; width:100%;}
+#help_line4 .img {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/help15.gif) no-repeat left; width:120px; height:96px; }
+#help_line4 .content {margin:0; padding:12px 0 0 0; border:0px solid #ffffff; background-color:#f5f5f5; text-align:left; vertical-align:top;}
+#help_line4 .end {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/help15_1.gif) no-repeat left; width:47px;}
+
+/* 도움말  3줄 내용 */
+#help_line3 {margin:0; padding:0; width:100%;}
+#help_line3 .table {margin:0; padding:0; border:0px solid #ffffff; width:100%;}
+#help_line3 .img {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/help12.gif) no-repeat left; width:120px; height:75px; }
+#help_line3 .content {margin:0; padding:12px 0 0 0; border:0px solid #ffffff; background-color:#f5f5f5; text-align:left; vertical-align:top;}
+#help_line3 .end {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/help12_1.gif) no-repeat left; width:47px;}
+
+/* 도움말 2줄내용 */
+#help_line2 {margin:0; padding:0; width:100%;}
+#help_line2 .table {margin:0; padding:0; border:0px solid #ffffff; width:100%;}
+#help_line2 .img {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/help13.gif) no-repeat left; width:120px; height:52px; }
+#help_line2 .content {margin:0; padding:12px 0 0 0; border:0px solid #ffffff; background-color:#f5f5f5; text-align:left; vertical-align:top;}
+#help_line2 .end {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/help13_1.gif) no-repeat left; width:47px;}
+
+/* 도움말 1줄내용 */
+#help_line1 {margin:0; padding:0; width:100%;}
+#help_line1 .table {margin:0; padding:0; border:0px solid #ffffff; width:100%;}
+#help_line1 .img {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/help14.gif) no-repeat left; width:120px; height:39px; }
+#help_line1 .content {margin:0; padding:12px 0 0 0; border:0px solid #ffffff; background-color:#f5f5f5; text-align:left; vertical-align:top;}
+#help_line1 .end {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/help14_1.gif) no-repeat left; width:39px;}
+
+/* 도움말 1줄내용 */
+#help_line_lim {margin:0; padding:0;}
+#help_line_lim .table {margin:0; padding:0; border:0px solid #ffffff;}
+#help_line_lim .img {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/help14.gif) no-repeat left; width:120px; height:39px; }
+#help_line_lim .content {margin:0; padding:12px 0 0 0; border:0px solid #ffffff; background-color:#f5f5f5; text-align:left; vertical-align:top;}
+#help_line_lim .end {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/help14_1.gif) no-repeat left; width:39px;}
+
+
+/* 텍스트 색상 */
+.text_GB {color:#009900; font-weight:bold;}
+.text_G {color:#009900;}
+.text_BB {color:#6699cc; font-weight:bold;}
+.text_RB {color:#ff00cc; font-weight:bold;}
+
+/* new 텝 */
+#tab_01 { margin:0 0 10px 0; padding:0; width:100%; height:31px; background:url(/images_n/tab_title02.gif) no-repeat; text-align:left; }
+#tab_01 .table { margin:0 0 0 10px; padding:0; border:0px; solid #ffffff; }
+#tab_01 .td { margin:0; padding:0; border:0px solid #ffffff; vertical-align:top;}
+
+/* 상세분류 검색 조건 리스트 */
+#table {margin:0; padding:0; border:0px solid #ffffff; width:100%;}
+#table .title {margin:0; padding:0 0 0 10px; border:0px solid #ffffff;  border-bottom:1px solid #cccccc; background-color:#f2f7fd; text-align:left; font-weight:bold;}
+#table .td {margin:0; padding:0; border:0px solid #ffffff; text-align:left; height:31px;}
+
+/* 과제년도*/ 
+#year {margin:0; padding:0; border:0px solid #ffffff; width:100%; height:39px; background:url(/images_n/year_bg.gif) no-repeat left; text-align:left;}
+#year .table { margin:0 0 0 152px; padding:0; border:0px solid #ffffff;}
+#year .year { margin:0; padding-top:13px; border:0px solid #ffffff; font-weight:bold; text-align:left; width:210px; background:none;}
+#year .name { margin:0; padding-top:13px; border:0px solid #ffffff; font-weight:bold; text-align:left; background:none;}
+
+/* 리스트 하단 결과내 재검색 */
+#msearch {margin-top:15px; padding-top:22px; background:url(/images_n/search_mbg.gif) center no-repeat; height:43px; text-align:center;}
+
+
+/* 세부기본정보 => 기본검색 */
+#area100 {width:100%; margin:0; padding:0; position: relative;}
+#area_left { width:650px; margin:0; padding:0; position: relative;}
+#area_left .Setext {margin:3px 0 3px 0; padding:5px 0 0 0; background-color:#f5f5f5; text-align:center; height:25px; color:#0066FF;}
+
+#table01 {margin:0; padding:0; width:100%;}
+#table01 .title {margin:0; padding:0 7px 0 0; background-color:#f2f7fd; text-align:right; height:25px; }
+#table01 .title1 {margin:0; padding:0 7px 0 0; background-color:#e2f7fd; text-align:right; height:25px; }
+#table01 .titleC {margin:0; padding:0; background-color:#f2f7fd; text-align:center; height:25px; }
+#table01 .td {margin:0; padding:0 0 0 7px; text-align:left; vertical-align:top;}
+#table01 .td01 {margin:0; padding:0 0 0 7px; text-align:left;}
+#table01 .tdR {margin:0; padding:0 7px 0 0; text-align:right;}
+
+#table02 {margin:0 0 5px 0; padding:0; width:100%; border:0px solid #ffffff; border-top:3px solid #6483bd;}
+#table02 .td {margin:0; padding:5px 5px 5px 5px; text-align:center; background-color:#f5f5f5; border:0px solid #ffffff;}
+
+#table03 {margin:0; padding:0; width:100%; border:0px solid #ffffff;}
+#table03 .td1 {margin:0; padding-right:5px; border:0px solid #ffffff; vertical-align:top; text-align:left; }
+#table03 .td2 {margin:0; padding:0; border:0px solid #ffffff; width:265px; vertical-align:top; text-align:center;}
+
+#table04 {margin:4px 0 0 0; padding:0; width:100%; border:0px solid #ffffff;}
+#table04 .td {margin:0; padding:0; border:0px solid #ffffff; background-color:#ffffff;}
+#table04 .tdBg {margin:0; padding:3px 10px 15px 10px; border:0px solid #ffffff; background:url(/images_n/title_infor03_up01.gif) repeat-y; vertical-align:top;}
+#table04 .tdDown {margin:0; padding:0; background:url(/images_n/title_infor03_up02.gif) no-repeat bottom; height:8px; border:0px solid #ffffff;}
+
+#area_right { width:250px; margin:25px 0 0 0; padding:0;}
+
+/* ====================   2009년 10월 19일 추가 2차   ==================== */
+/*======================================================================*/
+/* 유사과제 진행상황 상단 밖스 버튼 입니다. 기존의 "유사과제 진행상황 " CSS 를 이걸로 덮으시면 됩니다. */
+#progress { margin:0; padding:0; width:100%;}
+#progress .table {margin:0; padding:0; border:0px solid #ffffff; width:100%;}
+#progress .Pbg01 {margin:0; padding:0; border:0px solid #ffffff; width:225px; height:156px; background:url(/images_n/progress_bg01.gif) no-repeat; vertical-align:top;  }
+#progress .Pbg02 {margin:0; padding:0; border:0px solid #ffffff; width:225px; height:156px; background:url(/images_n/progress_bg02.gif) no-repeat; vertical-align:top;  }
+#progress .Pbg03 {margin:0; padding:0; border:0px solid #ffffff; width:225px; height:156px; background:url(/images_n/progress_bg03.gif) no-repeat; vertical-align:top;   }
+#progress .Pbg {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/progress_bg04.gif) repeat-x;  }
+#progress .title {margin-top:10px; padding-top:6px; color:#ffffff; font-weight:bold; text-align:center; line-height:18px; vertical-align:middle; height:37px; }
+#progress .contnet{margin-top:5px; padding:0; color:#ffffff; text-align:left;}
+#progress .contnet ul { margin:0;  padding:0 0 0 18px;}
+#progress .contnet ul li  { text-align:left; margin:0; padding:0; color:#444444;}
+#progress .help {margin-top:0; padding-top:10px; text-align:center; background: url(/images_n/progress_bg05.gif) no-repeat center top; height:27px; color:#336699; }
+#progress .help2 {margin-top:0; padding-top:10px; text-align:center; background: url(/images_n/progress_bg05_2.gif) no-repeat center bottom; height:17px; color:#336699; }
+#progress .contnet2{margin-top:0; padding:0; border:0px solid #ffffff; text-align:left; width:60px;}
+
+#progress .Pbg_Up01 {margin:0; padding:0; border:0px solid #ffffff; width:225px; height:156px; background:url(/images_n/progress_bgUp01.gif) no-repeat; vertical-align:top;  }
+#progress .Pbg_Down01 {margin:0; padding:0; border:0px solid #ffffff; width:225px; height:156px; background:url(/images_n/progress_bgDown01.gif) no-repeat; vertical-align:top;  }
+
+#progress .Pbg_Up02 {margin:0; padding:0; border:0px solid #ffffff; width:225px; height:156px; background:url(/images_n/progress_bgUp02.gif) no-repeat; vertical-align:top;  }
+#progress .Pbg_Down02 {margin:0; padding:0; border:0px solid #ffffff; width:225px; height:156px; background:url(/images_n/progress_bgDown02.gif) no-repeat; vertical-align:top;  }
+
+#progress .Pbg_Up03 {margin:0; padding:0; border:0px solid #ffffff; width:225px; height:156px; background:url(/images_n/progress_bgUp03.gif) no-repeat; vertical-align:top;  }
+#progress .Pbg_Down03 {margin:0; padding:0; border:0px solid #ffffff; width:225px; height:156px; background:url(/images_n/progress_bgDown03.gif) no-repeat; vertical-align:top;  }
+/* 유사과제 진행상황 상단 밖스 버튼 입니다. 기존의 "유사과제 진행상황 " CSS 를 이걸로 덮으시면 됩니다. */
+
+
+
+/*일정표*/
+#schedule01 {width:100%; padding:0; margin:0;}
+#schedule01 .table {width:100%; padding:0; margin:0; border:0px solid #ffffff;}
+#schedule01 .year { border:0px solid #ffffff; width:110px; height:33px; background: url(/images_n/year_search_bg01.gif) no-repeat 25px 4px; text-align:right; padding-right:20px; font-weight:bold; font-size:14px;}
+#schedule01 .month { border:0px solid #ffffff;  background: url(/images_n/year_search_line.gif) no-repeat right;}
+
+/*진행일정*/
+#schedule02 {width:100%; padding:0; margin:0;}
+#schedule02 .table {width:100%; padding:0; margin:0;}
+#schedule02 .title {padding:0; margin:0; background-color:#f2f7fd; text-align:center;}
+#schedule02 .title01 {padding:0; margin:0; background-color:#f2f7fd; text-align:center; font-size:14px; font-weight:bold; height:30px; color:#0a4b8b;}
+#schedule02 .tdL {margin:0; padding-left:5px; text-align:left;}
+#schedule02 .space {margin:0; padding:0; text-align:left; text-align:center; background-color:#f8f8f8; }
+#schedule02 .crowL {margin:0; padding:0; background: #f8f8f8 url(/images_n/line_corw.gif) no-repeat left;}
+#schedule02 .crowM {margin:0; padding:0; background: #f8f8f8 url(/images_n/line_corw.gif) no-repeat center;}
+#schedule02 .crowR {margin:0; padding:0; background: #f8f8f8 url(/images_n/line_corw.gif) no-repeat right;}
+#schedule02 .crowL2 {margin:0; padding:0; background: #f8f8f8 url(/images_n/line_corw_B.gif) no-repeat left;}
+#schedule02 .crowM2 {margin:0; padding:0; background: #f8f8f8 url(/images_n/line_corw_B.gif) no-repeat center;}
+#schedule02 .crowR2 {margin:0; padding:0; background: #f8f8f8 url(/images_n/line_corw_B.gif) no-repeat right;}
+
+#Pop400 {margin:0; padding:0; width:400px; height:300px; background:url(/images_n/pop_bg01.gif) no-repeat; }
+#Pop400 .text {margin:0; padding-top:145px; text-align:center; color:#ffffff; }
+#Pop400 .btn {margin-top:65px; padding:0px; text-align:center;}
+
+/* 주요기능소개 테이블 */
+#kind {margin:0; padding:0; border:0px solid #ffffff; width:100%;}
+#kind .title {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/kind_title.gif) no-repeat left; text-align:left; font-weight:bold; font-size:14px; color:#FFFFFF; }
+#kind .title01 {margin-top:5px; margin-left:20px;}
+#kind .text { padding-left:20px; padding-right:20px; text-align:left; border:0px solid #ffffff; }
+#kind .title02 { background-color:#f7f7f7; padding:0; border:0px solid #ffffff; text-align:left;    }
+#kind .img { border:0px solid #ffffff; padding:5px 0 5px 0; text-align:center; }
+
+/* ====================   2009년 10월 15일 추가 CSS   ==================== */
+/*======================================================================*/
+
+#notice_top01 {width:320px; height:31px; text-align:left; padding:0; margin:0; background:url(/images_n/tab_title02.gif) no-repeat left; }
+#Allnotice .table01 {width:95%; padding:0; margin:0 0 0 20px; border:0px solid #ffffff;}
+/* 리스트 형태 1 */
+#notice_list03 {width:320px; padding:0; margin:8px 0 0 0;}
+#notice_list03 .table { border:0px solid #ffffff; width:100%; }
+#notice_list03 .post {  border:0px solid #ffffff; background:url(/images_n/list_dotLine.gif) repeat-x bottom; color:#858484; text-align:left; padding:3px 0 0 3px;}
+#notice_list03 .list {  border:0px solid #ffffff; text-align:left; padding:0 0 0 7px; background:url(/images_n/list_dotLine.gif) repeat-x bottom;}
+#notice_list03 .year {  border:0px solid #ffffff;  width:70px;padding:0; color:#858484;  background:url(/images_n/list_dotLine.gif) repeat-x bottom;}
+
+/* 도움말 1줄내용 */
+#report {margin:0; padding:0; width:100%; z}
+#report .table {margin:0; padding:0; border:0px solid #ffffff; width:100%; vertical-align:top;}
+#report .td { margin:0; padding:0; border:0px solid #ffffff; text-align:left; vertical-align:top;}
+#report .td700 { margin:0; padding:0; border:0px solid #ffffff; width:700px; text-align:center;}
+
+#report .img {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/report01.gif) no-repeat left; width:120px; height:39px; }
+#report .content {margin:0; padding:12px 0 0 0; border:0px solid #ffffff; background-color:#f5f5f5; text-align:left; vertical-align:top; font-weight:bold; font-size:14px;}
+#report .end {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/help14_1.gif) no-repeat left; width:39px;}
+
+
+#report_name {margin:10px 0 0 0; padding:0; border:0px solid #ffffff; width:100%; }
+#report_name .td {margin:0; padding:8px 5px 8px 10px; border:0px solid #ffffff; width:100%; background:url(/images_n/list_dotLine.gif) repeat-x bottom; text-align:left; }
+#report_name .td01 {margin:0; padding:8px 3px 8px 3px; border:0px solid #ffffff;  background:url(/images_n/list_dotLine.gif) repeat-x bottom; text-align:left; }
+
+#report_new {width:100%; margin:0; padding:0; background:url(/images_n/line_Gbg.gif) repeat-x 0px 18px; text-align:center;}
+
+/* 자료배포 승인 진행상황 */
+#progress01 { margin:0; padding:0; width:100%;}
+#progress01 .table {margin:0; padding:0; border:0px solid #ffffff; width:100%;}
+#progress01 .ProTd01 {margin:0; padding:0; border:0px solid #ffffff;  width:178px; height:212px; background:url(/images_n/data_request01.gif) no-repeat; text-align:center; vertical-align:top;}
+#progress01 .ProTd02 {margin:0; padding:0; border:0px solid #ffffff;  width:178px; height:212px; background:url(/images_n/data_request02.gif) no-repeat; text-align:center; vertical-align:top;}
+#progress01 .ProTd03 {margin:0; padding:0; border:0px solid #ffffff;  width:178px; height:212px; background:url(/images_n/data_request03.gif) no-repeat; text-align:center; vertical-align:top;}
+#progress01 .ProTd04 {margin:0; padding:0; border:0px solid #ffffff;  width:178px; height:212px; background:url(/images_n/data_request04.gif) no-repeat; text-align:center; vertical-align:top;}
+#progress01 .td {margin:0; padding:0; border:0px solid #ffffff; text-align:left;}
+#progress01 .text { margin:70px 0 0 0; padding:0; font-size:26px; font-weight:bold;}
+
+/* 팝업 list */
+#Pop780 {margin:0; padding:10px 10px 20px 10px; width:780px;background:url(/images_n/pop_bgline.gif) repeat-x top; }
+#Tsearch .titlePop {background-color:#f2f7fd; padding:3px 7px 2px 0; color:#444444; text-align:right; border:1px solid #ffffff; width:20%;}
+
+/* 제재정보 -------------- */
+/* 엑셀양식 보기 텝 버튼 */
+#btn_Excel {width:100%; margin:0; padding:0; background:url(/images_n/line_Gbg.gif) repeat-x 0px 18px; text-align:center;}
+
+
+/* ====================   2009년 10월 19일 추가 CSS   ==================== */
+/*======================================================================*/
+/* new 텝 */
+#tab_02 { margin:0 0 10px 0; padding:0; width:100%; text-align:left; }
+#tab_02 .table { margin:0; padding:0; border:0px solid #ffffff; height:31px; width:100%; }
+#tab_02 .td01 { margin:0; padding:0; border:0px solid #ffffff;}
+#tab_02 .td02 { margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/tab_title02bg.gif) repeat-x; text-align:left; }
+#tab_02 .td03 { margin:0; padding:0; border:0px solid #ffffff;}
+
+#tab_02 .table01 { margin:0; padding:0; border:0px solid #ffffff; background:none; }
+#tab_02 .tdTap { margin:0; padding:0; border:0px solid #ffffff; background:none; }
+
+
+/* 과제년도*/ 
+#year01 {margin:0; padding:0; border:0px solid #ffffff; width:100%;}
+#year01 .table { margin:0; padding:0; border:0px solid #ffffff; width:100%;}
+#year01 .td01 {  margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/year_bg01.gif) no-repeat left; height:39px; width:85px;}
+#year01 .tdContent {  margin:0; padding:0; border:0px solid #ffffff; background-color:#f5f5f5; font-weight:bold; text-align:left; font-size:12px;}
+#year01 .tdE {  margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/year_bg01.gif) no-repeat right; height:39px; width:50px;}
+
+/* 개인화 검색 미니텝  */
+#TabSearchSmall {margin:10px 0 0 0; padding:0; width:100%; text-align:center;}
+#TabSearchSmall .table {margin:0 0 10px 0; padding:0;  border:0px solid #ffffff; width:96%;}
+#TabSearchSmall .table_Tab { margin:0; padding:0;  border:0px solid #ffffff;}
+#TabSearchSmall .table_TabTUL { margin:0; padding:0;  border:0px solid #ffffff; height:37px; width:7px; background:url(/images_n/box_s02_TU01.gif) no-repeat left;}
+#TabSearchSmall .table_TabTUC { margin:0; padding:0 15px 0 15px;  border:0px solid #ffffff; height:37px; background:url(/images_n/box_s02_TU02.gif) repeat-x; font-weight: bold;}
+#TabSearchSmall .table_TabTUR { margin:0; padding:0;  border:0px solid #ffffff; width:7px; background:url(/images_n/box_s02_TU03.gif) no-repeat right;}
+#TabSearchSmall .table_TabTDL { margin:0; padding:0;  border:0px solid #ffffff; width:7px; background:url(/images_n/box_s02_TD01.gif) no-repeat left;}
+#TabSearchSmall .table_TabTDC { margin:0; padding:0 15px 0 15px;  border:0px solid #ffffff; background:url(/images_n/box_s02_TD02.gif) repeat-x;}
+#TabSearchSmall .table_TabTDR { margin:0; padding:0;  border:0px solid #ffffff; width:7px; background:url(/images_n/box_s02_TD03.gif) no-repeat right;}
+
+
+
+#TabSearchSmall .tdL1 {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s01.gif) no-repeat bottom; width:7px; height:7px;  }
+#TabSearchSmall .tdL2 {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s04.gif) repeat-y; width:7px;}
+#TabSearchSmall .tdL3 {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s06.gif) no-repeat ; height:31px;}
+
+#TabSearchSmall .tdM1{margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s02.gif) repeat-x bottom; height:7px; text-align:left; }
+#TabSearchSmall .tdM2{margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s07.gif) repeat-x;  height:31px;   }
+
+#TabSearchSmall .tdR1 {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s03.gif) no-repeat bottom; width:7px; height:7px;  }
+#TabSearchSmall .tdR2 {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s05.gif) repeat-y; width:7px;  }
+#TabSearchSmall .tdR3 {margin:0; padding:0;  border:0px solid #ffffff; background:url(/images_n/box_s08.gif) no-repeat; height:31px;  }
+
+#TabSearchSmall .content {margin:0; padding:0;  border:0px solid #ffffff; background-color:#FFFFFF;}
+
+
+/* ====================   2009년 10월 28일 추가 CSS   ==================== */
+/*======================================================================*/
+/*통계정보*/
+#statisticInfor  {margin:0; padding:0; border:0px solid #ffffff; width:180px;}
+#statisticInfor .title {margin:0; padding:0 12px  0 0; border:none;  height:50px; font:bold 15px 굴림; color:#ffffff; text-align:right; background:url(/images_n/sub_menu01.gif) no-repeat right top;}
+#statisticInfor .title01  {margin:0; padding:0; border:0px solid #ffffff;}
+#statisticInfor .titleBottom  {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/statistic_bottom.gif) no-repeat bottom; height:5px;}
+#statisticInfor .content  {margin:0; padding:5px 5px 0 7px; border:0px solid #ffffff; background:url(/images_n/statistic_outline.gif) repeat-y; }
+
+#statisticMenu  {margin:0; padding:0; border:0px solid #ffffff;}
+#statisticMenu ul {margin:0; padding:0;	font:12px 굴림;	color:#444444;	list-style:none; text-align:left; }
+#statisticMenu ul li {margin:0;  height:18px;}
+#statisticMenu .Depth01 { background:url(/images_n/statistic_icon01.gif) no-repeat 0 1px; padding-left:13px; }
+#statisticMenu .Depth02 { background:url(/images_n/statistic_icon02.gif) no-repeat; padding-left:25px; }
+#statisticMenu .Depth03 { background:url(/images_n/statistic_icon03.gif) no-repeat; padding-left:35px; }
+#statisticMenu .action { font-weight:bold; color:#028aff;}
+
+#statisticMenu ul a:hover {color:#028aff; padding:0; font-weight:bold;}
+#statisticMenu ul li.selected a {color:#444444; font-weight:bold;  text-decoration:none;  padding:0px 7px 0px 13px;  background:#f1f1f1 url(/images_n/sub_bullet_o.gif) no-repeat 5px center; line-height:28px; height:25px; cursor:default; border-bottom:0px solid #cecece;}
+
+
+
+
+/* ====================   2009년 10월 29일 추가 CSS  => 개인화 페이지  ==================== */
+/*=======================================================================================*/
+#tab_mypage {width:100%; margin:0; padding:0; }
+#tab_mypage .table {width:100%; margin:0; padding:0; border:0px solid #ffffff; }
+#tab_mypage .td {margin:0; padding:0; border:0px solid #ffffff; text-align:center; background:url(/images_n/tab_bg.gif) repeat-x; height:237px; vertical-align:top;  }
+
+#tab_mypage .tab {margin:0; padding:0; border:0px solid #ffffff; width:176px;}
+#tab_mypage .td01 {margin:0; padding:0; border:0px solid #ffffff; vertical-align:top; height:119px;}
+#tab_mypage .td_btn {margin:0; padding:8px 20px 8px 0; border:0px solid #ffffff; text-align:right; background-color:#f9f9f9;}
+#tab_mypage .td_up {margin:0; padding:0; border:0px solid #ffffff; vertical-align:top; background:url(/images_n/tab_Upimg_bg.gif) no-repeat bottom; height:118px;}
+#tab_mypage .td_dw {margin:0; padding:0; border:0px solid #ffffff; vertical-align:top; background:url(/images_n/tab_Dwimg_bg.gif) no-repeat bottom; height:118px;}
+
+#tab_mypage .content {margin:5px 0 0 0; padding:0; text-align:left;}
+
+#tab_mypage .content ul {margin:0; padding:0;}
+#tab_mypage .content ul li {margin:0; padding:0 0 0 35px; background:url(/images_n/main_list_bullet.gif) no-repeat 28px 6px;}
+
+
+
+
+/* 연구과제-조회조건화면 */
+#Searchwork  {width:100%; margin:0; padding:0;}
+#Searchwork .table  {width:100%; margin:0; padding:0; border:0px solid #ffffff; }
+#Searchwork .tdL  {width:80px; margin:0; padding:0; border:0px solid #ffffff; vertical-align:top; background:#f5f5f5 url(/images_n/Searchwork_02.gif) no-repeat bottom left; text-align:left; }
+#Searchwork .tdM  {margin:0; padding:10px 0 3px 0; border:0px solid #ffffff; vertical-align:top; background-color:#f5f5f5;}
+#Searchwork .tdR  {width:46px; margin:0; padding:0; border:0px solid #ffffff; vertical-align:top; background:#f5f5f5 url(/images_n/Searchwork_04.gif) no-repeat bottom right; text-align:right;}
+
+#Searchwork .search  { margin:0; padding:0 0 0 16px; border:0px solid #ffffff; background:#f5f5f5 url(/images_n/icon_ring01.gif) no-repeat 5px 7px; text-align:left; height:25px; color:#666666;width:50%;  }
+#Searchwork .searchNo  { margin:0; padding:0 0 0 16px; border:0px solid #ffffff; background:#f5f5f5; text-align:left; height:25px; color:#666666; width:50%;  }
+
+
+
+
+/* 도움말  큰줄 내용 */
+#help_linel {margin:0; padding:0; width:100%;}
+#help_linel .table {margin:0; padding:0; border:0px solid #ffffff; width:100%;}
+#help_linel .img {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/help_ll.gif) no-repeat left; width:120px; height:140px; }
+#help_linel .content {margin:0; padding:12px 0 0 0; border:0px solid #ffffff; background-color:#f5f5f5; text-align:left; vertical-align:top;}
+#help_linel .end {margin:0; padding:0; border:0px solid #ffffff; background:url(/images_n/help_ll_e.gif) no-repeat left; width:126px; height:140px;}
+
+
+
+/*====================   2010년 01월 27일 추가 CSS  => 자체평가 보고서 작성  ======================*/
+/*====================   2010년 02월 18일 변경 CSS  => 자체평가 보고서 작성  ======================*/
+/*==============================================================================================*/
+#report_write {margin-bottom:25px; margin-top:15px; padding:0; width:100%; }
+#report_write .table {margin:0; padding:0; width:100%; border:0px solid #ffffff;}
+#report_write .tdL {margin:0; padding:0; border:0px solid #ffffff; height:154px; background:url(/images_n/report_write_bg.gif) no-repeat left top;}
+#report_write .tdR {margin:0; padding:0; border:0px solid #ffffff; height:154px; background:url(/images_n/report_write_bg.gif) no-repeat right top;}
+#report_write .text {margin-top:90px; padding-left:39px; color:#ffffff; font:14px 돋음; font-weight:bold;100%; text-align:left;}
+/* 활성화*/
+#report_write .pro01up {margin:0; padding:0; border:0px solid #ffffff; width:163px; height:154px; background:url(/images_n/report_write_pro01Up.gif) no-repeat center top; vertical-align:top;}
+#report_write .pro02up {margin:0; padding:0; border:0px solid #ffffff; width:163px; height:154px; background:url(/images_n/report_write_pro02Up.gif) no-repeat center top; vertical-align:top;}
+#report_write .pro03up {margin:0; padding:0; border:0px solid #ffffff; width:163px; height:154px; background:url(/images_n/report_write_pro03Up.gif) no-repeat center top; vertical-align:top;}
+#report_write .pro04up {margin:0; padding:0; border:0px solid #ffffff; width:151px; height:154px; background:url(/images_n/report_write_pro04Up.gif) no-repeat center top; vertical-align:top;}
+/* 비활성화*/
+#report_write .pro01Dw {margin:0; padding:0; border:0px solid #ffffff; width:163px; height:154px; background:url(/images_n/report_write_pro01Dw.gif) no-repeat center top; vertical-align:top;}
+#report_write .pro02Dw {margin:0; padding:0; border:0px solid #ffffff; width:163px; height:154px; background:url(/images_n/report_write_pro02Dw.gif) no-repeat center top; vertical-align:top;}
+#report_write .pro03Dw {margin:0; padding:0; border:0px solid #ffffff; width:163px; height:154px; background:url(/images_n/report_write_pro03Dw.gif) no-repeat center top; vertical-align:top;}
+#report_write .pro04Dw {margin:0; padding:0; border:0px solid #ffffff; width:151px; height:154px; background:url(/images_n/report_write_pro04Dw.gif) no-repeat center top; vertical-align:top;}
+
+/*버튼테이블*/
+#space_btn { width:100%; padding:7px 0 5px 0; background-color:#f1f1f1; margin-top:2px;  text-align:center; }
+
+/* 글자색 */
+.text_R {color:#FF3300; line-height:25px;}
+.redBoldFont {color: #CC3333; font-weight: bold;}
+.blueBoldFont {color: #3333CC; font-weight: bold;}
+
+
